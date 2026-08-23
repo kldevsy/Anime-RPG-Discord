@@ -32,7 +32,7 @@ Backend foundation for a professional Discord anime RPG, starting with persisten
 - Discord user IDs are stored as text; internal entities use UUIDs so external identifiers never become database primary keys.
 - Team updates replace all members inside one transaction and enforce ownership and the five-character limit on the server.
 - New profiles receive up to three catalog characters as starters, making the first phase usable before gacha is introduced.
-- Database access is explicit: endpoints return `503` when `DATABASE_URL` is absent instead of silently using mock persistence.
+- Local mode is the default for development; PostgreSQL is opt-in with `USE_DATABASE=true`, so the absence of a working Neon connection never blocks the local RPG flow.
 
 ## Product
 

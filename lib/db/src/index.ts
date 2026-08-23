@@ -4,7 +4,9 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-export const databaseConfigured = Boolean(process.env.DATABASE_URL);
+// PostgreSQL is opt-in so local development is usable without a database.
+export const databaseConfigured =
+  process.env.USE_DATABASE === "true" && Boolean(process.env.DATABASE_URL);
 export const pool = databaseConfigured
   ? new Pool({ connectionString: process.env.DATABASE_URL })
   : null;

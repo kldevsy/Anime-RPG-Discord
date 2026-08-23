@@ -6,11 +6,11 @@ import {
   userCharacters,
   users,
 } from "@workspace/db";
-import { db } from "@workspace/db";
+import { db, type Character, type Team, type TeamMember, type User, type UserCharacter } from "@workspace/db";
 
 export class DatabaseUnavailableError extends Error {
   constructor() {
-    super("Database is not configured. Set DATABASE_URL before using RPG data endpoints.");
+    super("Database mode is disabled. Set USE_DATABASE=true to enable PostgreSQL.");
     this.name = "DatabaseUnavailableError";
   }
 }
@@ -20,7 +20,28 @@ function requireDb() {
   return db;
 }
 
+const memoryCharacters: Character[] = [
+  { id: "00000000-0000-4000-8000-000000000001", anime: "Naruto", name: "Naruto Uzumaki", rarity: "rare", role: "dps", level: 1, baseHp: 920, baseAttack: 180, baseDefense: 105, baseSpeed: 118, imageUrl: null, passive: "Determinação", evolution: null, createdAt: new Date("2026-01-01") },
+  { id: "00000000-0000-4000-8000-000000000002", anime: "Naruto", name: "Sakura Haruno", rarity: "uncommon", role: "healer", level: 1, baseHp: 880, baseAttack: 120, baseDefense: 115, baseSpeed: 100, imageUrl: null, passive: "Controle de chakra", evolution: null, createdAt: new Date("2026-01-02") },
+  { id: "00000000-0000-4000-8000-000000000003", anime: "One Piece", name: "Monkey D. Luffy", rarity: "epic", role: "tank", level: 1, baseHp: 1250, baseAttack: 165, baseDefense: 135, baseSpeed: 96, imageUrl: null, passive: "Resiliência", evolution: null, createdAt: new Date("2026-01-03") },
+  { id: "00000000-0000-4000-8000-000000000004", anime: "Bleach", name: "Ichigo Kurosaki", rarity: "legendary", role: "dps", level: 1, baseHp: 1080, baseAttack: 230, baseDefense: 110, baseSpeed: 125, imageUrl: null, passive: "Pressão espiritual", evolution: null, createdAt: new Date("2026-01-04") },
+  { id: "00000000-0000-4000-8000-000000000005", anime: "Dragon Ball", name: "Goku", rarity: "mythic", role: "dps", level: 1, baseHp: 1400, baseAttack: 280, baseDefense: 145, baseSpeed: 130, imageUrl: null, passive: "Instinto de batalha", evolution: null, createdAt: new Date("2026-01-05") },
+];
+const memoryUsers: User[] = [];
+const memoryOwned: UserCharacter[] = [];
+const memoryTeams: Team[] = [];
+const memoryMembers: TeamMember[] = [];
+
 export async function getOrCreateUser(discordId: string, username: string) {
+  if (!db) {
+    const existing = memoryUsers.find((user) => user.discordId === discordId);
+    if (existing) return existing;
+    const now = new Date();
+    const user: User = { id: crypto.randomUUID(), discordId, username, gold: 0, gems: 0, tickets: 0, createdAt: now, updatedAt: now };
+    memoryUsers.push(user);
+    memoryCharacters.slice(0, 3).forEach((character) => memoryOwned.push({ id: crypto.randomUUID(), userId: user.id, characterId: character.id, level: 1, xp: 0, acquiredAt: now }));
+    return user;
+  }
   const database = requireDb();
   const existing = await database.query.users.findFirst({ where: eq(users.discordId, discordId) });
   if (existing) return existing;
@@ -40,6 +61,14 @@ export async function getOrCreateUser(discordId: string, username: string) {
 }
 
 export async function getProfile(discordId: string) {
+  if (!db) {
+    const user = memoryUsers.find((item) => item.discordId === discordId);
+    if (!user) return null;
+    const collection = memoryOwned.filter((owned) => owned.userId === user.id).map((owned) => ({
+      ownedId: owned.id, level: owned.level, xp: owned.xp, character: memoryCharacters.find((item) => item.id === owned.characterId)!,
+    }));
+    return { user, collection };
+  }
   const database = requireDb();
   const user = await database.query.users.findFirst({ where: eq(users.discordId, discordId) });
   if (!user) return null;
@@ -53,6 +82,9 @@ export async function getProfile(discordId: string) {
 }
 
 export async function listCharacters(filters: { anime?: string; rarity?: typeof characters.rarity.enumValues[number] }) {
+  if (!db) {
+    return memoryCharacters.filter((character) => (!filters.anime || character.anime === filters.anime) && (!filters.rarity || character.rarity === filters.rarity));
+  }
   const database = requireDb();
   const conditions: SQL[] = [];
   if (filters.anime) conditions.push(eq(characters.anime, filters.anime));
@@ -61,6 +93,17 @@ export async function listCharacters(filters: { anime?: string; rarity?: typeof 
 }
 
 export async function getTeam(discordId: string) {
+  if (!db) {
+    const user = memoryUsers.find((item) => item.discordId === discordId);
+    if (!user) return null;
+    const team = memoryTeams.find((item) => item.userId === user.id);
+    if (!team) return { team: null, members: [] };
+    const members = memoryMembers.filter((member) => member.teamId === team.id).sort((a, b) => a.position - b.position).map((member) => {
+      const owned = memoryOwned.find((item) => item.id === member.userCharacterId)!;
+      return { position: member.position, ownedId: owned.id, level: owned.level, xp: owned.xp, character: memoryCharacters.find((item) => item.id === owned.characterId)! };
+    });
+    return { team, members };
+  }
   const database = requireDb();
   const user = await database.query.users.findFirst({ where: eq(users.discordId, discordId) });
   if (!user) return null;
@@ -77,6 +120,24 @@ export async function getTeam(discordId: string) {
 }
 
 export async function replaceTeam(discordId: string, name: string, ownedCharacterIds: string[]) {
+  if (!db) {
+    if (ownedCharacterIds.length > 5) throw new Error("A team can contain at most 5 characters.");
+    const user = memoryUsers.find((item) => item.discordId === discordId);
+    if (!user) throw new Error("User not found. Create a profile first.");
+    const owned = memoryOwned.filter((item) => item.userId === user.id && ownedCharacterIds.includes(item.id));
+    if (owned.length !== ownedCharacterIds.length) throw new Error("One or more characters do not belong to this user.");
+    let team = memoryTeams.find((item) => item.userId === user.id && item.name === name);
+    if (!team) {
+      const now = new Date();
+      team = { id: crypto.randomUUID(), userId: user.id, name, createdAt: now, updatedAt: now };
+      memoryTeams.push(team);
+    }
+    for (let index = memoryMembers.length - 1; index >= 0; index -= 1) {
+      if (memoryMembers[index].teamId === team.id) memoryMembers.splice(index, 1);
+    }
+    ownedCharacterIds.forEach((id, index) => memoryMembers.push({ teamId: team!.id, userCharacterId: id, position: index + 1 }));
+    return getTeam(discordId);
+  }
   const database = requireDb();
   if (ownedCharacterIds.length > 5) throw new Error("A team can contain at most 5 characters.");
   const user = await database.query.users.findFirst({ where: eq(users.discordId, discordId) });
