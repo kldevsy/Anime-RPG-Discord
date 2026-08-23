@@ -1,0 +1,1 @@
+- [Phase 1 persistence](phase-one-persistence.md) — Keep RPG state server-authoritative in PostgreSQL; do not substitute silent in-memory data when the database is unavailable.

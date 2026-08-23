@@ -1,6 +1,6 @@
-# [Project name]
+# Anime RPG Discord
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Backend foundation for a professional Discord anime RPG, starting with persistent profiles, character collections, and five-slot teams.
 
 ## Run & Operate
 
@@ -22,15 +22,21 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/db/src/schema/index.ts` — PostgreSQL source of truth for users, characters, collections, and teams.
+- `lib/db/src/seed.ts` — starter character catalog seed.
+- `artifacts/api-server/src/services/PhaseOneService.ts` — profile, collection, and team rules.
+- `artifacts/api-server/src/routes/phase-one.ts` — validated Phase 1 HTTP endpoints.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Discord user IDs are stored as text; internal entities use UUIDs so external identifiers never become database primary keys.
+- Team updates replace all members inside one transaction and enforce ownership and the five-character limit on the server.
+- New profiles receive up to three catalog characters as starters, making the first phase usable before gacha is introduced.
+- Database access is explicit: endpoints return `503` when `DATABASE_URL` is absent instead of silently using mock persistence.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Phase 1 provides profile creation/lookup, a searchable character catalog, starter character collections, and ordered teams with up to five owned characters. Summoning, combat, economy, and progression beyond base ownership are intentionally deferred.
 
 ## User preferences
 
