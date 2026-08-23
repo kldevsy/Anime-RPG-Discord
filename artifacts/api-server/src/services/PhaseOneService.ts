@@ -1,4 +1,4 @@
-import { and, asc, eq, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, type SQL } from "drizzle-orm";
 import {
   characters,
   teamMembers,
@@ -148,7 +148,7 @@ export async function replaceTeam(discordId: string, name: string, ownedCharacte
     if (!team) [team] = await tx.insert(teams).values({ userId: user.id, name }).returning();
 
     const owned = await tx.select({ id: userCharacters.id }).from(userCharacters)
-      .where(and(eq(userCharacters.userId, user.id), ...ownedCharacterIds.map((id) => eq(userCharacters.id, id))));
+      .where(and(eq(userCharacters.userId, user.id), inArray(userCharacters.id, ownedCharacterIds)));
     if (owned.length !== ownedCharacterIds.length) throw new Error("One or more characters do not belong to this user.");
 
     await tx.delete(teamMembers).where(eq(teamMembers.teamId, team.id));
