@@ -4,6 +4,7 @@ import phaseOneRouter from "./phase-one";
 import summonRouter from "./summon";
 import battleRouter from "./battle";
 import playerBattleRouter from "./player-battle";
+import pveRouter from "./pve";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(phaseOneRouter);
 router.use(summonRouter);
 router.use(battleRouter);
 router.use(playerBattleRouter);
+router.use(pveRouter);
 
 export default router;

@@ -9,9 +9,9 @@ function handleError(error: unknown, res: Response) {
 }
 
 router.post("/battles", async (req, res) => {
-  const parsed = z.object({ discordId: idSchema }).safeParse(req.body);
+  const parsed = z.object({ discordId: idSchema, stageId: z.string().uuid().optional() }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid battle request" });
-  try { return res.status(201).json(await runPlayerBattle(parsed.data.discordId)); } catch (error) { return handleError(error, res); }
+  try { return res.status(201).json(await runPlayerBattle(parsed.data.discordId, parsed.data.stageId)); } catch (error) { return handleError(error, res); }
 });
 
 router.get("/battles/:discordId", async (req, res) => {

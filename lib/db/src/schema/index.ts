@@ -30,6 +30,7 @@ export const roleEnum = pgEnum("character_role", [
 export const bannerTypeEnum = pgEnum("banner_type", ["normal", "limited", "event"]);
 export const currencyEnum = pgEnum("currency", ["gold", "gems", "tickets"]);
 export const battleStatusEnum = pgEnum("battle_status", ["running", "victory", "defeat", "draw"]);
+export const pveTypeEnum = pgEnum("pve_type", ["story", "dungeon", "boss", "tower", "event", "raid"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -177,6 +178,30 @@ export const battleActions = pgTable("battle_actions", {
   amount: integer("amount"),
   critical: integer("critical").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const pveWorlds = pgTable("pve_worlds", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description").notNull(),
+  position: integer("position").notNull(),
+  active: integer("active").notNull().default(1),
+});
+
+export const pveStages = pgTable("pve_stages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  worldId: uuid("world_id").notNull().references(() => pveWorlds.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: pveTypeEnum("type").notNull().default("story"),
+  position: integer("position").notNull(),
+  enemyName: text("enemy_name").notNull(),
+  enemyHp: integer("enemy_hp").notNull(),
+  enemyAttack: integer("enemy_attack").notNull(),
+  enemyDefense: integer("enemy_defense").notNull(),
+  enemySpeed: integer("enemy_speed").notNull(),
+  rewardGold: integer("reward_gold").notNull().default(0),
+  rewardXp: integer("reward_xp").notNull().default(0),
+  active: integer("active").notNull().default(1),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
