@@ -32,12 +32,20 @@ const memoryOwned: UserCharacter[] = [];
 const memoryTeams: Team[] = [];
 const memoryMembers: TeamMember[] = [];
 
+function assertValidTeamSelection(ownedCharacterIds: string[]) {
+  if (ownedCharacterIds.length > 5) throw new Error("A team can contain at most 5 characters.");
+  const uniqueIds = new Set(ownedCharacterIds);
+  if (uniqueIds.size !== ownedCharacterIds.length) {
+    throw new Error("A team cannot contain the same owned character more than once.");
+  }
+}
+
 export async function getOrCreateUser(discordId: string, username: string) {
   if (!db) {
     const existing = memoryUsers.find((user) => user.discordId === discordId);
     if (existing) return existing;
     const now = new Date();
-    const user: User = { id: crypto.randomUUID(), discordId, username, gold: 0, gems: 0, tickets: 0, createdAt: now, updatedAt: now };
+    const user: User = { id: crypto.randomUUID(), discordId, username, gold: 0, gems: 1000, tickets: 10, createdAt: now, updatedAt: now };
     memoryUsers.push(user);
     memoryCharacters.slice(0, 3).forEach((character) => memoryOwned.push({ id: crypto.randomUUID(), userId: user.id, characterId: character.id, level: 1, xp: 0, acquiredAt: now }));
     return user;
@@ -120,8 +128,9 @@ export async function getTeam(discordId: string) {
 }
 
 export async function replaceTeam(discordId: string, name: string, ownedCharacterIds: string[]) {
+  assertValidTeamSelection(ownedCharacterIds);
+
   if (!db) {
-    if (ownedCharacterIds.length > 5) throw new Error("A team can contain at most 5 characters.");
     const user = memoryUsers.find((item) => item.discordId === discordId);
     if (!user) throw new Error("User not found. Create a profile first.");
     const owned = memoryOwned.filter((item) => item.userId === user.id && ownedCharacterIds.includes(item.id));
@@ -131,6 +140,8 @@ export async function replaceTeam(discordId: string, name: string, ownedCharacte
       const now = new Date();
       team = { id: crypto.randomUUID(), userId: user.id, name, createdAt: now, updatedAt: now };
       memoryTeams.push(team);
+    } else {
+      team.updatedAt = new Date();
     }
     for (let index = memoryMembers.length - 1; index >= 0; index -= 1) {
       if (memoryMembers[index].teamId === team.id) memoryMembers.splice(index, 1);
@@ -139,13 +150,13 @@ export async function replaceTeam(discordId: string, name: string, ownedCharacte
     return getTeam(discordId);
   }
   const database = requireDb();
-  if (ownedCharacterIds.length > 5) throw new Error("A team can contain at most 5 characters.");
   const user = await database.query.users.findFirst({ where: eq(users.discordId, discordId) });
   if (!user) throw new Error("User not found. Create a profile first.");
 
   await database.transaction(async (tx) => {
     let team = await tx.query.teams.findFirst({ where: and(eq(teams.userId, user.id), eq(teams.name, name)) });
     if (!team) [team] = await tx.insert(teams).values({ userId: user.id, name }).returning();
+    else await tx.update(teams).set({ updatedAt: new Date() }).where(eq(teams.id, team.id));
 
     const owned = await tx.select({ id: userCharacters.id }).from(userCharacters)
       .where(and(eq(userCharacters.userId, user.id), inArray(userCharacters.id, ownedCharacterIds)));
