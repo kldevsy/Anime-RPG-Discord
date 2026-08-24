@@ -27,14 +27,16 @@ export const roleEnum = pgEnum("character_role", [
   "healer",
   "control",
 ]);
+export const bannerTypeEnum = pgEnum("banner_type", ["normal", "limited", "event"]);
+export const currencyEnum = pgEnum("currency", ["gold", "gems", "tickets"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   discordId: text("discord_id").notNull().unique(),
   username: text("username").notNull(),
   gold: integer("gold").notNull().default(0),
-  gems: integer("gems").notNull().default(0),
-  tickets: integer("tickets").notNull().default(0),
+  gems: integer("gems").notNull().default(1000),
+  tickets: integer("tickets").notNull().default(10),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -86,6 +88,63 @@ export const teamMembers = pgTable("team_members", {
 }, (table) => [
   primaryKey({ columns: [table.teamId, table.userCharacterId] }),
   uniqueIndex("team_members_team_position_unique").on(table.teamId, table.position),
+]);
+
+export const banners = pgTable("banners", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  type: bannerTypeEnum("type").notNull(),
+  costCurrency: currencyEnum("cost_currency").notNull().default("tickets"),
+  singleCost: integer("single_cost").notNull().default(1),
+  tenCost: integer("ten_cost").notNull().default(10),
+  rates: jsonb("rates").$type<Record<string, number>>().notNull(),
+  softPityStart: integer("soft_pity_start").notNull().default(70),
+  hardPity: integer("hard_pity").notNull().default(90),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const summons = pgTable("summons", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  bannerId: uuid("banner_id").notNull().references(() => banners.id, { onDelete: "restrict" }),
+  quantity: integer("quantity").notNull(),
+  results: jsonb("results").$type<Array<{ characterId: string; rarity: string }>>().notNull(),
+  currency: currencyEnum("currency").notNull(),
+  cost: integer("cost").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const bannerPity = pgTable("banner_pity", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  bannerId: uuid("banner_id").notNull().references(() => banners.id, { onDelete: "cascade" }),
+  count: integer("count").notNull().default(0),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.bannerId] }),
+]);
+
+export const inventory = pgTable("inventory", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  itemKey: text("item_key").notNull(),
+  quantity: integer("quantity").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("inventory_user_item_unique").on(table.userId, table.itemKey),
+]);
+
+export const economyTransactions = pgTable("economy_transactions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  currency: currencyEnum("currency").notNull(),
+  amount: integer("amount").notNull(),
+  type: text("type").notNull(),
+  source: text("source").notNull(),
+  referenceId: text("reference_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("economy_transactions_reference_unique").on(table.referenceId),
 ]);
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
