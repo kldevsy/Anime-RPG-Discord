@@ -29,6 +29,7 @@ export const roleEnum = pgEnum("character_role", [
 ]);
 export const bannerTypeEnum = pgEnum("banner_type", ["normal", "limited", "event"]);
 export const currencyEnum = pgEnum("currency", ["gold", "gems", "tickets"]);
+export const battleStatusEnum = pgEnum("battle_status", ["running", "victory", "defeat", "draw"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -146,6 +147,37 @@ export const economyTransactions = pgTable("economy_transactions", {
 }, (table) => [
   uniqueIndex("economy_transactions_reference_unique").on(table.referenceId),
 ]);
+
+export const battles = pgTable("battles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: battleStatusEnum("status").notNull(),
+  round: integer("round").notNull(),
+  rewards: jsonb("rewards").$type<{ gold: number; xp: number }>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});
+
+export const battleSnapshots = pgTable("battle_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  battleId: uuid("battle_id").notNull().references(() => battles.id, { onDelete: "cascade" }),
+  round: integer("round").notNull(),
+  turn: integer("turn").notNull(),
+  state: jsonb("state").$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const battleActions = pgTable("battle_actions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  battleId: uuid("battle_id").notNull().references(() => battles.id, { onDelete: "cascade" }),
+  round: integer("round").notNull(),
+  actorId: text("actor_id").notNull(),
+  actionType: text("action_type").notNull(),
+  targetId: text("target_id"),
+  amount: integer("amount"),
+  critical: integer("critical").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCharacterSchema = createInsertSchema(characters).omit({ id: true, createdAt: true });

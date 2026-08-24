@@ -26,6 +26,8 @@ Backend foundation for a professional Discord anime RPG, starting with persisten
 - `lib/db/src/seed.ts` — starter character catalog seed.
 - `artifacts/api-server/src/services/PhaseOneService.ts` — profile, collection, and team rules.
 - `artifacts/api-server/src/routes/phase-one.ts` — validated Phase 1 HTTP endpoints.
+- `artifacts/api-server/src/battle/` — finite-state automatic battle engine, AI, damage, and snapshots.
+- `artifacts/api-server/src/services/BattleService.ts` — server-authoritative battles with persistence and rewards.
 
 ## Architecture decisions
 
@@ -36,7 +38,7 @@ Backend foundation for a professional Discord anime RPG, starting with persisten
 
 ## Product
 
-Phase 1 provides profile creation/lookup, a searchable character catalog, starter character collections, and ordered teams with up to five owned characters. Summoning, combat, economy, and progression beyond base ownership are intentionally deferred.
+Phase 1 provides profile creation/lookup, a searchable character catalog, starter character collections, and ordered teams with up to five owned characters. Phase 2 adds configurable summons, pity, history, and economy transactions. Phase 3 adds server-authoritative automatic battles, finite-state turns, AI, damage, rewards, snapshots, and battle history.
 
 ## User preferences
 
