@@ -22,6 +22,13 @@
       "when": 1787636400000,
       "tag": "0002_repair_user_pve_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787654400000,
+      "tag": "0003_backfill_character_image_urls",
+      "breakpoints": true
     }
   ]
 }
