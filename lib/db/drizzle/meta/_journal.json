@@ -15,6 +15,13 @@
       "when": 1787636100000,
       "tag": "0001_repair_pve_stage_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787636400000,
+      "tag": "0002_repair_user_pve_progress",
+      "breakpoints": true
     }
   ]
 }
