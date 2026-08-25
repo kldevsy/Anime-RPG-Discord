@@ -18,6 +18,15 @@ const RARITY_NAMES: Record<string, string> = {
   mythic: "Mítico",
 };
 
+const RARITY_PRIORITY: Record<string, number> = {
+  common: 0,
+  uncommon: 1,
+  rare: 2,
+  epic: 3,
+  legendary: 4,
+  mythic: 5,
+};
+
 export function createProfileEmbed(user: any, collectionCount: number, teamCount: number) {
   return new EmbedBuilder()
     .setTitle(`👤 Perfil de ${user.username}`)
@@ -76,6 +85,19 @@ export function createSummonResultEmbed(username: string, results: any[], curren
   }
 
   embed.addFields({ name: "🎴 Personagens Obtidos", value: desc || "Nenhum resultado." });
+
+  // Discord supports one primary embed image. Select the highest-rarity result;
+  // when rarities tie, keep the first result so 10x summons remain deterministic.
+  const featuredResult = results.reduce<any | undefined>((current, result) => {
+    if (!current || (RARITY_PRIORITY[result.rarity] ?? -1) > (RARITY_PRIORITY[current.rarity] ?? -1)) {
+      return result;
+    }
+    return current;
+  }, undefined);
+  if (featuredResult?.imageUrl) {
+    embed.setImage(featuredResult.imageUrl);
+  }
+
   return embed;
 }
 

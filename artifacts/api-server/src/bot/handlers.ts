@@ -230,6 +230,10 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           { name: "🔮 Passiva", value: found.passive ?? "Nenhuma", inline: true }
         );
 
+      if (found.imageUrl) {
+        embed.setImage(found.imageUrl);
+      }
+
       await interaction.editReply({ embeds: [embed] });
       return;
     }

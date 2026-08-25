@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { commandDefinitions } from "../commands";
+import { createSummonResultEmbed } from "../embeds";
 import { handleAutocompleteInteraction, handleInteraction } from "../handlers";
 import { validateBotEnv } from "../index";
 
@@ -145,6 +146,40 @@ describe("Discord Bot System", () => {
     expect(editReplyMock).toHaveBeenCalled();
     const payload = editReplyMock.mock.calls[0][0];
     expect(payload.embeds[0].data.title).toContain("Banners de Invocação Ativos");
+  });
+
+  it("uses the catalog character image in the /personagem embed", async () => {
+    const editReplyMock = vi.fn();
+    const mockInteraction: any = {
+      commandName: "personagem",
+      user: { id: "bot_character_image_user", username: "ImageTester" },
+      options: { getString: () => "naruto" },
+      deferReply: vi.fn().mockResolvedValue(undefined),
+      editReply: editReplyMock,
+    };
+
+    await handleInteraction(mockInteraction);
+
+    const embed = editReplyMock.mock.calls[0][0].embeds[0];
+    expect(embed.data.image?.url).toBe("https://placehold.co/600x400/png?text=Naruto%20Uzumaki");
+  });
+
+  it("uses the first highest-rarity character image for a 10x summon embed", () => {
+    const embed = createSummonResultEmbed("ImageTester", [
+      { name: "Primeiro Lendário", rarity: "legendary", imageUrl: "https://example.com/first-legendary.png" },
+      { name: "Mítico", rarity: "mythic", imageUrl: "https://example.com/mythic.png" },
+      { name: "Segundo Mítico", rarity: "mythic", imageUrl: "https://example.com/second-mythic.png" },
+    ], "tickets", 10);
+
+    expect(embed.data.image?.url).toBe("https://example.com/mythic.png");
+  });
+
+  it("keeps summon embeds functional when no summoned character has an image", () => {
+    const embed = createSummonResultEmbed("ImageTester", [
+      { name: "Sem imagem", rarity: "common", imageUrl: null },
+    ], "tickets", 1);
+
+    expect(embed.data.image).toBeUndefined();
   });
 
   it("should handle /inventario command interaction", async () => {
