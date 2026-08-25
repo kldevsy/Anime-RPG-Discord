@@ -50,6 +50,13 @@
       "when": 1787689625000,
       "tag": "0006_backfill_character_ultimates",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787691430545,
+      "tag": "0007_perfect_shatterstar",
+      "breakpoints": true
     }
   ]
 }

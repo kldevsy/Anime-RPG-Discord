@@ -67,6 +67,7 @@ export async function adminCreateCharacter(input: AdminCreateCharacterInput) {
       baseSpeed: input.baseSpeed,
       imageUrl: input.imageUrl ?? null,
       passive: input.passive ?? null,
+      catalogManaged: false,
       ultimate: null,
       evolution: null,
       createdAt: new Date(),
@@ -87,6 +88,7 @@ export async function adminCreateCharacter(input: AdminCreateCharacterInput) {
     baseSpeed: input.baseSpeed,
     imageUrl: input.imageUrl ?? null,
     passive: input.passive ?? null,
+    catalogManaged: false,
   }).returning();
 
   return created;

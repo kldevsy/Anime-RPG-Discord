@@ -1,6 +1,7 @@
 import { createInsertSchema } from "drizzle-zod";
 import type { CharacterUltimate } from "../data/characters";
 import {
+  boolean,
   integer,
   jsonb,
   pgEnum,
@@ -60,6 +61,8 @@ export const characters = pgTable("characters", {
   baseSpeed: integer("base_speed").notNull(),
   imageUrl: text("image_url"),
   passive: text("passive"),
+  // Seeded catalog rows are synchronized by `src/seed.ts`; administrative rows opt out.
+  catalogManaged: boolean("catalog_managed").notNull().default(false),
   // Catalog entries always provide this; null preserves legacy characters.
   ultimate: jsonb("ultimate").$type<CharacterUltimate | null>(),
   evolution: jsonb("evolution").$type<Record<string, unknown> | null>(),

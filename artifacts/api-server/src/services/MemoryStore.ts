@@ -5,6 +5,7 @@ export const memoryCharacters: Character[] = characterCatalog.map((character, in
   imageUrl: character.imageUrl ?? null,
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
   level: 1,
+  catalogManaged: true,
   evolution: null,
   createdAt: new Date(Date.UTC(2026, 0, index + 1)),
 }));
