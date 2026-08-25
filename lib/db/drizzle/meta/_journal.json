@@ -8,6 +8,13 @@
       "when": 1787634587201,
       "tag": "0000_pve_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787636100000,
+      "tag": "0001_repair_pve_stage_columns",
+      "breakpoints": true
     }
   ]
 }
