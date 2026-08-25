@@ -20,17 +20,31 @@ function requireDb() {
   return db;
 }
 
-const memoryCharacters: Character[] = [
+export const memoryCharacters: Character[] = [
   { id: "00000000-0000-4000-8000-000000000001", anime: "Naruto", name: "Naruto Uzumaki", rarity: "rare", role: "dps", level: 1, baseHp: 920, baseAttack: 180, baseDefense: 105, baseSpeed: 118, imageUrl: null, passive: "Determinação", evolution: null, createdAt: new Date("2026-01-01") },
   { id: "00000000-0000-4000-8000-000000000002", anime: "Naruto", name: "Sakura Haruno", rarity: "uncommon", role: "healer", level: 1, baseHp: 880, baseAttack: 120, baseDefense: 115, baseSpeed: 100, imageUrl: null, passive: "Controle de chakra", evolution: null, createdAt: new Date("2026-01-02") },
   { id: "00000000-0000-4000-8000-000000000003", anime: "One Piece", name: "Monkey D. Luffy", rarity: "epic", role: "tank", level: 1, baseHp: 1250, baseAttack: 165, baseDefense: 135, baseSpeed: 96, imageUrl: null, passive: "Resiliência", evolution: null, createdAt: new Date("2026-01-03") },
   { id: "00000000-0000-4000-8000-000000000004", anime: "Bleach", name: "Ichigo Kurosaki", rarity: "legendary", role: "dps", level: 1, baseHp: 1080, baseAttack: 230, baseDefense: 110, baseSpeed: 125, imageUrl: null, passive: "Pressão espiritual", evolution: null, createdAt: new Date("2026-01-04") },
   { id: "00000000-0000-4000-8000-000000000005", anime: "Dragon Ball", name: "Goku", rarity: "mythic", role: "dps", level: 1, baseHp: 1400, baseAttack: 280, baseDefense: 145, baseSpeed: 130, imageUrl: null, passive: "Instinto de batalha", evolution: null, createdAt: new Date("2026-01-05") },
 ];
-const memoryUsers: User[] = [];
-const memoryOwned: UserCharacter[] = [];
-const memoryTeams: Team[] = [];
-const memoryMembers: TeamMember[] = [];
+export const memoryUsers: User[] = [];
+export const memoryOwned: UserCharacter[] = [];
+export const memoryTeams: Team[] = [];
+export const memoryMembers: TeamMember[] = [];
+
+export function addOwnedCharacterMemory(userId: string, characterId: string) {
+  const existing = memoryOwned.find((o) => o.userId === userId && o.characterId === characterId);
+  if (!existing) {
+    memoryOwned.push({
+      id: crypto.randomUUID(),
+      userId,
+      characterId,
+      level: 1,
+      xp: 0,
+      acquiredAt: new Date(),
+    });
+  }
+}
 
 function assertValidTeamSelection(ownedCharacterIds: string[]) {
   if (ownedCharacterIds.length > 5) throw new Error("A team can contain at most 5 characters.");

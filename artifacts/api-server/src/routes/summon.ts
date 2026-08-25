@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Response } from "express";
 import { z } from "@workspace/api-zod";
-import { listActiveBanners, summon, SummonError } from "../services/SummonService";
+import { getSummonHistory, listActiveBanners, summon, SummonError } from "../services/SummonService";
 
 const router: IRouter = Router();
 const summonBody = z.object({
@@ -16,10 +16,17 @@ function handleError(error: unknown, res: Response) {
 router.get("/banners", async (_req, res) => {
   try { return res.json(await listActiveBanners()); } catch (error) { return handleError(error, res); }
 });
+
 router.post("/summons", async (req, res) => {
   const parsed = summonBody.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid summon data", details: parsed.error.flatten() });
   try { return res.status(201).json(await summon(parsed.data.discordId, parsed.data.bannerId, parsed.data.quantity, parsed.data.idempotencyKey)); } catch (error) { return handleError(error, res); }
+});
+
+router.get("/summons/history/:discordId", async (req, res) => {
+  const parsed = z.string().trim().min(1).max(32).safeParse(req.params.discordId);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid Discord user id" });
+  try { return res.json(await getSummonHistory(parsed.data)); } catch (error) { return handleError(error, res); }
 });
 
 export default router;
