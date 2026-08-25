@@ -13,3 +13,4 @@ export const pool = databaseConfigured
 export const db = pool ? drizzle(pool, { schema }) : null;
 
 export * from "./schema";
+export * from "./data/characters";

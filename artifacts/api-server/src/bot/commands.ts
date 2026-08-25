@@ -250,6 +250,7 @@ export const commandDefinitions = [
         .addIntegerOption((o) => o.setName("defesa").setDescription("Base Defesa").setRequired(true))
         .addIntegerOption((o) => o.setName("velocidade").setDescription("Base Velocidade").setRequired(true))
         .addStringOption((o) => o.setName("passiva").setDescription("Nome da passiva").setRequired(false))
+        .addStringOption((o) => o.setName("imagem_url").setDescription("URL HTTP(S) da imagem do personagem").setRequired(false))
     )
     .addSubcommand((sub) =>
       sub

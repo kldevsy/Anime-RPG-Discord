@@ -11,22 +11,24 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const rarityEnum = pgEnum("character_rarity", [
+export const characterRarities = [
   "common",
   "uncommon",
   "rare",
   "epic",
   "legendary",
   "mythic",
-]);
+] as const;
+export const rarityEnum = pgEnum("character_rarity", characterRarities);
 
-export const roleEnum = pgEnum("character_role", [
+export const characterRoles = [
   "tank",
   "dps",
   "support",
   "healer",
   "control",
-]);
+] as const;
+export const roleEnum = pgEnum("character_role", characterRoles);
 export const bannerTypeEnum = pgEnum("banner_type", ["normal", "limited", "event"]);
 export const currencyEnum = pgEnum("currency", ["gold", "gems", "tickets"]);
 export const battleStatusEnum = pgEnum("battle_status", ["running", "victory", "defeat", "draw"]);
