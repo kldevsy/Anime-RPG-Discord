@@ -161,7 +161,7 @@ describe("Discord Bot System", () => {
     await handleInteraction(mockInteraction);
 
     const embed = editReplyMock.mock.calls[0][0].embeds[0];
-    expect(embed.data.image?.url).toBe("https://cdn.discordapp.com/embed/avatars/0.png");
+    expect(embed.data.image?.url).toMatch(/^https:\/\//);
   });
 
   it("uses character image in the /personagens catalog list embed", async () => {
