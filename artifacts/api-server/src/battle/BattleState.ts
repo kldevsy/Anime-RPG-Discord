@@ -82,6 +82,10 @@ export interface Combatant {
   critChance: number;
   critDamage: number;
   energy: number;
+  maxEnergy: number;
+  chargeOnBasic: number;
+  chargeOnDamageTaken: number;
+  chargeOnCritical: number;
   alive: boolean;
   statusEffects: StatusEffect[];
   cooldowns: Record<string, number>;

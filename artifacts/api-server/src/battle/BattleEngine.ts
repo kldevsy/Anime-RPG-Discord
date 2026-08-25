@@ -176,7 +176,7 @@ export class BattleEngine {
     actor.cooldowns[actionKey] = skill.cooldown;
 
     if (actionKey === "basic") {
-      actor.energy = Math.min(100, actor.energy + 25);
+      actor.energy = Math.min(actor.maxEnergy, actor.energy + actor.chargeOnBasic);
     } else {
       actor.energy = Math.max(0, actor.energy - skill.energyCost);
     }
@@ -201,6 +201,14 @@ export class BattleEngine {
           amount: actualHeal,
           skillName: skill.name,
         });
+        if (skill.statusEffects) {
+          for (const eff of skill.statusEffects) {
+            if (randomInt(0, 100) < eff.chance) {
+              StatusManager.applyStatus(tgt, { type: eff.type, duration: eff.duration, stacks: 1, value: eff.value, originId: actor.id });
+              this.actions.push({ round: this.round, actorId: actor.id, actorName: actor.name, type: eff.type === "shield" ? "shield" : "buff", targetId: tgt.id, targetName: tgt.name, amount: eff.value, statusType: eff.type, skillName: skill.name });
+            }
+          }
+        }
       } else if (skill.type === "REVIVE") {
         if (!tgt.alive) {
           tgt.alive = true;
@@ -246,6 +254,8 @@ export class BattleEngine {
         const dmgResult = calculateDamage(actor, tgt, skill, critRoll);
 
         tgt.hp = Math.max(0, tgt.hp - dmgResult.finalDamage);
+        tgt.energy = Math.min(tgt.maxEnergy, tgt.energy + tgt.chargeOnDamageTaken);
+        if (dmgResult.critical) actor.energy = Math.min(actor.maxEnergy, actor.energy + actor.chargeOnCritical);
 
         this.actions.push({
           round: this.round,

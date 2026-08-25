@@ -12,6 +12,7 @@ await db
     target: [characters.anime, characters.name],
     set: {
       imageUrl: sql`excluded.image_url`,
+      ultimate: sql`excluded.ultimate`,
     },
   });
 await pool?.end();

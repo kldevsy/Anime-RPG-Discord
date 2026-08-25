@@ -57,6 +57,7 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
         energy: 0,
         alive: true,
         passive: character.passive ?? undefined,
+        ultimate: character.ultimate,
       });
     });
 
@@ -153,6 +154,7 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
       energy: 0,
       alive: true,
       passive: character.passive ?? undefined,
+      ultimate: character.ultimate,
     });
   });
 

@@ -29,6 +29,13 @@
       "when": 1787654400000,
       "tag": "0003_backfill_character_image_urls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787658000000,
+      "tag": "0004_add_character_ultimate",
+      "breakpoints": true
     }
   ]
 }
