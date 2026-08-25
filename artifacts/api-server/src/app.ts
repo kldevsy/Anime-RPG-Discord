@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { createRateLimiter } from "./middlewares/rateLimiter";
 
 const app: Express = express();
 
@@ -29,6 +30,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", router);
+app.use("/api", createRateLimiter({ windowMs: 10000, maxRequests: 50 }), router);
 
 export default app;
