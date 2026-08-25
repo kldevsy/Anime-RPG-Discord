@@ -56,13 +56,21 @@ export function createBotClient() {
   client.on("interactionCreate", async (interaction) => {
     if (interaction.isAutocomplete()) {
       logger.info({ command: interaction.commandName, user: interaction.user.tag }, "Received autocomplete interaction");
-      await handleAutocompleteInteraction(interaction);
+      try {
+        await handleAutocompleteInteraction(interaction);
+      } catch (err) {
+        logger.error({ err, command: interaction.commandName }, "Autocomplete interaction failed");
+      }
       return;
     }
 
     if (!interaction.isChatInputCommand()) return;
     logger.info({ command: interaction.commandName, user: interaction.user.tag }, "Received chat input command interaction");
-    await handleInteraction(interaction);
+    try {
+      await handleInteraction(interaction);
+    } catch (err) {
+      logger.error({ err, command: interaction.commandName }, "Chat input command interaction failed");
+    }
   });
 
   return client;

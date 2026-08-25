@@ -57,6 +57,19 @@ function filterChoicesByFocusedValue(choices: AutocompleteChoice[], focusedValue
   return choices.filter((choice) => `${choice.name} ${choice.value}`.toLowerCase().includes(query)).slice(0, 25);
 }
 
+async function respondToAutocomplete(interaction: AutocompleteInteraction, choices: AutocompleteChoice[]): Promise<void> {
+  if (interaction.responded) return;
+
+  try {
+    await interaction.respond(choices);
+  } catch (err: unknown) {
+    // Discord can deliver the same autocomplete interaction more than once.
+    // A second response is harmless and should not crash the bot process.
+    if ((err as { code?: number }).code === 40060) return;
+    throw err;
+  }
+}
+
 function formatPveStageChoice(stage: Awaited<ReturnType<typeof listPveStages>>[number], worldName?: string): AutocompleteChoice {
   const world = worldName ?? `Mundo ${stage.worldId.slice(0, 8)}`;
   const name = `${world} / Fase ${stage.position} • ${stage.name} — ${stage.enemyName}`;
@@ -69,36 +82,36 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
     if (focused.name === "banner") {
       const activeBanners = await listActiveBanners();
       const choices = activeBanners.map((banner) => ({ name: banner.name, value: banner.id }));
-      await interaction.respond(filterChoicesByFocusedValue(choices, String(focused.value)));
+      await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
       return;
     }
-    await interaction.respond([]);
+    await respondToAutocomplete(interaction, []);
     return;
   }
 
   if (interaction.commandName === "batalha") {
     const focused = interaction.options.getFocused(true);
     if (focused.name !== "estagio_id") {
-      await interaction.respond([]);
+      await respondToAutocomplete(interaction, []);
       return;
     }
 
     const [stages, worlds] = await Promise.all([listPveStages(), listPveWorlds()]);
     const worldNames = new Map(worlds.map((world) => [world.id, world.name]));
     const choices = stages.map((stage) => formatPveStageChoice(stage, worldNames.get(stage.worldId)));
-    await interaction.respond(filterChoicesByFocusedValue(choices, String(focused.value)));
+    await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
     return;
   }
 
   if (interaction.commandName !== "equipe") {
-    await interaction.respond([]);
+    await respondToAutocomplete(interaction, []);
     return;
   }
 
   const subcommand = interaction.options.getSubcommand();
   const focused = interaction.options.getFocused(true);
   if (focused.name !== "personagem_id") {
-    await interaction.respond([]);
+    await respondToAutocomplete(interaction, []);
     return;
   }
 
@@ -112,17 +125,17 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
     const choices = ((profile?.collection ?? []) as OwnedCharacterChoiceSource[])
       .filter((item) => !currentOwnedIds.has(item.ownedId))
       .map((item) => formatCharacterChoice(item));
-    await interaction.respond(filterChoicesByFocusedValue(choices, String(focused.value)));
+    await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
     return;
   }
 
   if (subcommand === "remover" || subcommand === "mover") {
     const choices = currentMembers.map((member) => formatCharacterChoice(member, member.position));
-    await interaction.respond(filterChoicesByFocusedValue(choices, String(focused.value)));
+    await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
     return;
   }
 
-  await interaction.respond([]);
+  await respondToAutocomplete(interaction, []);
 }
 
 export async function handleInteraction(interaction: ChatInputCommandInteraction): Promise<void> {

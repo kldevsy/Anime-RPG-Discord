@@ -1,0 +1,61 @@
+[05:37:47.475] INFO (847): Received autocomplete interaction
+    command: "batalha"
+    user: "guru_baiano"
+node:events:486
+      throw er; // Unhandled 'error' event
+      ^
+
+DiscordAPIError[40060]: Interaction has already been acknowledged.
+    at handleErrors (/home/runner/workspace/node_modules/.pnpm/@discordjs+rest@2.6.3/node_modules/@discordjs/rest/src/lib/handlers/Shared.ts:148:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async BurstHandler.runRequest (/home/runner/workspace/node_modules/.pnpm/@discordjs+rest@2.6.3/node_modules/@discordjs/rest/src/lib/handlers/BurstHandler.ts:144:20)
+    at async _REST.request (/home/runner/workspace/node_modules/.pnpm/@discordjs+rest@2.6.3/node_modules/@discordjs/rest/src/lib/REST.ts:210:20)
+    at async AutocompleteInteraction.respond (/home/runner/workspace/node_modules/.pnpm/discord.js@14.27.0/node_modules/discord.js/src/structures/AutocompleteInteraction.js:86:5)
+    at async handleAutocompleteInteraction (/home/runner/workspace/artifacts/api-server/src/bot/handlers.ts:89:5)
+    at async Client.<anonymous> (/home/runner/workspace/artifacts/api-server/src/bot/index.ts:59:7)
+Emitted 'error' event on Client instance at:
+    at emitUnhandledRejectionOrErr (node:events:391:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:91:21) {
+  rawError: {
+    message: 'Interaction has already been acknowledged.',
+    code: 40060
+  },
+  code: 40060,
+  status: 400,
+  method: 'POST',
+  url: 'https://discord.com/api/v10/interactions/1541682987882643537/aW50ZXJhY3Rpb246MTU0MTY4Mjk4Nzg4MjY0MzUzNzpIbnRIaEMwdmdrSTlnd2p4ZXlhekV3REpxUGI1VVZTRWtScFFwblBBYUUyQ2xCRnQzRDNFQldqalk2UjNiVlpsWHhNRDhzYnZ2b0xWRVdSRWV5djdmcElTUzdmTjBHWFhwZVd0S2lCM3Uwd2xlT2JpUWp0NGE0VzVlNjNvUlZXTg/callback',
+  requestBody: {
+    files: undefined,
+    json: {
+      type: 8,
+      data: {
+        choices: [
+          {
+            name: 'Vale do Começo / Fase 1 • Portão da Floresta — Guardião da Floresta',
+            value: '3da9658d-ac96-453d-bea8-78cafbb3f0e1',
+            name_localizations: undefined
+          },
+          {
+            name: 'Vale do Começo / Fase 2 • Ruínas Esquecidas — Cavaleiro das Ruínas',
+            value: 'b83f3752-17dc-45c1-a549-9e6ec58aadd6',
+            name_localizations: undefined
+          },
+          {
+            name: 'Vale do Começo / Fase 3 • Covil do Dragão — Dragão Ancestral',
+            value: 'ce52376f-543c-410a-828e-f9ca137e97cb',
+            name_localizations: undefined
+          },
+          {
+            name: 'Vale do Começo / Fase 4 • Câmara do Desafio — Sentinela da Câmara',
+            value: 'c4759c30-6eea-40cd-85db-014b864e8d65',
+            name_localizations: undefined
+          }
+        ]
+      }
+    }
+  }
+}
+
+Node.js v24.13.0
+/home/runner/workspace/artifacts/api-server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 bot: `node --enable-source-maps ./dist/bot/index.mjs`
