@@ -512,8 +512,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         const baseDefense = interaction.options.getInteger("defesa", true);
         const baseSpeed = interaction.options.getInteger("velocidade", true);
         const passive = interaction.options.getString("passiva") ?? undefined;
+        const imageUrl = interaction.options.getString("imagem_url") ?? undefined;
 
-        const created = await adminCreateCharacter({ anime, name, rarity, role, baseHp, baseAttack, baseDefense, baseSpeed, passive });
+        const created = await adminCreateCharacter({ anime, name, rarity, role, baseHp, baseAttack, baseDefense, baseSpeed, passive, imageUrl });
         await interaction.editReply(`✅ **[ADMIN] Personagem Criado:** **${created.name}** (\`${created.id}\`)`);
         return;
       }
