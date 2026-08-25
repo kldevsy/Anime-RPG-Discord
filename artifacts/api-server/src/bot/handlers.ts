@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction } from "discord.js";
+import type { AutocompleteInteraction, ChatInputCommandInteraction } from "discord.js";
 import { EmbedBuilder } from "discord.js";
 import {
   getOrCreateUser,
@@ -41,6 +41,57 @@ import {
   createTeamEmbed,
 } from "./embeds";
 
+type AutocompleteChoice = { name: string; value: string };
+type OwnedCharacterChoiceSource = { ownedId: string; level: number; position?: number; character: { id?: string; name: string; anime: string; rarity: string; role?: string } };
+
+function formatCharacterChoice(item: OwnedCharacterChoiceSource, position?: number): AutocompleteChoice {
+  const prefix = position ? `#${position} • ` : "";
+  const name = `${prefix}${item.character.name} (${item.character.anime}) Nv.${item.level} • ${item.ownedId.slice(0, 8)}`;
+  return { name: name.slice(0, 100), value: item.ownedId };
+}
+
+function filterChoicesByFocusedValue(choices: AutocompleteChoice[], focusedValue: string) {
+  const query = focusedValue.trim().toLowerCase();
+  if (!query) return choices.slice(0, 25);
+  return choices.filter((choice) => `${choice.name} ${choice.value}`.toLowerCase().includes(query)).slice(0, 25);
+}
+
+export async function handleAutocompleteInteraction(interaction: AutocompleteInteraction): Promise<void> {
+  if (interaction.commandName !== "equipe") {
+    await interaction.respond([]);
+    return;
+  }
+
+  const subcommand = interaction.options.getSubcommand();
+  const focused = interaction.options.getFocused(true);
+  if (focused.name !== "personagem_id") {
+    await interaction.respond([]);
+    return;
+  }
+
+  const discordId = interaction.user.id;
+  const teamData = await getTeam(discordId);
+  const currentMembers: OwnedCharacterChoiceSource[] = teamData?.members ?? [];
+
+  if (subcommand === "adicionar") {
+    const profile = await getProfile(discordId);
+    const currentOwnedIds = new Set(currentMembers.map((member) => member.ownedId));
+    const choices = ((profile?.collection ?? []) as OwnedCharacterChoiceSource[])
+      .filter((item) => !currentOwnedIds.has(item.ownedId))
+      .map((item) => formatCharacterChoice(item));
+    await interaction.respond(filterChoicesByFocusedValue(choices, String(focused.value)));
+    return;
+  }
+
+  if (subcommand === "remover" || subcommand === "mover") {
+    const choices = currentMembers.map((member) => formatCharacterChoice(member, member.position));
+    await interaction.respond(filterChoicesByFocusedValue(choices, String(focused.value)));
+    return;
+  }
+
+  await interaction.respond([]);
+}
+
 export async function handleInteraction(interaction: ChatInputCommandInteraction): Promise<void> {
   const { commandName, user } = interaction;
   const discordId = user.id;
@@ -73,7 +124,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       }
 
       const idempotencyKey = `bot_summon_${discordId}_${Date.now()}`;
-      const result = await summon(discordId, bannerId, quantity, idempotencyKey);
+      const result = await summon(discordId, bannerId!, quantity, idempotencyKey);
       const embed = createSummonResultEmbed(username, result.results, result.currency, result.cost);
       await interaction.editReply({ embeds: [embed] });
       return;
@@ -103,7 +154,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         .setDescription(`Exibindo **${catalog.length}** personagem(ns) no catálogo.`);
 
       let text = "";
-      const ownedIds = new Set(profile?.collection.map((c) => c.character.id) ?? []);
+      const ownedIds = new Set(profile?.collection.map((c: OwnedCharacterChoiceSource) => c.character.id) ?? []);
 
       for (let i = 0; i < Math.min(catalog.length, 10); i += 1) {
         const c = catalog[i];
@@ -121,7 +172,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       await interaction.deferReply();
       const query = interaction.options.getString("nome", true).toLowerCase();
       const catalog = await listCharacters({});
-      const found = catalog.find((c) => c.name.toLowerCase().includes(query) || c.id === query);
+      const found = catalog.find((c: any) => c.name.toLowerCase().includes(query) || c.id === query);
 
       if (!found) {
         await interaction.editReply("❌ Personagem não encontrado no catálogo.");
@@ -160,7 +211,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
       if (subcommand === "adicionar") {
         const characterId = interaction.options.getString("personagem_id", true);
-        const currentMembers = teamData?.members.map((m) => m.ownedId) ?? [];
+        const currentMembers = teamData?.members.map((m: OwnedCharacterChoiceSource) => m.ownedId) ?? [];
         if (currentMembers.includes(characterId)) {
           await interaction.editReply("⚠️ Este personagem já está na sua equipe.");
           return;
@@ -179,8 +230,8 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
       if (subcommand === "remover") {
         const characterId = interaction.options.getString("personagem_id", true);
-        const currentMembers = teamData?.members.map((m) => m.ownedId) ?? [];
-        const newTeamIds = currentMembers.filter((id) => id !== characterId);
+        const currentMembers = teamData?.members.map((m: OwnedCharacterChoiceSource) => m.ownedId) ?? [];
+        const newTeamIds = currentMembers.filter((id: string) => id !== characterId);
 
         teamData = await replaceTeam(discordId, "Equipe Principal", newTeamIds);
         const embed = createTeamEmbed(username, teamData?.team, teamData?.members ?? []);
@@ -188,9 +239,48 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         return;
       }
 
+      if (subcommand === "mover") {
+        const characterId = interaction.options.getString("personagem_id", true);
+        const targetPosition = interaction.options.getInteger("posicao", true);
+        const currentMembers = teamData?.members.map((member: OwnedCharacterChoiceSource) => member.ownedId) ?? [];
+
+        if (!currentMembers.includes(characterId)) {
+          await interaction.editReply("❌ Selecione um personagem que já esteja na sua equipe. Use `/equipe ver` para conferir os IDs possuídos.");
+          return;
+        }
+        if (targetPosition < 1 || targetPosition > currentMembers.length) {
+          await interaction.editReply(`❌ Posição inválida. Informe um número entre 1 e ${currentMembers.length}.`);
+          return;
+        }
+
+        const newTeamIds = currentMembers.filter((id: string) => id !== characterId);
+        newTeamIds.splice(targetPosition - 1, 0, characterId);
+
+        teamData = await replaceTeam(discordId, "Equipe Principal", newTeamIds);
+        const embed = createTeamEmbed(username, teamData?.team, teamData?.members ?? []);
+        await interaction.editReply({ content: "✅ Personagem movido com sucesso!", embeds: [embed] });
+        return;
+      }
+
       if (subcommand === "ordenar") {
         const rawIds = interaction.options.getString("ids", true);
         const orderedIds = rawIds.split(",").map((s) => s.trim()).filter(Boolean);
+        const currentMembers = teamData?.members.map((member: OwnedCharacterChoiceSource) => member.ownedId) ?? [];
+        const currentMemberSet = new Set(currentMembers);
+        const uniqueOrderedIds = new Set(orderedIds);
+
+        if (orderedIds.length !== currentMembers.length) {
+          await interaction.editReply(`❌ Informe exatamente ${currentMembers.length} IDs possuídos, separados por vírgula. Use \`/equipe ver\` para copiar os IDs atuais ou \`/equipe mover\` para alterar uma posição por vez.`);
+          return;
+        }
+        if (uniqueOrderedIds.size !== orderedIds.length) {
+          await interaction.editReply("❌ A lista contém IDs repetidos. Use cada ID possuído da equipe exatamente uma vez.");
+          return;
+        }
+        if (orderedIds.some((id) => !currentMemberSet.has(id))) {
+          await interaction.editReply("❌ Todos os IDs devem pertencer à equipe atual. Use `/equipe ver` para conferir a lista numerada com IDs possuídos.");
+          return;
+        }
 
         teamData = await replaceTeam(discordId, "Equipe Principal", orderedIds);
         const embed = createTeamEmbed(username, teamData?.team, teamData?.members ?? []);
