@@ -1,5 +1,5 @@
 {
-  "id": "41ec2215-055d-4516-bd9a-b60457756453",
+  "id": "1babfe44-61ce-4074-9c5a-a0bf6c55e155",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -458,6 +458,12 @@
         "passive": {
           "name": "passive",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ultimate": {
+          "name": "ultimate",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
