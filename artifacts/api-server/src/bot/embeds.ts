@@ -14,14 +14,14 @@ export function applyEmbedImage(embed: EmbedBuilder, imageUrl: unknown): EmbedBu
     try {
       const { protocol } = new URL(cleanUrl);
       if (protocol === "http:" || protocol === "https:") {
-        return embed.setImage(cleanUrl);
+        return embed.setImage(cleanUrl).setThumbnail(cleanUrl);
       }
     } catch {
       // Use the default image below when the supplied URL cannot be parsed.
     }
   }
 
-  return embed.setImage(DEFAULT_EMBED_IMAGE_URL);
+  return embed.setImage(DEFAULT_EMBED_IMAGE_URL).setThumbnail(DEFAULT_EMBED_IMAGE_URL);
 }
 
 const RARITY_COLORS: Record<string, number> = {
@@ -52,10 +52,14 @@ const RARITY_PRIORITY: Record<string, number> = {
 };
 
 export function createProfileEmbed(user: any, collectionCount: number, teamCount: number) {
+  const avatarUrl = user.avatar
+    ? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.avatar}.png`
+    : DEFAULT_EMBED_IMAGE_URL;
+
   return new EmbedBuilder()
     .setTitle(`👤 Perfil de ${user.username}`)
     .setColor(0x3498db)
-    .setThumbnail("https://cdn.discordapp.com/embed/avatars/0.png")
+    .setThumbnail(avatarUrl)
     .addFields(
       { name: "🆔 ID Discord", value: user.discordId, inline: true },
       { name: "💰 Gold (Ouro)", value: `${user.gold ?? 0}`, inline: true },

@@ -67,7 +67,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 180,
       baseDefense: 105,
       baseSpeed: 118,
-      imageUrl: "https://cdn.discordapp.com/embed/avatars/0.png",
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
       passive:
         "Determinação: recebe um pequeno bônus de ataque abaixo de 50% de HP.",
     },
@@ -80,7 +80,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 120,
       baseDefense: 115,
       baseSpeed: 100,
-      imageUrl: "https://cdn.discordapp.com/embed/avatars/1.png",
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/35.png",
       passive: "Controle de chakra: cura aliada com menor HP.",
     },
     {
@@ -92,7 +92,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 165,
       baseDefense: 135,
       baseSpeed: 96,
-      imageUrl: "https://cdn.discordapp.com/embed/avatars/2.png",
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/130.png",
       passive: "Resiliência: reduz o primeiro dano recebido em cada combate.",
     },
     {
@@ -104,7 +104,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 230,
       baseDefense: 110,
       baseSpeed: 125,
-      imageUrl: "https://cdn.discordapp.com/embed/avatars/3.png",
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png",
       passive:
         "Pressão espiritual: ataques têm chance de causar dano adicional.",
     },
@@ -117,8 +117,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 280,
       baseDefense: 145,
       baseSpeed: 130,
-      imageUrl: "https://i.imgur.com/4retA79.png",
-
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/384.png",
       passive:
         "Instinto de batalha: ganha força ao sobreviver a um golpe crítico.",
     },
@@ -131,7 +130,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 220,
       baseDefense: 112,
       baseSpeed: 122,
-      imageUrl: "https://cdn.discordapp.com/embed/avatars/5.png",
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png",
       passive: "Sharingan",
     },
     {
@@ -143,7 +142,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 195,
       baseDefense: 120,
       baseSpeed: 110,
-      imageUrl: "https://cdn.discordapp.com/embed/avatars/6.png",
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/212.png",
       passive: "Santoryu",
     },
     {
@@ -155,7 +154,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 160,
       baseDefense: 110,
       baseSpeed: 112,
-      imageUrl: "https://cdn.discordapp.com/embed/avatars/7.png",
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/448.png",
       passive: "Respiração da Água",
     },
     {
@@ -167,7 +166,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 140,
       baseDefense: 100,
       baseSpeed: 105,
-      imageUrl: "https://cdn.discordapp.com/embed/avatars/8.png",
+      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png",
       passive: "Força Sobre-humana",
     },
   ]);
