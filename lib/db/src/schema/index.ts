@@ -31,6 +31,7 @@ export const bannerTypeEnum = pgEnum("banner_type", ["normal", "limited", "event
 export const currencyEnum = pgEnum("currency", ["gold", "gems", "tickets"]);
 export const battleStatusEnum = pgEnum("battle_status", ["running", "victory", "defeat", "draw"]);
 export const pveTypeEnum = pgEnum("pve_type", ["story", "dungeon", "boss", "tower", "event", "raid"]);
+export const questCategoryEnum = pgEnum("quest_category", ["daily", "weekly", "monthly", "story", "event"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -216,6 +217,40 @@ export const userPveProgress = pgTable("user_pve_progress", {
   uniqueIndex("user_pve_progress_user_stage_unique").on(table.userId, table.stageId),
 ]);
 
+export const quests = pgTable("quests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: questCategoryEnum("category").notNull(),
+  requirementType: text("requirement_type").notNull(),
+  requirementCount: integer("requirement_count").notNull(),
+  rewardGold: integer("reward_gold").notNull().default(0),
+  rewardGems: integer("reward_gems").notNull().default(0),
+  rewardTickets: integer("reward_tickets").notNull().default(0),
+  rewardItems: jsonb("reward_items").$type<Array<{ itemKey: string; quantity: number }>>().default([]),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userQuests = pgTable("user_quests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  questId: uuid("quest_id").notNull().references(() => quests.id, { onDelete: "cascade" }),
+  progress: integer("progress").notNull().default(0),
+  completed: integer("completed").notNull().default(0),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("user_quests_user_quest_unique").on(table.userId, table.questId),
+]);
+
+export const dailyRewards = pgTable("daily_rewards", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  streak: integer("streak").notNull().default(0),
+  lastClaimedAt: timestamp("last_claimed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCharacterSchema = createInsertSchema(characters).omit({ id: true, createdAt: true });
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true, createdAt: true, updatedAt: true });
@@ -225,3 +260,6 @@ export type Character = typeof characters.$inferSelect;
 export type UserCharacter = typeof userCharacters.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type TeamMember = typeof teamMembers.$inferSelect;
+export type Quest = typeof quests.$inferSelect;
+export type UserQuest = typeof userQuests.$inferSelect;
+export type DailyReward = typeof dailyRewards.$inferSelect;
