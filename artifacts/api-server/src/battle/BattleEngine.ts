@@ -99,6 +99,21 @@ export class BattleEngine {
   private processRoundStart() {
     for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
       if (!unit.alive) continue;
+      if (unit.isBoss && !unit.isEnraged) {
+        const enrageRoundThreshold = unit.enrageRound ?? 10;
+        if (this.round >= enrageRoundThreshold || (unit.hp / unit.maxHp) <= 0.3) {
+          unit.isEnraged = true;
+          StatusManager.applyStatus(unit, { type: "attack_up", duration: 99, stacks: 1, value: 50, originId: unit.id });
+          StatusManager.applyStatus(unit, { type: "speed_up", duration: 99, stacks: 1, value: 20, originId: unit.id });
+          this.actions.push({
+            round: this.round,
+            actorId: unit.id,
+            actorName: unit.name,
+            type: "boss_enrage",
+            amount: unit.attack,
+          });
+        }
+      }
       for (const key of Object.keys(unit.cooldowns)) {
         if (unit.cooldowns[key] > 0) unit.cooldowns[key] -= 1;
       }
@@ -211,7 +226,6 @@ export class BattleEngine {
         const dmgResult = calculateDamage(actor, tgt, skill, critRoll);
 
         tgt.hp = Math.max(0, tgt.hp - dmgResult.finalDamage);
-        if (tgt.hp === 0) tgt.alive = false;
 
         this.actions.push({
           round: this.round,
@@ -285,17 +299,36 @@ export class BattleEngine {
 
   private checkDeaths() {
     for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
-      if (unit.alive && unit.hp <= 0) {
-        unit.hp = 0;
-        unit.alive = false;
-        this.actions.push({
-          round: this.round,
-          actorId: "system",
-          actorName: unit.name,
-          type: "defeat",
-          targetId: unit.id,
-          targetName: unit.name,
-        });
+      if (unit.hp <= 0) {
+        if (unit.isBoss && unit.currentPhase && unit.maxPhases && unit.currentPhase < unit.maxPhases) {
+          unit.currentPhase += 1;
+          unit.maxHp = Math.floor(unit.maxHp * 1.2);
+          unit.hp = unit.maxHp;
+          unit.attack = Math.floor(unit.attack * 1.25);
+          unit.defense = Math.floor(unit.defense * 1.2);
+          unit.statusEffects = unit.statusEffects.filter((s) => s.type === "attack_up" || s.type === "defense_up" || s.type === "speed_up" || s.type === "shield");
+          unit.alive = true;
+          this.actions.push({
+            round: this.round,
+            actorId: unit.id,
+            actorName: unit.name,
+            type: "boss_phase_change",
+            amount: unit.currentPhase,
+          });
+        } else {
+          unit.hp = 0;
+          if (unit.alive) {
+            unit.alive = false;
+            this.actions.push({
+              round: this.round,
+              actorId: "system",
+              actorName: unit.name,
+              type: "defeat",
+              targetId: unit.id,
+              targetName: unit.name,
+            });
+          }
+        }
       }
     }
   }
