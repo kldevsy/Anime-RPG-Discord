@@ -4,7 +4,10 @@ Backend foundation for a professional Discord anime RPG, starting with persisten
 
 ## Run & Operate
 
+- `pnpm install` — install dependencies from the monorepo root (where `pnpm-workspace.yaml` and `pnpm-lock.yaml` live)
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server build` — build only the API server workspace package
+- `pnpm --filter @workspace/api-server bot` — start the compiled Discord bot process
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -46,7 +49,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Always run dependency installation from the monorepo root, not from `artifacts/api-server`, so pnpm can resolve workspace packages using `pnpm-workspace.yaml` and `pnpm-lock.yaml`.
+- Deployment platforms must execute `pnpm install` at the workspace root before `pnpm run build` or any filtered API-server build.
 
 ## Pointers
 
