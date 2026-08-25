@@ -1,6 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { bannerPity, banners, characters, economyTransactions, inventory, summons, userCharacters, users } from "@workspace/db";
 import { db } from "@workspace/db";
+import type { CharacterUltimate } from "@workspace/db";
 import { pickWeighted } from "./RandomService";
 import { getOrCreateUser } from "./PhaseOneService";
 import { getOrCreateMemoryOwnedCharacter, memoryCharacters } from "./MemoryStore";
@@ -15,6 +16,7 @@ export interface SummonResult {
   anime: string;
   rarity: string;
   imageUrl: string | null;
+  ultimate: CharacterUltimate | null;
 }
 
 export class SummonError extends Error {}
@@ -137,6 +139,7 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         anime: character.anime,
         rarity: character.rarity,
         imageUrl: character.imageUrl,
+        ultimate: character.ultimate,
       });
       if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }
@@ -217,6 +220,7 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         anime: character.anime,
         rarity: character.rarity,
         imageUrl: character.imageUrl,
+        ultimate: character.ultimate,
       });
       if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }

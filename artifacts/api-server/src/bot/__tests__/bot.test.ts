@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { commandDefinitions } from "../commands";
-import { createBattleProgressEmbed, createSummonResultEmbed, DEFAULT_EMBED_IMAGE_URL } from "../embeds";
+import { createBattleProgressEmbed, createSummonResultEmbed, createTeamEmbed, DEFAULT_EMBED_IMAGE_URL } from "../embeds";
 import { SkillManager } from "../../battle/SkillManager";
 import { handleAutocompleteInteraction, handleInteraction } from "../handlers";
 import { validateBotEnv } from "../index";
@@ -216,6 +216,66 @@ describe("Discord Bot System", () => {
     ], "tickets", 1);
 
     expect(embed.data.image?.url).toBe(DEFAULT_EMBED_IMAGE_URL);
+  });
+
+  it("renders each summoned character's ultimate within Discord field limits", () => {
+    const embed = createSummonResultEmbed("UltimateTester", Array.from({ length: 10 }, (_, index) => ({
+      name: `Personagem ${index + 1}`,
+      anime: "Anime de Teste",
+      rarity: "rare",
+      ownedId: `owned-${index + 1}`,
+      ultimate: {
+        id: `ultimate-${index + 1}`,
+        name: "Ultimate muito longa para validar o resumo",
+        description: "Descrição longa ".repeat(100),
+        chargeRequired: 100,
+        chargeOnBasic: 10,
+        chargeOnDamageTaken: 5,
+        chargeOnCritical: 10,
+        type: "DAMAGE" as const,
+        targetType: "single_enemy" as const,
+        multiplier: 1,
+        statusEffects: [],
+        conditionalRules: [],
+      },
+    })), "tickets", 10);
+
+    const fields = embed.data.fields ?? [];
+    expect(fields).toHaveLength(10);
+    expect(fields.every((field) => field.name.length <= 256 && field.value.length <= 1024)).toBe(true);
+    expect(fields[0].value).toContain("Ultimate muito longa");
+    expect(fields[0].value).toContain("Descrição longa");
+  });
+
+  it("renders the same ultimate summary in team embeds", () => {
+    const embed = createTeamEmbed("UltimateTester", null, [{
+      position: 1,
+      ownedId: "owned-ultimate",
+      level: 1,
+      character: {
+        name: "Naruto",
+        anime: "Naruto",
+        rarity: "rare",
+        role: "dps",
+        ultimate: {
+          id: "rasengan",
+          name: "Rasengan",
+          description: "Uma esfera de chakra concentrado.",
+          chargeRequired: 100,
+          chargeOnBasic: 10,
+          chargeOnDamageTaken: 5,
+          chargeOnCritical: 10,
+          type: "DAMAGE",
+          targetType: "single_enemy",
+          multiplier: 1,
+          statusEffects: [],
+          conditionalRules: [],
+        },
+      },
+    }]);
+
+    expect(embed.data.description).toContain("Rasengan");
+    expect(embed.data.description).toContain("Uma esfera de chakra concentrado.");
   });
 
   it("renders a ready ultimate bar and readable ultimate combat log", () => {
