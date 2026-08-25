@@ -215,6 +215,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       }
 
       embed.addFields({ name: "Lista de Personagens", value: text || "Nenhum personagem encontrado com os filtros." });
+      if (catalog.length > 0) {
+        applyEmbedImage(embed, catalog[0].imageUrl);
+      }
       await interaction.editReply({ embeds: [embed] });
       return;
     }
