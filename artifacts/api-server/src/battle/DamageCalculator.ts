@@ -32,6 +32,15 @@ export function calculateDamage(
     }
   }
 
+  for (const effect of skill.conditionalEffects ?? []) {
+    if (effect.condition === "target_missing_hp_above" && (1 - defender.hp / defender.maxHp) >= (effect.threshold ?? 0)) {
+      damageMultiplier += effect.damageMultiplierBonus ?? 0;
+    }
+    if (effect.condition === "critical_hit" && critical) {
+      damageMultiplier += effect.damageMultiplierBonus ?? 0;
+    }
+  }
+
   const rawDamage = Math.max(1, Math.floor(base * damageMultiplier));
 
   const { remainingDamage, absorbed } = StatusManager.absorbDamageWithShield(defender, rawDamage);

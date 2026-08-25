@@ -45,9 +45,15 @@ describe("Phase 3 Battle Engine", () => {
     expect(healAction).not.toBeNull();
     expect(healAction?.actionKey).toBe("skill1");
 
-    healer.energy = 100;
+    healer.ultimateCharge = healer.ultimateChargeRequired;
+    healer.ultimateReady = true;
     const ultAction = chooseAction(healer, [healer, hurtAlly], [enemy]);
-    expect(ultAction?.actionKey).toBe("ultimate");
+    // A revive is held until there is a defeated ally, even when charged.
+    expect(ultAction?.actionKey).toBe("skill1");
+
+    const dps = SkillManager.createCombatant({ id: "d1", name: "DPS", role: "dps", ultimateCharge: 100, ultimateChargeRequired: 100, ultimateReady: true });
+    const damageUltAction = chooseAction(dps, [dps], [enemy]);
+    expect(damageUltAction?.actionKey).toBe("ultimate");
   });
 
   it("runs full automatic battle through state machine to victory/defeat", () => {
@@ -62,5 +68,56 @@ describe("Phase 3 Battle Engine", () => {
 
     const logString = BattleLogger.formatAction(finalSnapshot.actions[0]);
     expect(logString).toContain("R1");
+  });
+
+  it("keeps Goku and Itadori ultimate charge policies distinct and capped", () => {
+    const goku = SkillManager.createCombatant({ id: "goku", name: "Goku", role: "dps", ultimateChargeRequired: 140 });
+    const itadori = SkillManager.createCombatant({ id: "itadori", name: "Itadori", role: "dps", ultimateChargeRequired: 85 });
+    goku.skills.ultimate.chargePolicy = { onBasicHit: 14, onDamageReceived: 8, onCriticalHit: 5 };
+    itadori.skills.ultimate.chargePolicy = { onBasicHit: 28, onDamageReceived: 12, onCriticalHit: 18 };
+    const engine = new BattleEngine([goku], [itadori]);
+
+    engine.addUltimateCharge(goku, "basic_hit");
+    engine.addUltimateCharge(itadori, "basic_hit");
+    engine.addUltimateCharge(itadori, "damage_received");
+    engine.addUltimateCharge(itadori, "critical_hit");
+    engine.addUltimateCharge(itadori, "basic_hit");
+    engine.addUltimateCharge(itadori, "basic_hit");
+
+    expect(goku.ultimateCharge).toBe(14);
+    expect(itadori.ultimateCharge).toBe(85);
+    expect(itadori.ultimateReady).toBe(true);
+    expect(engine.snapshot().actions.filter((action) => action.type === "ultimate_ready")).toHaveLength(1);
+  });
+
+  it("does not spend ultimate charge on normal skills and resets only ultimate charge after use", () => {
+    const hero = SkillManager.createCombatant({ id: "hero", name: "Hero", role: "dps", energy: 50, ultimateCharge: 100, ultimateChargeRequired: 100, ultimateReady: true, speed: 200 });
+    const enemy = SkillManager.createCombatant({ id: "enemy", name: "Enemy", role: "tank", hp: 2_000, maxHp: 2_000, speed: 1 });
+    const engine = new BattleEngine([hero], [enemy]);
+
+    for (let index = 0; index < 6; index += 1) engine.step();
+
+    expect(hero.energy).toBe(50);
+    expect(hero.ultimateCharge).toBe(0);
+    expect(hero.ultimateReady).toBe(false);
+    expect(engine.snapshot().actions.some((action) => action.type === "ultimate_used" && action.previousCharge === 100 && action.finalCharge === 0)).toBe(true);
+    engine.addUltimateCharge(hero, "basic_hit");
+    expect(hero.ultimateCharge).toBe(25);
+  });
+
+  it("leaves ultimate charge untouched by a common skill and permits another ultimate after recharge", () => {
+    const hero = SkillManager.createCombatant({ id: "hero", name: "Hero", role: "dps", energy: 50, ultimateCharge: 40, ultimateChargeRequired: 100, speed: 200 });
+    const enemy = SkillManager.createCombatant({ id: "enemy", name: "Enemy", role: "tank", hp: 10_000, maxHp: 10_000, speed: 1 });
+    const engine = new BattleEngine([hero], [enemy]);
+
+    for (let index = 0; index < 6; index += 1) engine.step(); // skill2 spends ordinary energy only
+    expect(hero.energy).toBe(10);
+    expect(hero.ultimateCharge).toBe(40);
+
+    const repeater = SkillManager.createCombatant({ id: "repeater", name: "Repeater", role: "dps", ultimateChargeRequired: 100, speed: 200 });
+    repeater.skills.ultimate.chargePolicy = { onTurnStart: 100 };
+    const repeatEnemy = SkillManager.createCombatant({ id: "repeat-enemy", name: "Repeat Enemy", role: "tank", hp: 10_000, maxHp: 10_000, speed: 1 });
+    const result = new BattleEngine([repeater], [repeatEnemy]).run(3);
+    expect(result.actions.filter((action) => action.type === "ultimate_used" && action.actorId === repeater.id).length).toBeGreaterThan(1);
   });
 });

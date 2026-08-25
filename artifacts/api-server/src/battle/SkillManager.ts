@@ -1,8 +1,17 @@
-import type { Combatant, CombatantRole, Skill } from "./BattleState";
+import type { Combatant, CombatantRole, Skill, UltimateSkill } from "./BattleState";
 import type { CharacterUltimate } from "@workspace/db";
 
-function toUltimateSkill(ultimate: CharacterUltimate): Skill {
-  return { id: ultimate.id, name: ultimate.name, type: ultimate.type, energyCost: ultimate.chargeRequired, cooldown: 4, targetType: ultimate.targetType, multiplier: ultimate.multiplier, statusEffects: ultimate.statusEffects };
+function toUltimateSkill(ultimate: CharacterUltimate): UltimateSkill {
+  return {
+    id: ultimate.id, stableKey: ultimate.id, name: ultimate.name, type: ultimate.type,
+    energyCost: 0, cooldown: 0, targetType: ultimate.targetType, multiplier: ultimate.multiplier,
+    statusEffects: ultimate.statusEffects,
+    chargePolicy: {
+      onBasicHit: ultimate.chargeOnBasic,
+      onDamageReceived: ultimate.chargeOnDamageTaken,
+      onCriticalHit: ultimate.chargeOnCritical,
+    },
+  };
 }
 
 export class SkillManager {
@@ -43,12 +52,14 @@ export class SkillManager {
           },
           ultimate: {
             id: "tank_ult",
+            stableKey: "tank_ult",
             name: "Muralha Inabalável",
             type: "SHIELD",
-            energyCost: 100,
-            cooldown: 4,
+            energyCost: 0,
+            cooldown: 0,
             targetType: "aoe_ally",
             multiplier: 0,
+            chargePolicy: { onBasicHit: 25 },
             statusEffects: [
               { type: "shield", chance: 100, duration: 3, value: 300 },
               { type: "defense_up", chance: 100, duration: 2, value: 30 },
@@ -79,12 +90,14 @@ export class SkillManager {
           },
           ultimate: {
             id: "heal_ult",
+            stableKey: "heal_ult",
             name: "Milagre Divino",
             type: "REVIVE",
-            energyCost: 100,
-            cooldown: 5,
+            energyCost: 0,
+            cooldown: 0,
             targetType: "aoe_ally",
             multiplier: 2.5,
+            chargePolicy: { onBasicHit: 25 },
           },
         };
       case "support":
@@ -118,12 +131,14 @@ export class SkillManager {
           },
           ultimate: {
             id: "sup_ult",
+            stableKey: "sup_ult",
             name: "Domínio Absoluto",
             type: "BUFF",
-            energyCost: 100,
-            cooldown: 4,
+            energyCost: 0,
+            cooldown: 0,
             targetType: "aoe_ally",
             multiplier: 0,
+            chargePolicy: { onBasicHit: 25 },
             statusEffects: [
               { type: "attack_up", chance: 100, duration: 3, value: 40 },
               { type: "speed_up", chance: 100, duration: 3, value: 30 },
@@ -158,12 +173,14 @@ export class SkillManager {
           },
           ultimate: {
             id: "ctrl_ult",
+            stableKey: "ctrl_ult",
             name: "Tormenta Elemental",
             type: "AOE",
-            energyCost: 100,
-            cooldown: 4,
+            energyCost: 0,
+            cooldown: 0,
             targetType: "aoe_enemy",
             multiplier: 2.0,
+            chargePolicy: { onBasicHit: 25 },
             statusEffects: [
               { type: "stun", chance: 50, duration: 1, value: 0 },
               { type: "speed_down", chance: 100, duration: 2, value: 25 },
@@ -196,12 +213,14 @@ export class SkillManager {
           },
           ultimate: {
             id: "dps_ult",
+            stableKey: "dps_ult",
             name: "Ataque Aniquilador",
             type: "EXECUTE",
-            energyCost: 100,
-            cooldown: 4,
+            energyCost: 0,
+            cooldown: 0,
             targetType: "single_enemy",
             multiplier: 2.8,
+            chargePolicy: { onBasicHit: 25 },
           },
         };
     }
@@ -225,10 +244,11 @@ export class SkillManager {
       critChance: partial.critChance ?? 15,
       critDamage: partial.critDamage ?? 1.5,
       energy: partial.energy ?? 0,
-      maxEnergy: partial.maxEnergy ?? ultimate?.chargeRequired ?? 100,
-      chargeOnBasic: partial.chargeOnBasic ?? ultimate?.chargeOnBasic ?? 25,
-      chargeOnDamageTaken: partial.chargeOnDamageTaken ?? ultimate?.chargeOnDamageTaken ?? 0,
-      chargeOnCritical: partial.chargeOnCritical ?? ultimate?.chargeOnCritical ?? 0,
+      maxEnergy: partial.maxEnergy ?? 100,
+      ultimateCharge: partial.ultimateCharge ?? 0,
+      ultimateChargeRequired: partial.ultimateChargeRequired ?? ultimate?.chargeRequired ?? 100,
+      ultimateReady: partial.ultimateReady ?? (partial.ultimateCharge ?? 0) >= (partial.ultimateChargeRequired ?? ultimate?.chargeRequired ?? 100),
+      ultimateChargeTelemetry: partial.ultimateChargeTelemetry ?? [],
       alive: partial.alive ?? true,
       statusEffects: partial.statusEffects ?? [],
       cooldowns: partial.cooldowns ?? {},

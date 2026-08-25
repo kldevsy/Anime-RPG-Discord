@@ -137,6 +137,7 @@ export class BattleEngine {
       for (const key of Object.keys(unit.cooldowns)) {
         if (unit.cooldowns[key] > 0) unit.cooldowns[key] -= 1;
       }
+      this.addUltimateCharge(unit, "turn_start");
       const { damage, log } = StatusManager.processTurnStartDoTs(unit);
       for (const entry of log) {
         this.actions.push({
@@ -173,11 +174,13 @@ export class BattleEngine {
     if (!selected) return;
 
     const { skill, actionKey, target } = selected;
-    actor.cooldowns[actionKey] = skill.cooldown;
+    actor.cooldowns[actionKey] = actionKey === "ultimate"
+      ? (actor.skills.ultimate.chargePolicy.cooldown ?? skill.cooldown)
+      : skill.cooldown;
 
-    if (actionKey === "basic") {
-      actor.energy = Math.min(actor.maxEnergy, actor.energy + actor.chargeOnBasic);
-    } else {
+    if (actionKey === "ultimate") {
+      this.resetUltimateCharge(actor);
+    } else if (actionKey !== "basic") {
       actor.energy = Math.max(0, actor.energy - skill.energyCost);
     }
 
@@ -254,8 +257,13 @@ export class BattleEngine {
         const dmgResult = calculateDamage(actor, tgt, skill, critRoll);
 
         tgt.hp = Math.max(0, tgt.hp - dmgResult.finalDamage);
-        tgt.energy = Math.min(tgt.maxEnergy, tgt.energy + tgt.chargeOnDamageTaken);
-        if (dmgResult.critical) actor.energy = Math.min(actor.maxEnergy, actor.energy + actor.chargeOnCritical);
+        if (dmgResult.finalDamage > 0) {
+          if (actionKey === "basic") this.addUltimateCharge(actor, "basic_hit");
+          this.addUltimateCharge(actor, "damage_dealt");
+          this.addUltimateCharge(tgt, "damage_received");
+          if (dmgResult.critical) this.addUltimateCharge(actor, "critical_hit");
+          if (tgt.hp === 0) this.addUltimateCharge(actor, "defeat");
+        }
 
         this.actions.push({
           round: this.round,
@@ -313,6 +321,39 @@ export class BattleEngine {
       default:
         return primaryTarget ? [primaryTarget] : [];
     }
+  }
+
+  /** Centralized, capped charge mutation so snapshots can explain every trigger. */
+  addUltimateCharge(unit: Combatant, source: import("./BattleState").UltimateChargeSource) {
+    const policy = unit.skills.ultimate.chargePolicy;
+    const configured = {
+      turn_start: policy.onTurnStart,
+      basic_hit: policy.onBasicHit,
+      damage_dealt: policy.onDamageDealt,
+      damage_received: policy.onDamageReceived,
+      critical_hit: policy.onCriticalHit,
+      defeat: policy.onDefeat,
+    }[source] ?? 0;
+    if (configured <= 0) return;
+
+    const previous = unit.ultimateCharge;
+    const final = Math.min(unit.ultimateChargeRequired, previous + configured);
+    const delta = final - previous;
+    unit.ultimateCharge = final;
+    unit.ultimateReady = final >= unit.ultimateChargeRequired;
+    unit.ultimateChargeTelemetry.push({ source, previous, delta, final, round: this.round });
+    this.actions.push({ round: this.round, actorId: unit.id, actorName: unit.name, type: "ultimate_charge", ultimateKey: unit.skills.ultimate.stableKey, chargeSource: source, previousCharge: previous, chargeDelta: delta, finalCharge: final });
+    if (previous < unit.ultimateChargeRequired && unit.ultimateReady) {
+      this.actions.push({ round: this.round, actorId: unit.id, actorName: unit.name, type: "ultimate_ready", ultimateKey: unit.skills.ultimate.stableKey, chargeSource: source, previousCharge: previous, chargeDelta: delta, finalCharge: final });
+    }
+  }
+
+  private resetUltimateCharge(unit: Combatant) {
+    const previous = unit.ultimateCharge;
+    unit.ultimateCharge = 0;
+    unit.ultimateReady = false;
+    unit.ultimateChargeTelemetry.push({ source: "ultimate_used", previous, delta: -previous, final: 0, round: this.round });
+    this.actions.push({ round: this.round, actorId: unit.id, actorName: unit.name, type: "ultimate_used", ultimateKey: unit.skills.ultimate.stableKey, chargeSource: "ultimate_used", previousCharge: previous, chargeDelta: -previous, finalCharge: 0, skillName: unit.skills.ultimate.name });
   }
 
   private processRoundEnd() {
