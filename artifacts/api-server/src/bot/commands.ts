@@ -64,25 +64,56 @@ export const commandDefinitions = [
     .addSubcommand((sub) =>
       sub
         .setName("adicionar")
-        .setDescription("Adiciona um personagem à equipe.")
+        .setDescription("Adiciona um personagem possuído à equipe.")
         .addStringOption((opt) =>
-          opt.setName("personagem_id").setDescription("ID do personagem possuído").setRequired(true)
+          opt
+            .setName("personagem_id")
+            .setDescription("Selecione um personagem possuído fora da equipe")
+            .setRequired(true)
+            .setAutocomplete(true)
         )
     )
     .addSubcommand((sub) =>
       sub
         .setName("remover")
-        .setDescription("Remove um personagem da equipe.")
+        .setDescription("Remove um personagem possuído da equipe.")
         .addStringOption((opt) =>
-          opt.setName("personagem_id").setDescription("ID do personagem possuído").setRequired(true)
+          opt
+            .setName("personagem_id")
+            .setDescription("Selecione um personagem possuído na equipe")
+            .setRequired(true)
+            .setAutocomplete(true)
         )
     )
     .addSubcommand((sub) =>
       sub
         .setName("ordenar")
-        .setDescription("Define a ordem completa da equipe (IDs separados por vírgula).")
+        .setDescription("Define a ordem completa da equipe (use /equipe ver e IDs separados por vírgula).")
         .addStringOption((opt) =>
-          opt.setName("ids").setDescription("IDs dos personagens na ordem (até 5)").setRequired(true)
+          opt
+            .setName("ids")
+            .setDescription("IDs possuídos na ordem, separados por vírgula (copie de /equipe ver)")
+            .setRequired(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("mover")
+        .setDescription("Move um membro atual para uma posição da equipe.")
+        .addStringOption((opt) =>
+          opt
+            .setName("personagem_id")
+            .setDescription("Selecione um personagem possuído na equipe")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addIntegerOption((opt) =>
+          opt
+            .setName("posicao")
+            .setDescription("Nova posição na equipe (1 a 5)")
+            .setRequired(true)
+            .setMinValue(1)
+            .setMaxValue(5)
         )
     ),
 

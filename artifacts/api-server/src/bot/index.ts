@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
 import { commandDefinitions } from "./commands";
-import { handleInteraction } from "./handlers";
+import { handleAutocompleteInteraction, handleInteraction } from "./handlers";
 import { logger } from "../lib/logger";
 
 export class BotInitializationError extends Error {
@@ -54,6 +54,12 @@ export function createBotClient() {
   });
 
   client.on("interactionCreate", async (interaction) => {
+    if (interaction.isAutocomplete()) {
+      logger.info({ command: interaction.commandName, user: interaction.user.tag }, "Received autocomplete interaction");
+      await handleAutocompleteInteraction(interaction);
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
     logger.info({ command: interaction.commandName, user: interaction.user.tag }, "Received chat input command interaction");
     await handleInteraction(interaction);
