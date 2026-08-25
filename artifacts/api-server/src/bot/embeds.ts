@@ -1,4 +1,5 @@
 import { EmbedBuilder } from "discord.js";
+import type { CharacterUltimate } from "@workspace/db";
 import type { BattleAction, BattleSnapshot, Combatant } from "../battle/BattleState";
 
 /** A Discord-hosted image that is available when a character has no usable artwork. */
@@ -51,6 +52,44 @@ const RARITY_PRIORITY: Record<string, number> = {
   mythic: 5,
 };
 
+const DISCORD_FIELD_VALUE_LIMIT = 1024;
+const DISCORD_FIELD_NAME_LIMIT = 256;
+
+type CharacterWithUltimate = {
+  name?: string;
+  anime?: string;
+  rarity?: string;
+  role?: string;
+  ultimate?: CharacterUltimate | null;
+};
+
+type SummonedCharacter = CharacterWithUltimate & {
+  characterId?: string;
+  ownedId?: string;
+  imageUrl?: string | null;
+};
+
+type TeamMember = {
+  position: number;
+  ownedId: string;
+  level: number;
+  character: CharacterWithUltimate;
+};
+
+function truncateDiscordText(value: string, limit: number): string {
+  if (value.length <= limit) return value;
+  return `${value.slice(0, Math.max(0, limit - 1)).trimEnd()}…`;
+}
+
+/** Formats ultimate information consistently for summon, team, and character-detail embeds. */
+export function formatUltimateSummary(ultimate: CharacterUltimate | null | undefined, descriptionLimit = 180): string {
+  if (!ultimate) return "✨ **Ultimate:** não disponível.";
+
+  const name = truncateDiscordText(ultimate.name, 120);
+  const description = truncateDiscordText(ultimate.description, descriptionLimit);
+  return `✨ **${name}** — ${description}`;
+}
+
 export function createProfileEmbed(user: any, collectionCount: number, teamCount: number) {
   const avatarUrl = user.avatar
     ? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.avatar}.png`
@@ -95,29 +134,30 @@ export function createBannersEmbed(bannersList: any[]) {
   return embed;
 }
 
-export function createSummonResultEmbed(username: string, results: any[], currency: string, cost: number) {
+export function createSummonResultEmbed(username: string, results: SummonedCharacter[], currency: string, cost: number) {
   const embed = new EmbedBuilder()
     .setTitle(`🌟 Resultado da Invocação de ${username}`)
     .setColor(0xf1c40f)
     .setDescription(`Você gastou **${cost} ${currency}** e invocou **${results.length}** personagem(ns)!`);
 
-  let desc = "";
   for (let i = 0; i < results.length; i += 1) {
     const r = results[i];
-    const rarityLabel = RARITY_NAMES[r.rarity] || r.rarity || "Desconhecida";
-    const characterName = r.name ? `**${r.name}**` : "**Personagem desconhecido**";
-    const anime = r.anime ? ` [${r.anime}]` : "";
+    const rarityLabel = RARITY_NAMES[r.rarity ?? ""] || r.rarity || "Desconhecida";
+    const characterName = r.name || "Personagem desconhecido";
+    const anime = r.anime || "Anime desconhecido";
     const teamId = r.ownedId ?? r.characterId;
-    const teamIdText = teamId ? ` • ID para equipe: \`${teamId}\`` : "";
-    desc += `**${i + 1}.**${anime} ${characterName} • Raridade: **${rarityLabel.toUpperCase()}**${teamIdText}\n`;
+    const teamIdText = teamId ? `\n• **ID para equipe:** \`${teamId}\`` : "";
+    const fieldName = truncateDiscordText(`🎴 ${i + 1}. [${anime}] ${characterName} • ${rarityLabel.toUpperCase()}`, DISCORD_FIELD_NAME_LIMIT);
+    const fieldValue = truncateDiscordText(formatUltimateSummary(r.ultimate, 700) + teamIdText, DISCORD_FIELD_VALUE_LIMIT);
+    embed.addFields({ name: fieldName, value: fieldValue });
   }
 
-  embed.addFields({ name: "🎴 Personagens Obtidos", value: desc || "Nenhum resultado." });
+  if (!results.length) embed.addFields({ name: "🎴 Personagens Obtidos", value: "Nenhum resultado." });
 
   // Discord supports one primary embed image. Select the highest-rarity result;
   // when rarities tie, keep the first result so 10x summons remain deterministic.
-  const featuredResult = results.reduce<any | undefined>((current, result) => {
-    if (!current || (RARITY_PRIORITY[result.rarity] ?? -1) > (RARITY_PRIORITY[current.rarity] ?? -1)) {
+  const featuredResult = results.reduce<SummonedCharacter | undefined>((current, result) => {
+    if (!current || (RARITY_PRIORITY[result.rarity ?? ""] ?? -1) > (RARITY_PRIORITY[current.rarity ?? ""] ?? -1)) {
       return result;
     }
     return current;
@@ -127,7 +167,7 @@ export function createSummonResultEmbed(username: string, results: any[], curren
   return embed;
 }
 
-export function createTeamEmbed(username: string, team: any, members: any[]) {
+export function createTeamEmbed(username: string, team: unknown, members: TeamMember[]) {
   const embed = new EmbedBuilder()
     .setTitle(`🛡️ Equipe Principal de ${username}`)
     .setColor(0x2ecc71);
@@ -140,11 +180,12 @@ export function createTeamEmbed(username: string, team: any, members: any[]) {
   let text = "";
   for (const m of members) {
     const char = m.character;
-    const rarityLabel = RARITY_NAMES[char.rarity] || char.rarity;
-    text += `**Posição ${m.position}:** [${char.anime}] **${char.name}** (Nível ${m.level}) • *${char.role.toUpperCase()}* • ${rarityLabel}\n• **ID de Propriedade:** \`${m.ownedId}\`\n\n`;
+    const rarityLabel = RARITY_NAMES[char.rarity ?? ""] || char.rarity || "Desconhecida";
+    const role = char.role?.toUpperCase() ?? "SEM FUNÇÃO";
+    text += `**Posição ${m.position}:** [${char.anime ?? "Anime desconhecido"}] **${char.name ?? "Personagem desconhecido"}** (Nível ${m.level}) • *${role}* • ${rarityLabel}\n• **ID de Propriedade:** \`${m.ownedId}\`\n• ${formatUltimateSummary(char.ultimate, 300)}\n\n`;
   }
 
-  embed.setDescription(text);
+  embed.setDescription(truncateDiscordText(text, 4096));
   embed.setFooter({ text: "Dica: A posição do personagem altera as prioridades táticas do combate!" });
   return embed;
 }

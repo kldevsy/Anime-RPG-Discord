@@ -118,7 +118,7 @@ export const summons = pgTable("summons", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   bannerId: uuid("banner_id").notNull().references(() => banners.id, { onDelete: "restrict" }),
   quantity: integer("quantity").notNull(),
-  results: jsonb("results").$type<Array<{ characterId: string; ownedId: string; name: string; anime: string; rarity: string; imageUrl: string | null }>>().notNull(),
+  results: jsonb("results").$type<Array<{ characterId: string; ownedId: string; name: string; anime: string; rarity: string; imageUrl: string | null; ultimate: CharacterUltimate | null }>>().notNull(),
   currency: currencyEnum("currency").notNull(),
   cost: integer("cost").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

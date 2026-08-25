@@ -1,5 +1,6 @@
 import type { AutocompleteInteraction, ChatInputCommandInteraction } from "discord.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, StringSelectMenuBuilder } from "discord.js";
+import type { CharacterUltimate } from "@workspace/db";
 import {
   getOrCreateUser,
   getProfile,
@@ -42,11 +43,12 @@ import {
   createProfileEmbed,
   createSummonResultEmbed,
   createTeamEmbed,
+  formatUltimateSummary,
 } from "./embeds";
 import type { UltimateDecisionProvider } from "../battle/BattleState";
 
 type AutocompleteChoice = { name: string; value: string };
-type OwnedCharacterChoiceSource = { ownedId: string; level: number; position?: number; character: { id?: string; name: string; anime: string; rarity: string; role?: string } };
+type OwnedCharacterChoiceSource = { ownedId: string; level: number; position?: number; character: { id?: string; name: string; anime: string; rarity: string; role?: string; ultimate?: CharacterUltimate | null } };
 
 const ULTIMATE_INTERACTION_TIMEOUT_MS = 15_000;
 
@@ -285,7 +287,8 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           { name: "⚔️ Ataque Base", value: `${found.baseAttack}`, inline: true },
           { name: "🛡️ Defesa Base", value: `${found.baseDefense}`, inline: true },
           { name: "⚡ Velocidade", value: `${found.baseSpeed}`, inline: true },
-          { name: "🔮 Passiva", value: found.passive ?? "Nenhuma", inline: true }
+          { name: "🔮 Passiva", value: found.passive ?? "Nenhuma", inline: true },
+          { name: "✨ Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
         );
 
       applyEmbedImage(embed, found.imageUrl);
