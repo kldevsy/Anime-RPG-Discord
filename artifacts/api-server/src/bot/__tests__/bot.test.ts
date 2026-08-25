@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { commandDefinitions } from "../commands";
-import { createSummonResultEmbed } from "../embeds";
+import { createSummonResultEmbed, DEFAULT_EMBED_IMAGE_URL } from "../embeds";
 import { handleAutocompleteInteraction, handleInteraction } from "../handlers";
 import { validateBotEnv } from "../index";
 
@@ -161,7 +161,7 @@ describe("Discord Bot System", () => {
     await handleInteraction(mockInteraction);
 
     const embed = editReplyMock.mock.calls[0][0].embeds[0];
-    expect(embed.data.image?.url).toBe("https://placehold.co/600x400/png?text=Naruto%20Uzumaki");
+    expect(embed.data.image?.url).toBe("https://cdn.discordapp.com/embed/avatars/0.png");
   });
 
   it("uses the first highest-rarity character image for a 10x summon embed", () => {
@@ -174,12 +174,20 @@ describe("Discord Bot System", () => {
     expect(embed.data.image?.url).toBe("https://example.com/mythic.png");
   });
 
-  it("keeps summon embeds functional when no summoned character has an image", () => {
+  it("uses the default hosted image when the featured summoned character has no image", () => {
     const embed = createSummonResultEmbed("ImageTester", [
       { name: "Sem imagem", rarity: "common", imageUrl: null },
     ], "tickets", 1);
 
-    expect(embed.data.image).toBeUndefined();
+    expect(embed.data.image?.url).toBe(DEFAULT_EMBED_IMAGE_URL);
+  });
+
+  it("uses the default hosted image when the featured summoned character image is invalid", () => {
+    const embed = createSummonResultEmbed("ImageTester", [
+      { name: "Imagem inválida", rarity: "common", imageUrl: "file:///tmp/character.png" },
+    ], "tickets", 1);
+
+    expect(embed.data.image?.url).toBe(DEFAULT_EMBED_IMAGE_URL);
   });
 
   it("should handle /inventario command interaction", async () => {
