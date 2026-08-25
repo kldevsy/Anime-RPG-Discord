@@ -24,6 +24,68 @@ const httpUrlSchema = z
     return protocol === "http:" || protocol === "https:";
   }, "imageUrl must use HTTP(S)");
 
+const statusEffectSchema = z.object({
+  type: z.enum([
+    "burn",
+    "shock",
+    "freeze",
+    "stun",
+    "poison",
+    "bleed",
+    "shield",
+    "attack_up",
+    "attack_down",
+    "defense_up",
+    "defense_down",
+    "speed_up",
+    "speed_down",
+  ]),
+  chance: z.number().min(0).max(100),
+  duration: z.number().int().positive(),
+  value: z.number(),
+});
+
+export const characterUltimateSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  chargeRequired: z.number().int().positive(),
+  chargeOnBasic: z.number().int().nonnegative(),
+  chargeOnDamageTaken: z.number().int().nonnegative(),
+  chargeOnCritical: z.number().int().nonnegative(),
+  type: z.enum([
+    "DAMAGE",
+    "HEAL",
+    "BUFF",
+    "DEBUFF",
+    "STUN",
+    "DOT",
+    "SHIELD",
+    "AOE",
+    "EXECUTE",
+    "REVIVE",
+  ]),
+  targetType: z.enum([
+    "single_enemy",
+    "aoe_enemy",
+    "single_ally",
+    "aoe_ally",
+    "self",
+  ]),
+  multiplier: z.number().nonnegative(),
+  statusEffects: z.array(statusEffectSchema),
+  conditionalRules: z
+    .array(
+      z.object({
+        condition: z.string().trim().min(1),
+        effect: z.string().trim().min(1),
+      }),
+    )
+    .default([]),
+});
+
+export type CharacterUltimate = z.infer<typeof characterUltimateSchema>;
+
 export const characterCatalogEntrySchema = z.object({
   anime: z.string().trim().min(1),
   name: z.string().trim().min(1),
@@ -35,6 +97,7 @@ export const characterCatalogEntrySchema = z.object({
   baseSpeed: z.number().int().nonnegative(),
   passive: z.string(),
   imageUrl: httpUrlSchema.optional(),
+  ultimate: characterUltimateSchema,
 });
 
 export type CharacterCatalogEntry = z.infer<typeof characterCatalogEntrySchema>;
@@ -67,9 +130,32 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 180,
       baseDefense: 105,
       baseSpeed: 118,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
       passive:
         "Determinação: recebe um pequeno bônus de ataque abaixo de 50% de HP.",
+      ultimate: {
+        id: "naruto_rasengan",
+        name: "Rasengan",
+        description:
+          "Uma esfera de chakra concentrado que perfura a defesa inimiga.",
+        chargeRequired: 100,
+        chargeOnBasic: 24,
+        chargeOnDamageTaken: 10,
+        chargeOnCritical: 8,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 3,
+        statusEffects: [
+          { type: "defense_down", chance: 70, duration: 2, value: 20 },
+        ],
+        conditionalRules: [
+          {
+            condition: "HP abaixo de 50%",
+            effect: "multiplicador aumenta em 0,3",
+          },
+        ],
+      },
     },
     {
       anime: "Naruto",
@@ -80,8 +166,32 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 120,
       baseDefense: 115,
       baseSpeed: 100,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/35.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/35.png",
       passive: "Controle de chakra: cura aliada com menor HP.",
+      ultimate: {
+        id: "sakura_hundred_healings",
+        name: "Força de Cem Selos",
+        description:
+          "Libera chakra acumulado para restaurar e proteger toda a equipe.",
+        chargeRequired: 110,
+        chargeOnBasic: 18,
+        chargeOnDamageTaken: 16,
+        chargeOnCritical: 0,
+        type: "HEAL",
+        targetType: "aoe_ally",
+        multiplier: 2.2,
+        statusEffects: [
+          { type: "shield", chance: 100, duration: 2, value: 180 },
+          { type: "defense_up", chance: 100, duration: 2, value: 20 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Aliado abaixo de 35% de HP",
+            effect: "prioriza a cura em área",
+          },
+        ],
+      },
     },
     {
       anime: "One Piece",
@@ -92,8 +202,26 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 165,
       baseDefense: 135,
       baseSpeed: 96,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/130.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/130.png",
       passive: "Resiliência: reduz o primeiro dano recebido em cada combate.",
+      ultimate: {
+        id: "luffy_red_roc",
+        name: "Gear Third: Gomu Gomu no Red Roc",
+        description:
+          "Um soco gigantesco em chamas que atinge todos os inimigos.",
+        chargeRequired: 105,
+        chargeOnBasic: 20,
+        chargeOnDamageTaken: 18,
+        chargeOnCritical: 4,
+        type: "AOE",
+        targetType: "aoe_enemy",
+        multiplier: 2.05,
+        statusEffects: [{ type: "burn", chance: 75, duration: 2, value: 55 }],
+        conditionalRules: [
+          { condition: "Após usar", effect: "velocidade reduzida por 1 turno" },
+        ],
+      },
     },
     {
       anime: "Bleach",
@@ -104,9 +232,30 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 230,
       baseDefense: 110,
       baseSpeed: 125,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png",
       passive:
         "Pressão espiritual: ataques têm chance de causar dano adicional.",
+      ultimate: {
+        id: "ichigo_getsuga",
+        name: "Getsuga Tensho",
+        description:
+          "Uma lâmina de energia espiritual que corta um único alvo.",
+        chargeRequired: 95,
+        chargeOnBasic: 26,
+        chargeOnDamageTaken: 8,
+        chargeOnCritical: 10,
+        type: "EXECUTE",
+        targetType: "single_enemy",
+        multiplier: 3.25,
+        statusEffects: [{ type: "bleed", chance: 70, duration: 2, value: 65 }],
+        conditionalRules: [
+          {
+            condition: "Alvo abaixo de 25% de HP",
+            effect: "dano de execução é priorizado",
+          },
+        ],
+      },
     },
     {
       anime: "Dragon Ball",
@@ -117,9 +266,32 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 280,
       baseDefense: 145,
       baseSpeed: 130,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/384.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/384.png",
       passive:
         "Instinto de batalha: ganha força ao sobreviver a um golpe crítico.",
+      ultimate: {
+        id: "goku_kamehameha",
+        name: "Kamehameha",
+        description:
+          "Uma rajada colossal de ki que explode em toda a linha inimiga.",
+        chargeRequired: 140,
+        chargeOnBasic: 14,
+        chargeOnDamageTaken: 8,
+        chargeOnCritical: 5,
+        type: "AOE",
+        targetType: "aoe_enemy",
+        multiplier: 3.1,
+        statusEffects: [
+          { type: "defense_down", chance: 60, duration: 2, value: 25 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Carga alta",
+            effect: "carrega lentamente em troca de dano explosivo em área",
+          },
+        ],
+      },
     },
     {
       anime: "Naruto",
@@ -130,8 +302,31 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 220,
       baseDefense: 112,
       baseSpeed: 122,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png",
       passive: "Sharingan",
+      ultimate: {
+        id: "sasuke_kirin",
+        name: "Kirin / Chidori",
+        description: "Canaliza relâmpagos para paralisar e fulminar o inimigo.",
+        chargeRequired: 105,
+        chargeOnBasic: 22,
+        chargeOnDamageTaken: 10,
+        chargeOnCritical: 8,
+        type: "STUN",
+        targetType: "single_enemy",
+        multiplier: 2.7,
+        statusEffects: [
+          { type: "shock", chance: 100, duration: 2, value: 60 },
+          { type: "stun", chance: 70, duration: 1, value: 0 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Alvo está em choque",
+            effect: "atordoamento tem prioridade",
+          },
+        ],
+      },
     },
     {
       anime: "One Piece",
@@ -142,8 +337,28 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 195,
       baseDefense: 120,
       baseSpeed: 110,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/212.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/212.png",
       passive: "Santoryu",
+      ultimate: {
+        id: "zoro_ichidai_sanzen",
+        name: "Santoryu: Ichidai Sanzen Daisen Sekai",
+        description: "Um corte de três espadas que atravessa a guarda do alvo.",
+        chargeRequired: 115,
+        chargeOnBasic: 21,
+        chargeOnDamageTaken: 12,
+        chargeOnCritical: 7,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 3.45,
+        statusEffects: [{ type: "bleed", chance: 100, duration: 3, value: 70 }],
+        conditionalRules: [
+          {
+            condition: "Após usar",
+            effect: "velocidade reduzida por 1 turno pela recuperação",
+          },
+        ],
+      },
     },
     {
       anime: "Demon Slayer",
@@ -154,8 +369,29 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 160,
       baseDefense: 110,
       baseSpeed: 112,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/448.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/448.png",
       passive: "Respiração da Água",
+      ultimate: {
+        id: "tanjiro_hinokami_kagura",
+        name: "Hinokami Kagura",
+        description:
+          "Uma dança solar que incendeia todos os inimigos atingidos.",
+        chargeRequired: 100,
+        chargeOnBasic: 23,
+        chargeOnDamageTaken: 11,
+        chargeOnCritical: 7,
+        type: "AOE",
+        targetType: "aoe_enemy",
+        multiplier: 2.15,
+        statusEffects: [{ type: "burn", chance: 100, duration: 3, value: 65 }],
+        conditionalRules: [
+          {
+            condition: "Após usar",
+            effect: "recebe dano de recuo de 5% do HP máximo",
+          },
+        ],
+      },
     },
     {
       anime: "Jujutsu Kaisen",
@@ -166,7 +402,30 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 140,
       baseDefense: 100,
       baseSpeed: 105,
-      imageUrl: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png",
+      imageUrl:
+        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png",
       passive: "Força Sobre-humana",
+      ultimate: {
+        id: "yuji_black_flash",
+        name: "Black Flash",
+        description:
+          "Um golpe de energia amaldiçoada sincronizado no instante perfeito.",
+        chargeRequired: 85,
+        chargeOnBasic: 28,
+        chargeOnDamageTaken: 12,
+        chargeOnCritical: 18,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 2.8,
+        statusEffects: [
+          { type: "attack_down", chance: 65, duration: 2, value: 15 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Acerto crítico",
+            effect: "recebe carga extra para encadear o próximo Black Flash",
+          },
+        ],
+      },
     },
   ]);

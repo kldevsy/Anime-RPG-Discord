@@ -1,4 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
+import type { CharacterUltimate } from "../data/characters";
 import {
   integer,
   jsonb,
@@ -59,6 +60,8 @@ export const characters = pgTable("characters", {
   baseSpeed: integer("base_speed").notNull(),
   imageUrl: text("image_url"),
   passive: text("passive"),
+  // Catalog entries always provide this; null preserves legacy characters.
+  ultimate: jsonb("ultimate").$type<CharacterUltimate | null>(),
   evolution: jsonb("evolution").$type<Record<string, unknown> | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

@@ -67,6 +67,7 @@ export async function adminCreateCharacter(input: AdminCreateCharacterInput) {
       baseSpeed: input.baseSpeed,
       imageUrl: input.imageUrl ?? null,
       passive: input.passive ?? null,
+      ultimate: null,
       evolution: null,
       createdAt: new Date(),
     };

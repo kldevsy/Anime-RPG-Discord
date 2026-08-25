@@ -184,6 +184,7 @@ export async function challengePvp(challengerDiscordId: string, defenderDiscordI
       energy: 0,
       alive: true,
       passive: character.passive ?? undefined,
+      ultimate: character.ultimate,
     });
   });
 
@@ -205,6 +206,7 @@ export async function challengePvp(challengerDiscordId: string, defenderDiscordI
         energy: 0,
         alive: true,
         passive: character.passive ?? undefined,
+        ultimate: character.ultimate,
       });
     });
   } else {

@@ -29,8 +29,8 @@ export function chooseAction(actor: Combatant, allies: Combatant[], enemies: Com
     return cd <= 0;
   };
 
-  // Rule 1: Energy >= 100 -> prioritize Ultimate
-  if (actor.energy >= 100 && canUse(actor.skills.ultimate, "ultimate")) {
+  // Rule 1: Fully charged ultimate -> prioritize it.
+  if (actor.energy >= actor.skills.ultimate.energyCost && canUse(actor.skills.ultimate, "ultimate")) {
     const ult = actor.skills.ultimate;
     let target = lowestHpEnemy;
     if (ult.targetType === "aoe_ally" || ult.targetType === "single_ally" || ult.type === "HEAL" || ult.type === "REVIVE" || ult.type === "SHIELD") {

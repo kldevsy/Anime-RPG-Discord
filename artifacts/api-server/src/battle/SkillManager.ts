@@ -1,4 +1,9 @@
 import type { Combatant, CombatantRole, Skill } from "./BattleState";
+import type { CharacterUltimate } from "@workspace/db";
+
+function toUltimateSkill(ultimate: CharacterUltimate): Skill {
+  return { id: ultimate.id, name: ultimate.name, type: ultimate.type, energyCost: ultimate.chargeRequired, cooldown: 4, targetType: ultimate.targetType, multiplier: ultimate.multiplier, statusEffects: ultimate.statusEffects };
+}
 
 export class SkillManager {
   static createDefaultSkills(role: CombatantRole, name: string): Combatant["skills"] {
@@ -202,9 +207,11 @@ export class SkillManager {
     }
   }
 
-  static createCombatant(partial: Partial<Combatant> & { id: string; name: string; role: CombatantRole }): Combatant {
+  static createCombatant(partial: Partial<Combatant> & { id: string; name: string; role: CombatantRole; ultimate?: CharacterUltimate | null }): Combatant {
     const maxHp = partial.maxHp ?? 500;
-    const skills = partial.skills ?? SkillManager.createDefaultSkills(partial.role, partial.name);
+    const defaultSkills = SkillManager.createDefaultSkills(partial.role, partial.name);
+    const skills = partial.skills ?? { ...defaultSkills, ultimate: partial.ultimate ? toUltimateSkill(partial.ultimate) : defaultSkills.ultimate };
+    const ultimate = partial.ultimate;
 
     return {
       id: partial.id,
@@ -218,6 +225,10 @@ export class SkillManager {
       critChance: partial.critChance ?? 15,
       critDamage: partial.critDamage ?? 1.5,
       energy: partial.energy ?? 0,
+      maxEnergy: partial.maxEnergy ?? ultimate?.chargeRequired ?? 100,
+      chargeOnBasic: partial.chargeOnBasic ?? ultimate?.chargeOnBasic ?? 25,
+      chargeOnDamageTaken: partial.chargeOnDamageTaken ?? ultimate?.chargeOnDamageTaken ?? 0,
+      chargeOnCritical: partial.chargeOnCritical ?? ultimate?.chargeOnCritical ?? 0,
       alive: partial.alive ?? true,
       statusEffects: partial.statusEffects ?? [],
       cooldowns: partial.cooldowns ?? {},
