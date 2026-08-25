@@ -1,0 +1,2 @@
+-- The base migration now creates characters.ultimate.
+-- Kept as a versioned no-op to preserve the historical migration sequence.

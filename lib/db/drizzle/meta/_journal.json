@@ -5,36 +5,43 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1787634587201,
-      "tag": "0000_pve_schema",
+      "when": 1787689602000,
+      "tag": "0000_base_schema",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1787636100000,
-      "tag": "0001_repair_pve_stage_columns",
+      "when": 1787689614068,
+      "tag": "0001_pve_schema",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1787636400000,
-      "tag": "0002_repair_user_pve_progress",
+      "when": 1787689616202,
+      "tag": "0002_repair_pve_stage_columns",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
-      "when": 1787654400000,
-      "tag": "0003_backfill_character_image_urls",
+      "when": 1787689618483,
+      "tag": "0003_repair_user_pve_progress",
       "breakpoints": true
     },
     {
       "idx": 4,
       "version": "7",
-      "when": 1787658000000,
-      "tag": "0004_add_character_ultimate",
+      "when": 1787689620649,
+      "tag": "0004_backfill_character_image_urls",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787689622831,
+      "tag": "0005_add_character_ultimate",
       "breakpoints": true
     }
   ]
