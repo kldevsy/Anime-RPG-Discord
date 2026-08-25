@@ -14,6 +14,7 @@ import {
   summon,
 } from "../services/SummonService";
 import { listPlayerBattles, runPlayerBattle } from "../services/BattleService";
+import { listPveStages, listPveWorlds } from "../services/PveService";
 import { getTransactionHistory } from "../services/EconomyService";
 import { claimQuestReward, getUserQuests } from "../services/QuestService";
 import { claimDailyReward, getDailyRewardStatus } from "../services/DailyRewardService";
@@ -56,6 +57,12 @@ function filterChoicesByFocusedValue(choices: AutocompleteChoice[], focusedValue
   return choices.filter((choice) => `${choice.name} ${choice.value}`.toLowerCase().includes(query)).slice(0, 25);
 }
 
+function formatPveStageChoice(stage: Awaited<ReturnType<typeof listPveStages>>[number], worldName?: string): AutocompleteChoice {
+  const world = worldName ?? `Mundo ${stage.worldId.slice(0, 8)}`;
+  const name = `${world} / Fase ${stage.position} • ${stage.name} — ${stage.enemyName}`;
+  return { name: name.slice(0, 100), value: stage.id };
+}
+
 export async function handleAutocompleteInteraction(interaction: AutocompleteInteraction): Promise<void> {
   if (interaction.commandName === "invocar") {
     const focused = interaction.options.getFocused(true);
@@ -66,6 +73,20 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
       return;
     }
     await interaction.respond([]);
+    return;
+  }
+
+  if (interaction.commandName === "batalha") {
+    const focused = interaction.options.getFocused(true);
+    if (focused.name !== "estagio_id") {
+      await interaction.respond([]);
+      return;
+    }
+
+    const [stages, worlds] = await Promise.all([listPveStages(), listPveWorlds()]);
+    const worldNames = new Map(worlds.map((world) => [world.id, world.name]));
+    const choices = stages.map((stage) => formatPveStageChoice(stage, worldNames.get(stage.worldId)));
+    await interaction.respond(filterChoicesByFocusedValue(choices, String(focused.value)));
     return;
   }
 

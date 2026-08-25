@@ -126,7 +126,11 @@ export const commandDefinitions = [
     .setName("batalha")
     .setDescription("Inicia uma batalha automática por turnos com sua equipe principal.")
     .addStringOption((opt) =>
-      opt.setName("estagio_id").setDescription("ID do estágio PvE/Boss (opcional)").setRequired(false)
+      opt
+        .setName("estagio_id")
+        .setDescription("Selecione um estágio PvE para a batalha (opcional)")
+        .setRequired(false)
+        .setAutocomplete(true)
     ),
 
   // 8. /missoes
