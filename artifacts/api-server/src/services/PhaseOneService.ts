@@ -7,7 +7,7 @@ import {
   users,
 } from "@workspace/db";
 import { db, type Team, type TeamMember } from "@workspace/db";
-import { createMemoryUser, findMemoryUserByDiscordId, getMemoryOwnedCharacters, memoryCharacters, memoryOwned } from "./MemoryStore";
+import { createMemoryUser, findMemoryUserByDiscordId, getMemoryCharacters, getMemoryOwnedCharacters, memoryOwned } from "./MemoryStore";
 
 export class DatabaseUnavailableError extends Error {
   constructor() {
@@ -58,8 +58,9 @@ export async function getProfile(discordId: string) {
   if (!db) {
     const user = findMemoryUserByDiscordId(discordId);
     if (!user) return null;
+    const allChars = getMemoryCharacters();
     const collection = getMemoryOwnedCharacters(user.id).map((owned) => ({
-      ownedId: owned.id, level: owned.level, xp: owned.xp, character: memoryCharacters.find((item) => item.id === owned.characterId)!,
+      ownedId: owned.id, level: owned.level, xp: owned.xp, character: allChars.find((item) => item.id === owned.characterId)!,
     }));
     return { user, collection };
   }
@@ -77,7 +78,7 @@ export async function getProfile(discordId: string) {
 
 export async function listCharacters(filters: { anime?: string; rarity?: typeof characters.rarity.enumValues[number] }) {
   if (!db) {
-    return memoryCharacters.filter((character) => (!filters.anime || character.anime === filters.anime) && (!filters.rarity || character.rarity === filters.rarity));
+    return getMemoryCharacters().filter((character) => (!filters.anime || character.anime === filters.anime) && (!filters.rarity || character.rarity === filters.rarity));
   }
   const database = requireDb();
   const conditions: SQL[] = [];
@@ -92,9 +93,10 @@ export async function getTeam(discordId: string) {
     if (!user) return null;
     const team = memoryTeams.find((item) => item.userId === user.id);
     if (!team) return { team: null, members: [] };
+    const allChars = getMemoryCharacters();
     const members = memoryMembers.filter((member) => member.teamId === team.id).sort((a, b) => a.position - b.position).map((member) => {
       const owned = memoryOwned.find((item) => item.id === member.userCharacterId)!;
-      return { position: member.position, ownedId: owned.id, level: owned.level, xp: owned.xp, character: memoryCharacters.find((item) => item.id === owned.characterId)! };
+      return { position: member.position, ownedId: owned.id, level: owned.level, xp: owned.xp, character: allChars.find((item) => item.id === owned.characterId)! };
     });
     return { team, members };
   }

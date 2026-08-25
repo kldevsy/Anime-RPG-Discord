@@ -3,7 +3,7 @@ import { battles, banners, characters, events, userCharacters } from "@workspace
 import { db, type Character } from "@workspace/db";
 import { getOrCreateUser } from "./PhaseOneService";
 import { processTransaction } from "./EconomyService";
-import { memoryCharacters } from "./MemoryStore";
+import { customMemoryCharacters } from "./MemoryStore";
 
 export class AdminError extends Error {
   constructor(message: string) {
@@ -72,7 +72,7 @@ export async function adminCreateCharacter(input: AdminCreateCharacterInput) {
       evolution: null,
       createdAt: new Date(),
     };
-    memoryCharacters.push(newChar);
+    customMemoryCharacters.push(newChar);
     return newChar;
   }
 

@@ -4,7 +4,7 @@ import { db } from "@workspace/db";
 import type { CharacterUltimate } from "@workspace/db";
 import { pickWeighted } from "./RandomService";
 import { getOrCreateUser } from "./PhaseOneService";
-import { getOrCreateMemoryOwnedCharacter, memoryCharacters } from "./MemoryStore";
+import { getMemoryCharacters, getOrCreateMemoryOwnedCharacter } from "./MemoryStore";
 
 const rarities = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
 type Rarity = typeof rarities[number];
@@ -123,11 +123,12 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
     const pityKey = `${user.id}:${banner.id}`;
     let pity = memoryPityMap.get(pityKey) ?? 0;
 
+    const memoryChars = getMemoryCharacters();
     const results: SummonResult[] = [];
     for (let i = 0; i < quantity; i += 1) {
       const rarity = chooseRarity(banner.rates ?? {}, pity, banner.softPityStart, banner.hardPity);
-      const pool = memoryCharacters.filter((c) => c.rarity === rarity);
-      const fallbackPool = pool.length > 0 ? pool : memoryCharacters;
+      const pool = memoryChars.filter((c) => c.rarity === rarity);
+      const fallbackPool = pool.length > 0 ? pool : memoryChars;
       const character = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
 
       const ownedCharacter = getOrCreateMemoryOwnedCharacter(user.id, character.id);
