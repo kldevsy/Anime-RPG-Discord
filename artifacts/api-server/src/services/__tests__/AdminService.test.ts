@@ -26,6 +26,7 @@ describe("AdminService", () => {
     expect(char).toBeDefined();
     expect(char.name).toBe("Satoru Gojo");
     expect(char.rarity).toBe("mythic");
+    expect(char.catalogManaged).toBe(false);
   });
 
   it("should create and toggle a banner", async () => {

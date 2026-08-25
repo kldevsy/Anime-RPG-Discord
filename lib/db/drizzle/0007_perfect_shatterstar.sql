@@ -1,0 +1,1 @@
+ALTER TABLE "characters" ADD COLUMN "catalog_managed" boolean DEFAULT false NOT NULL;

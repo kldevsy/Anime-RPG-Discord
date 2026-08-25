@@ -4,6 +4,13 @@ import { characterRarities, characterRoles } from "../schema";
 /**
  * Catálogo canônico e versionado de personagens iniciais.
  *
+ * O seed é autoritativo para linhas com `catalogManaged = true`: ao executá-lo,
+ * ele sincroniza os campos do catálogo. Personagens criados pelo comando
+ * administrativo recebem `catalogManaged = false` e preservam seus valores locais,
+ * mesmo se tiverem o mesmo anime e nome de uma entrada deste catálogo.
+ * Linhas existentes antes desta distinção também começam como não gerenciadas,
+ * para que o seed não sobrescreva configurações administrativas legadas.
+ *
  * Exemplo completo:
  * `{ anime: "Meu Anime", name: "Meu Personagem", rarity: "rare", role: "dps", baseHp: 900,
  * baseAttack: 180, baseDefense: 100, baseSpeed: 110, passive: "Minha passiva",
