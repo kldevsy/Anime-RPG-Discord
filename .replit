@@ -25,3 +25,12 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/api-server run bot"
