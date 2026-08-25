@@ -12,7 +12,13 @@ Backend foundation for a professional Discord anime RPG, starting with persisten
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/db run migrate` — apply versioned Drizzle migrations before the bot starts
+- Required env: `DATABASE_URL` — Postgres connection string. It must be configured for the bot deployment so `pnpm --filter @workspace/db run migrate` can apply the schema before startup.
+- Set `USE_DATABASE=true` together with `DATABASE_URL` for the bot to use PostgreSQL rather than its local-memory mode.
+
+## Deploy
+
+The bot workflow runs `pnpm --filter @workspace/db run migrate` before building and starting the bot. Configure `DATABASE_URL` (and `USE_DATABASE=true`) in the deployment environment before restarting or deploying; do not run the bot against a database until this migration step succeeds.
 
 ## Stack
 
