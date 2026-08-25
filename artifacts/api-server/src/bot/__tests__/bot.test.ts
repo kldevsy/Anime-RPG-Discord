@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { commandDefinitions } from "../commands";
-import { createSummonResultEmbed, DEFAULT_EMBED_IMAGE_URL } from "../embeds";
+import { createBattleProgressEmbed, createSummonResultEmbed, DEFAULT_EMBED_IMAGE_URL } from "../embeds";
+import { SkillManager } from "../../battle/SkillManager";
 import { handleAutocompleteInteraction, handleInteraction } from "../handlers";
 import { validateBotEnv } from "../index";
 
@@ -215,6 +216,19 @@ describe("Discord Bot System", () => {
     ], "tickets", 1);
 
     expect(embed.data.image?.url).toBe(DEFAULT_EMBED_IMAGE_URL);
+  });
+
+  it("renders a ready ultimate bar and readable ultimate combat log", () => {
+    const hero = SkillManager.createCombatant({ id: "hero", name: "Hero", role: "dps", ultimateCharge: 100, ultimateChargeRequired: 100, ultimateReady: true });
+    const enemy = SkillManager.createCombatant({ id: "enemy", name: "Enemy", role: "tank" });
+    const embed = createBattleProgressEmbed("BotTester", "Teste", {
+      phase: "ACTION", round: 2, turn: 0, initiative: [hero.name], playerTeam: [hero], enemyTeam: [enemy],
+      actions: [{ round: 2, actorId: hero.id, actorName: hero.name, type: "ultimate", targetId: enemy.id, targetName: enemy.name, amount: 321, critical: true, skillName: hero.skills.ultimate.name }, { round: 2, actorId: hero.id, actorName: hero.name, type: "status_applied", targetName: enemy.name, statusType: "stun" }],
+    });
+    const fields = embed.data.fields ?? [];
+    expect(fields.find((field) => field.name.includes("Ultimates"))?.value).toContain("PRONTO");
+    expect(fields.find((field) => field.name.includes("Últimas ações"))?.value).toContain("ULTIMATE");
+    expect(fields.find((field) => field.name.includes("Últimas ações"))?.value).toContain("stun");
   });
 
   it("should handle /inventario command interaction", async () => {

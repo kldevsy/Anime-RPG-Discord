@@ -16,6 +16,8 @@ const battleRequest = z.object({
         attack: z.number().positive(),
         defense: z.number().nonnegative(),
         speed: z.number().positive(),
+        ultimateCharge: z.number().nonnegative().optional(),
+        ultimateChargeRequired: z.number().positive().optional(),
       })
     )
     .min(1)
@@ -40,6 +42,9 @@ function buildTeam(
       critDamage: 1.5,
       energy: 0,
       alive: true,
+      ultimateCharge: unit.ultimateCharge,
+      ultimateChargeRequired: unit.ultimateChargeRequired,
+      ultimateReady: (unit.ultimateCharge ?? 0) >= (unit.ultimateChargeRequired ?? 100),
     })
   );
 }

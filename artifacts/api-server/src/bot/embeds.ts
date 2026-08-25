@@ -158,10 +158,29 @@ function hpBar(unit: Combatant): string {
 function unitLine(unit: Combatant): string {
   const state = unit.alive ? "" : " • **DERROTADO**";
   const phase = unit.isBoss && unit.currentPhase && unit.maxPhases ? ` • Fase ${unit.currentPhase}/${unit.maxPhases}` : "";
-  return `**${unit.name}**${phase}${state}\n❤️ ${hpBar(unit)}\n⚡ ${unit.energy}/100 • 🛡️ ${unit.statusEffects.length ? unit.statusEffects.map((s) => s.type).join(", ") : "nenhum"}`;
+  return `**${unit.name}**${phase}${state}\n❤️ ${hpBar(unit)}\n🛡️ ${unit.statusEffects.length ? unit.statusEffects.map((s) => s.type).join(", ") : "nenhum"}`;
+}
+
+function ultimateLine(unit: Combatant): string {
+  const required = Math.max(1, unit.ultimateChargeRequired);
+  const filled = Math.round(Math.min(1, unit.ultimateCharge / required) * 8);
+  const ready = unit.ultimateReady ? " • **PRONTO**" : "";
+  const skill = unit.skills.ultimate;
+  const effects = skill.statusEffects?.map((effect) => effect.type).join(", ") ?? "dano/cura direto";
+  const policy = skill.chargePolicy;
+  const triggers = [policy.onTurnStart && `turno +${policy.onTurnStart}`, policy.onBasicHit && `básico +${policy.onBasicHit}`, policy.onDamageDealt && `dano +${policy.onDamageDealt}`, policy.onDamageReceived && `receber +${policy.onDamageReceived}`, policy.onCriticalHit && `crítico +${policy.onCriticalHit}`, policy.onDefeat && `abate +${policy.onDefeat}`].filter(Boolean).join(" • ") || "gatilho próprio não configurado";
+  return `✨ **${unit.name} — ${skill.name}**\n${"🟪".repeat(filled)}${"⬛".repeat(8 - filled)} ${unit.ultimateCharge}/${required}${ready}\n${skill.type} (${skill.targetType}) • ${effects}\n*Recarga: ${triggers}. Carga só é gasta ao usar a ultimate.*`;
 }
 
 function actionLine(action: BattleAction): string {
+  if (action.type === "ultimate") {
+    const target = action.targetName ? ` → **${action.targetName}**` : "";
+    const amount = action.amount ? ` • **${action.isHealing ? "+" : "-"}${action.amount} ${action.isHealing ? "HP" : "dano"}**` : "";
+    return `✨ **ULTIMATE: ${action.actorName} — ${action.skillName ?? action.ultimateKey ?? "Técnica"}**${target}${amount}${action.critical ? " • 💥 **CRÍTICO**" : ""}`;
+  }
+  if (action.type === "ultimate_ready") return `✨ **${action.actorName}: ULTIMATE PRONTA** (${action.finalCharge})`;
+  if (action.type === "ultimate_charge") return `🔋 ${action.actorName}: ${action.previousCharge} +${action.chargeDelta} → ${action.finalCharge}`;
+  if (action.type === "status_applied") return `✳️ **${action.targetName ?? action.actorName}** recebeu **${action.statusType}**`;
   const target = action.targetName ? ` → **${action.targetName}**` : "";
   const amount = action.amount ? ` • ${action.type === "heal" ? "+" : "-"}${action.amount}` : "";
   const critical = action.critical ? " • 💥 **CRÍTICO**" : "";
@@ -181,6 +200,7 @@ export function createBattleProgressEmbed(username: string, stageName: string, s
   const latestAction = snapshot.actions.at(-1);
   const actionText = latestAction ? actionLine(latestAction) : "Os combatentes estão se preparando...";
   const playerText = snapshot.playerTeam.map(unitLine).join("\n\n") || "Nenhum combatente";
+  const ultimateText = snapshot.playerTeam.map(ultimateLine).join("\n\n") || "Nenhuma ultimate disponível";
   const enemyText = snapshot.enemyTeam.map(unitLine).join("\n\n") || "Nenhum inimigo";
   const initiative = snapshot.initiative.length ? snapshot.initiative.join(" → ") : "Calculando iniciativa...";
   const recentActions = snapshot.actions.slice(-5).map(actionLine).join("\n") || "Aguardando o primeiro turno...";
@@ -192,6 +212,7 @@ export function createBattleProgressEmbed(username: string, stageName: string, s
     .addFields(
       { name: "🧑‍🤝‍🧑 Jogador", value: playerText, inline: true },
       { name: "👹 NPCs", value: enemyText, inline: true },
+      { name: "✨ Ultimates e regras de recarga", value: ultimateText },
       { name: "🎲 Iniciativa", value: initiative },
       { name: "📜 Últimas ações", value: recentActions }
     )

@@ -1,5 +1,5 @@
 import type { AutocompleteInteraction, ChatInputCommandInteraction } from "discord.js";
-import { EmbedBuilder } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, StringSelectMenuBuilder } from "discord.js";
 import {
   getOrCreateUser,
   getProfile,
@@ -43,9 +43,49 @@ import {
   createSummonResultEmbed,
   createTeamEmbed,
 } from "./embeds";
+import type { UltimateDecisionProvider } from "../battle/BattleState";
 
 type AutocompleteChoice = { name: string; value: string };
 type OwnedCharacterChoiceSource = { ownedId: string; level: number; position?: number; character: { id?: string; name: string; anime: string; rarity: string; role?: string } };
+
+const ULTIMATE_INTERACTION_TIMEOUT_MS = 15_000;
+
+/** Discord's timeout policy: save the prompt result and let server AI choose the
+ * normal tactical action. The client never gets authority to spend charge. */
+function discordUltimateDecisionProvider(interaction: ChatInputCommandInteraction): UltimateDecisionProvider {
+  return async ({ actor, validTargets }) => {
+    const message = await interaction.fetchReply();
+    const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`ultimate:use:${actor.id}`).setLabel(`Usar ${actor.skills.ultimate.name}`).setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId(`ultimate:hold:${actor.id}`).setLabel("Guardar carga").setStyle(ButtonStyle.Secondary),
+    );
+    const rows: Array<ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>> = [buttons];
+    if (actor.skills.ultimate.targetType.startsWith("single_") && validTargets.length > 1) {
+      rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder().setCustomId(`ultimate:target:${actor.id}`).setPlaceholder("Selecione o alvo")
+          .addOptions(validTargets.slice(0, 25).map((target) => ({ label: target.name.slice(0, 100), value: target.id }))),
+      ));
+    }
+    await interaction.editReply({ content: `✨ **${actor.name}** está com **${actor.skills.ultimate.name}** PRONTA. Escolha em 15s; sem resposta, a IA decide.`, components: rows as any });
+    try {
+      const click: any = await (message as any).awaitMessageComponent({ componentType: ComponentType.Button, time: ULTIMATE_INTERACTION_TIMEOUT_MS, filter: (component: any) => component.user.id === interaction.user.id && component.customId.endsWith(actor.id) });
+      await click.deferUpdate();
+      if (click.customId.startsWith("ultimate:hold")) return null;
+      let targetId = validTargets[0]?.id;
+      if (actor.skills.ultimate.targetType.startsWith("single_") && validTargets.length > 1) {
+        const targetMenu: any = await (message as any).awaitMessageComponent({ componentType: ComponentType.StringSelect, time: ULTIMATE_INTERACTION_TIMEOUT_MS, filter: (component: any) => component.user.id === interaction.user.id && component.customId === `ultimate:target:${actor.id}` });
+        targetId = targetMenu.values[0];
+        await targetMenu.deferUpdate();
+      }
+      return { actorId: actor.id, targetId, useUltimate: true };
+    } catch {
+      // Expiration intentionally returns null: BattleEngine falls back to AI.
+      return null;
+    } finally {
+      await interaction.editReply({ components: [] });
+    }
+  };
+}
 
 function formatCharacterChoice(item: OwnedCharacterChoiceSource, position?: number): AutocompleteChoice {
   const prefix = position ? `#${position} • ` : "";
@@ -364,7 +404,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         }
         await interaction.editReply({ embeds: [createBattleProgressEmbed(username, stageName, snapshot)] });
         lastUpdate = Date.now();
-      });
+      }, discordUltimateDecisionProvider(interaction));
 
       const embed = createBattleResultEmbed(username, stageName, result, rewards, drops);
       await interaction.editReply({ embeds: [embed] });

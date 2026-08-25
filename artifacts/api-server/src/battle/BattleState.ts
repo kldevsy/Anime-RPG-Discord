@@ -174,6 +174,8 @@ export interface BattleAction {
   targetId?: string;
   targetName?: string;
   amount?: number;
+  /** Allows presentation clients to distinguish ultimate damage from healing. */
+  isHealing?: boolean;
   critical?: boolean;
   skillName?: string;
   statusType?: StatusType;
@@ -193,3 +195,16 @@ export interface BattleSnapshot {
   enemyTeam: Combatant[];
   actions: BattleAction[];
 }
+
+/** A server-validated request to spend the current ultimate charge. */
+export interface UltimateDecision {
+  actorId: string;
+  targetId?: string;
+  useUltimate: boolean;
+}
+
+export type UltimateDecisionProvider = (context: {
+  snapshot: BattleSnapshot;
+  actor: Combatant;
+  validTargets: Combatant[];
+}) => Promise<UltimateDecision | null> | UltimateDecision | null;

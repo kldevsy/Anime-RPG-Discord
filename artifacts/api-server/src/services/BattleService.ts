@@ -3,7 +3,7 @@ import { battleActions, battleSnapshots, battles, characters, teamMembers, teams
 import { db } from "@workspace/db";
 import { BattleEngine } from "../battle/BattleEngine";
 import { SkillManager } from "../battle/SkillManager";
-import type { BattleSnapshot, Combatant } from "../battle/BattleState";
+import type { BattleSnapshot, Combatant, UltimateDecisionProvider } from "../battle/BattleState";
 import { getPveStageById, listPveStages, recordPveProgress, type PveStageDrop } from "./PveService";
 import { getProfile, getTeam } from "./PhaseOneService";
 
@@ -23,11 +23,11 @@ const memoryBattles: MemoryBattleRecord[] = [];
 
 export type BattleSnapshotHandler = (snapshot: BattleSnapshot) => Promise<void> | void;
 
-async function runEngine(engine: BattleEngine, onSnapshot?: BattleSnapshotHandler): Promise<BattleSnapshot> {
-  return onSnapshot ? engine.runAnimated(onSnapshot) : engine.run();
+async function runEngine(engine: BattleEngine, onSnapshot?: BattleSnapshotHandler, ultimateDecisionProvider?: UltimateDecisionProvider): Promise<BattleSnapshot> {
+  return onSnapshot ? engine.runAnimated(onSnapshot, 100, ultimateDecisionProvider) : engine.run();
 }
 
-export async function runPlayerBattle(discordId: string, stageId?: string, onSnapshot?: BattleSnapshotHandler) {
+export async function runPlayerBattle(discordId: string, stageId?: string, onSnapshot?: BattleSnapshotHandler, ultimateDecisionProvider?: UltimateDecisionProvider) {
   if (!db) {
     const profile = await getProfile(discordId);
     if (!profile) throw new BattleServiceError("Profile not found.");
@@ -92,7 +92,7 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
       }),
     ];
 
-    const result = await runEngine(new BattleEngine(player, enemy), onSnapshot);
+    const result = await runEngine(new BattleEngine(player, enemy), onSnapshot, ultimateDecisionProvider);
     const status = result.phase === "VICTORY" ? "victory" : result.phase === "DEFEAT" ? "defeat" : "draw";
     const rewards = status === "victory" ? { gold: stage.rewardGold, xp: stage.rewardXp } : { gold: 0, xp: 0 };
 
@@ -189,7 +189,7 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
     }),
   ];
 
-  const result = await runEngine(new BattleEngine(player, enemy), onSnapshot);
+  const result = await runEngine(new BattleEngine(player, enemy), onSnapshot, ultimateDecisionProvider);
   const status = result.phase === "VICTORY" ? "victory" : result.phase === "DEFEAT" ? "defeat" : "draw";
   const rewards = status === "victory" ? { gold: stage.rewardGold, xp: stage.rewardXp } : { gold: 0, xp: 0 };
 

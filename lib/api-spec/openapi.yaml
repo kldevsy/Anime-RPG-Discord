@@ -11,6 +11,34 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /battles/simulate:
+    post:
+      operationId: simulateBattle
+      tags: [battle]
+      summary: Simulate a battle with ultimate charge telemetry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerTeam]
+              properties:
+                playerTeam:
+                  type: array
+                  minItems: 1
+                  maxItems: 5
+                  items:
+                    $ref: "#/components/schemas/BattleUnitInput"
+      responses:
+        "200":
+          description: Completed battle including ultimate state and charge events.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BattleSnapshot"
+        "400":
+          description: Invalid battle team.
   /healthz:
     get:
       operationId: healthCheck
@@ -26,6 +54,62 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    BattleUnitInput:
+      type: object
+      required: [id, name, role, maxHp, attack, defense, speed]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { type: string, enum: [tank, dps, support, healer, control] }
+        maxHp: { type: number }
+        attack: { type: number }
+        defense: { type: number }
+        speed: { type: number }
+        ultimateCharge: { type: number, minimum: 0 }
+        ultimateChargeRequired: { type: number, minimum: 1 }
+    BattleAction:
+      type: object
+      required: [round, actorId, actorName, type]
+      properties:
+        round: { type: number }
+        actorId: { type: string }
+        actorName: { type: string }
+        type: { type: string, enum: [basic_attack, skill1, skill2, ultimate, heal, shield, buff, debuff, stun, dot, revive, defeat, status_applied, status_dot, boss_phase_change, boss_enrage, ultimate_charge, ultimate_ready, ultimate_used] }
+        targetId: { type: string }
+        targetName: { type: string }
+        amount: { type: number }
+        isHealing: { type: boolean }
+        critical: { type: boolean }
+        skillName: { type: string }
+        statusType: { type: string }
+        ultimateKey: { type: string }
+        chargeSource: { type: string }
+        previousCharge: { type: number }
+        chargeDelta: { type: number }
+        finalCharge: { type: number }
+    BattleCombatant:
+      type: object
+      required: [id, name, hp, maxHp, alive, ultimateCharge, ultimateChargeRequired, ultimateReady]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        hp: { type: number }
+        maxHp: { type: number }
+        alive: { type: boolean }
+        ultimateCharge: { type: number }
+        ultimateChargeRequired: { type: number }
+        ultimateReady: { type: boolean }
+    BattleSnapshot:
+      type: object
+      required: [phase, round, turn, initiative, playerTeam, enemyTeam, actions]
+      properties:
+        phase: { type: string }
+        round: { type: number }
+        turn: { type: number }
+        initiative: { type: array, items: { type: string } }
+        playerTeam: { type: array, items: { $ref: "#/components/schemas/BattleCombatant" } }
+        enemyTeam: { type: array, items: { $ref: "#/components/schemas/BattleCombatant" } }
+        actions: { type: array, items: { $ref: "#/components/schemas/BattleAction" } }
     HealthStatus:
       type: object
       properties:
@@ -33,4 +117,3 @@ components:
           type: string
       required:
         - status
-
