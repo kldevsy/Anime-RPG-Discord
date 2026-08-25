@@ -13,6 +13,16 @@ describe("Discord Bot System", () => {
     expect(bannerOpt.autocomplete).toBe(true);
     expect(bannerOpt.description).toBe("Escolha ou pesquise um banner ativo");
   });
+
+  it("should configure /batalha stage option with autocomplete and selection guidance", () => {
+    const batalhaCmd = commandDefinitions.find((cmd) => cmd.name === "batalha");
+    const json = batalhaCmd?.toJSON();
+    const stageOpt = json?.options?.find((opt: any) => opt.name === "estagio_id") as any;
+
+    expect(stageOpt).toBeDefined();
+    expect(stageOpt.autocomplete).toBe(true);
+    expect(stageOpt.description).toContain("Selecione um estágio");
+  });
   it("should define all required user and admin slash commands", () => {
     const commandNames = commandDefinitions.map((cmd) => cmd.name);
     expect(commandNames).toContain("perfil");
@@ -77,6 +87,26 @@ describe("Discord Bot System", () => {
     expect(choices.length).toBeGreaterThan(0);
     expect(choices[0].name).toContain("Normal");
     expect(choices[0].value).toBeDefined();
+  });
+
+  it("should return searchable UUID choices for /batalha stage autocomplete", async () => {
+    const respondMock = vi.fn();
+    const mockInteraction: any = {
+      commandName: "batalha",
+      user: { id: "bot_test_user_1", username: "BotTester" },
+      options: {
+        getFocused: () => ({ name: "estagio_id", value: "Fronteira" }),
+      },
+      respond: respondMock,
+    };
+
+    await handleAutocompleteInteraction(mockInteraction);
+
+    const choices = respondMock.mock.calls[0][0];
+    expect(choices).toContainEqual({
+      name: expect.stringContaining("Fronteira das Ondas"),
+      value: "20000000-0000-4000-8000-000000000001",
+    });
   });
 
   it("should ask user to select banner when multiple banners are active and none specified in /invocar", async () => {
