@@ -1,6 +1,7 @@
 import { randomInt } from "node:crypto";
 import { chooseAction } from "./AIController";
 import { calculateDamage } from "./DamageCalculator";
+import { StatusManager } from "./StatusManager";
 import type { BattleAction, BattlePhase, BattleSnapshot, Combatant } from "./BattleState";
 
 export class BattleEngine {
@@ -24,7 +25,9 @@ export class BattleEngine {
   }
 
   run(maxRounds = 100): BattleSnapshot {
-    for (let step = 0; step < maxRounds * 20 && !this.isFinished(); step += 1) this.step();
+    for (let step = 0; step < maxRounds * 30 && !this.isFinished(); step += 1) {
+      this.step();
+    }
     if (this.isFinished()) this.phase = this.resultPhase();
     else this.phase = "DRAW";
     return this.snapshot();
@@ -33,66 +36,281 @@ export class BattleEngine {
   step(): BattleSnapshot {
     if (this.isFinished()) return this.snapshot();
     switch (this.phase) {
-      case "WAITING": this.phase = "PREPARING"; break;
-      case "PREPARING": this.phase = "INITIATIVE"; break;
+      case "WAITING":
+        this.phase = "PREPARING";
+        break;
+      case "PREPARING":
+        this.phase = "INITIATIVE";
+        break;
       case "INITIATIVE":
-        this.initiative = [...this.playerTeam, ...this.enemyTeam].filter((unit) => unit.alive).sort((a, b) => b.speed - a.speed || randomInt(0, 2) - 0.5);
+        this.calculateInitiative();
         this.phase = "ROUND_START";
         break;
-      case "ROUND_START": this.round += 1; this.turn = 0; this.phase = "CHARACTER_TURN"; break;
-      case "CHARACTER_TURN":
-        if (this.turn >= this.initiative.length) this.phase = "ROUND_END";
-        else this.phase = "ACTION";
+      case "ROUND_START":
+        this.round += 1;
+        this.turn = 0;
+        this.processRoundStart();
+        this.phase = "CHARACTER_TURN";
         break;
-      case "ACTION": this.performTurn(); this.phase = "DAMAGE"; break;
-      case "DAMAGE": this.phase = "STATUS_PROCESS"; break;
-      case "STATUS_PROCESS": this.phase = "DEATH_CHECK"; break;
-      case "DEATH_CHECK": this.checkDeaths(); this.phase = "NEXT_TURN"; break;
-      case "NEXT_TURN": this.turn += 1; this.phase = "CHARACTER_TURN"; break;
-      case "ROUND_END": this.phase = this.isFinished() ? this.resultPhase() : "INITIATIVE"; break;
-      default: break;
+      case "CHARACTER_TURN":
+        if (this.turn >= this.initiative.length) {
+          this.phase = "ROUND_END";
+        } else {
+          this.phase = "ACTION";
+        }
+        break;
+      case "ACTION":
+        this.performTurn();
+        this.phase = "DAMAGE";
+        break;
+      case "DAMAGE":
+        this.phase = "STATUS_PROCESS";
+        break;
+      case "STATUS_PROCESS":
+        this.phase = "DEATH_CHECK";
+        break;
+      case "DEATH_CHECK":
+        this.checkDeaths();
+        this.phase = "NEXT_TURN";
+        break;
+      case "NEXT_TURN":
+        this.turn += 1;
+        this.phase = "CHARACTER_TURN";
+        break;
+      case "ROUND_END":
+        this.processRoundEnd();
+        this.phase = this.isFinished() ? this.resultPhase() : "INITIATIVE";
+        break;
+      default:
+        break;
     }
     return this.snapshot();
   }
 
-  private performTurn() {
-    const actor = this.initiative[this.turn];
-    if (!actor?.alive) return;
-    const allies = this.teamOf(actor);
-    const enemies = allies === this.playerTeam ? this.enemyTeam : this.playerTeam;
-    const action = chooseAction(actor, allies, enemies);
-    if (action === "heal") {
-      const target = allies.filter((unit) => unit.alive).sort((a, b) => a.hp - b.hp)[0] ?? actor;
-      const amount = Math.min(target.maxHp - target.hp, Math.floor(actor.attack * 0.8));
-      target.hp += amount;
-      actor.energy = 0;
-      this.actions.push({ round: this.round, actorId: actor.id, actorName: actor.name, type: "heal", targetId: target.id, targetName: target.name, amount });
-      return;
-    }
-    const target = enemies.filter((unit) => unit.alive).sort((a, b) => a.hp - b.hp)[0];
-    if (!target) return;
-    const critical = action === "ultimate" ? 0 : randomInt(0, 100);
-    const damage = calculateDamage(actor, target, critical);
-    const multiplier = action === "ultimate" ? 2 : 1;
-    const amount = Math.min(target.hp, damage.amount * multiplier);
-    target.hp -= amount;
-    actor.energy = action === "ultimate" ? 0 : Math.min(100, actor.energy + 25);
-    this.actions.push({ round: this.round, actorId: actor.id, actorName: actor.name, type: action, targetId: target.id, targetName: target.name, amount, critical: damage.critical });
+  private calculateInitiative() {
+    const allAlive = [...this.playerTeam, ...this.enemyTeam].filter((unit) => unit.alive);
+    this.initiative = allAlive.sort((a, b) => {
+      const speedA = StatusManager.getEffectiveSpeed(a) + randomInt(-2, 3);
+      const speedB = StatusManager.getEffectiveSpeed(b) + randomInt(-2, 3);
+      return speedB - speedA;
+    });
   }
 
-  private teamOf(actor: Combatant) { return this.playerTeam.includes(actor) ? this.playerTeam : this.enemyTeam; }
-  private checkDeaths() {
+  private processRoundStart() {
     for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
-      if (unit.alive && unit.hp <= 0) {
-        unit.hp = 0; unit.alive = false;
-        this.actions.push({ round: this.round, actorId: "system", actorName: "Sistema", type: "defeat", targetId: unit.id, targetName: unit.name });
+      if (!unit.alive) continue;
+      for (const key of Object.keys(unit.cooldowns)) {
+        if (unit.cooldowns[key] > 0) unit.cooldowns[key] -= 1;
+      }
+      const { damage, log } = StatusManager.processTurnStartDoTs(unit);
+      for (const entry of log) {
+        this.actions.push({
+          round: this.round,
+          actorId: unit.id,
+          actorName: unit.name,
+          type: "status_dot",
+          amount: entry.amount,
+          statusType: entry.type,
+        });
       }
     }
   }
-  private isFinished() { return !this.playerTeam.some((unit) => unit.alive) || !this.enemyTeam.some((unit) => unit.alive); }
+
+  private performTurn() {
+    const actor = this.initiative[this.turn];
+    if (!actor || !actor.alive) return;
+
+    if (StatusManager.isControlStunned(actor)) {
+      this.actions.push({
+        round: this.round,
+        actorId: actor.id,
+        actorName: actor.name,
+        type: "status_applied",
+        statusType: "stun",
+      });
+      return;
+    }
+
+    const allies = this.teamOf(actor);
+    const enemies = allies === this.playerTeam ? this.enemyTeam : this.playerTeam;
+
+    const selected = chooseAction(actor, allies, enemies);
+    if (!selected) return;
+
+    const { skill, actionKey, target } = selected;
+    actor.cooldowns[actionKey] = skill.cooldown;
+
+    if (actionKey === "basic") {
+      actor.energy = Math.min(100, actor.energy + 25);
+    } else {
+      actor.energy = Math.max(0, actor.energy - skill.energyCost);
+    }
+
+    const targets = this.determineSkillTargets(skill, target, allies, enemies);
+    const actionType: BattleAction["type"] = actionKey === "basic" ? "basic_attack" : actionKey;
+
+    for (const tgt of targets) {
+      if (!tgt.alive && skill.type !== "REVIVE") continue;
+
+      if (skill.type === "HEAL") {
+        const healAmount = Math.floor(StatusManager.getEffectiveAttack(actor) * skill.multiplier);
+        const actualHeal = Math.min(tgt.maxHp - tgt.hp, healAmount);
+        tgt.hp += actualHeal;
+        this.actions.push({
+          round: this.round,
+          actorId: actor.id,
+          actorName: actor.name,
+          type: "heal",
+          targetId: tgt.id,
+          targetName: tgt.name,
+          amount: actualHeal,
+          skillName: skill.name,
+        });
+      } else if (skill.type === "REVIVE") {
+        if (!tgt.alive) {
+          tgt.alive = true;
+          tgt.hp = Math.floor(tgt.maxHp * 0.5);
+          this.actions.push({
+            round: this.round,
+            actorId: actor.id,
+            actorName: actor.name,
+            type: "revive",
+            targetId: tgt.id,
+            targetName: tgt.name,
+            amount: tgt.hp,
+            skillName: skill.name,
+          });
+        }
+      } else if (skill.type === "SHIELD" || skill.type === "BUFF") {
+        if (skill.statusEffects) {
+          for (const eff of skill.statusEffects) {
+            if (randomInt(0, 100) < eff.chance) {
+              StatusManager.applyStatus(tgt, {
+                type: eff.type,
+                duration: eff.duration,
+                stacks: 1,
+                value: eff.value,
+                originId: actor.id,
+              });
+              this.actions.push({
+                round: this.round,
+                actorId: actor.id,
+                actorName: actor.name,
+                type: skill.type === "SHIELD" ? "shield" : "buff",
+                targetId: tgt.id,
+                targetName: tgt.name,
+                amount: eff.value,
+                statusType: eff.type,
+                skillName: skill.name,
+              });
+            }
+          }
+        }
+      } else {
+        const critRoll = randomInt(0, 100);
+        const dmgResult = calculateDamage(actor, tgt, skill, critRoll);
+
+        tgt.hp = Math.max(0, tgt.hp - dmgResult.finalDamage);
+        if (tgt.hp === 0) tgt.alive = false;
+
+        this.actions.push({
+          round: this.round,
+          actorId: actor.id,
+          actorName: actor.name,
+          type: actionType,
+          targetId: tgt.id,
+          targetName: tgt.name,
+          amount: dmgResult.finalDamage,
+          critical: dmgResult.critical,
+          skillName: skill.name,
+        });
+
+        if (skill.statusEffects && tgt.alive) {
+          for (const eff of skill.statusEffects) {
+            if (randomInt(0, 100) < eff.chance) {
+              StatusManager.applyStatus(tgt, {
+                type: eff.type,
+                duration: eff.duration,
+                stacks: 1,
+                value: eff.value,
+                originId: actor.id,
+              });
+              this.actions.push({
+                round: this.round,
+                actorId: actor.id,
+                actorName: actor.name,
+                type: "status_applied",
+                targetId: tgt.id,
+                targetName: tgt.name,
+                statusType: eff.type,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private determineSkillTargets(
+    skill: { targetType: string },
+    primaryTarget: Combatant,
+    allies: Combatant[],
+    enemies: Combatant[]
+  ): Combatant[] {
+    switch (skill.targetType) {
+      case "aoe_enemy":
+        return enemies.filter((u) => u.alive);
+      case "aoe_ally":
+        return allies.filter((u) => u.alive || skill.targetType === "REVIVE");
+      case "self":
+        return [primaryTarget];
+      case "single_ally":
+      case "single_enemy":
+      default:
+        return primaryTarget ? [primaryTarget] : [];
+    }
+  }
+
+  private processRoundEnd() {
+    for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
+      if (unit.alive) {
+        StatusManager.decrementDurations(unit);
+      }
+    }
+  }
+
+  private teamOf(actor: Combatant) {
+    return this.playerTeam.includes(actor) ? this.playerTeam : this.enemyTeam;
+  }
+
+  private checkDeaths() {
+    for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
+      if (unit.alive && unit.hp <= 0) {
+        unit.hp = 0;
+        unit.alive = false;
+        this.actions.push({
+          round: this.round,
+          actorId: "system",
+          actorName: unit.name,
+          type: "defeat",
+          targetId: unit.id,
+          targetName: unit.name,
+        });
+      }
+    }
+  }
+
+  private isFinished() {
+    return !this.playerTeam.some((unit) => unit.alive) || !this.enemyTeam.some((unit) => unit.alive);
+  }
+
   private resultPhase(): BattlePhase {
-    if (this.playerTeam.some((unit) => unit.alive)) return "VICTORY";
-    if (this.enemyTeam.some((unit) => unit.alive)) return "DEFEAT";
+    if (this.playerTeam.some((unit) => unit.alive) && !this.enemyTeam.some((unit) => unit.alive)) {
+      return "VICTORY";
+    }
+    if (this.enemyTeam.some((unit) => unit.alive) && !this.playerTeam.some((unit) => unit.alive)) {
+      return "DEFEAT";
+    }
     return "DRAW";
   }
 }

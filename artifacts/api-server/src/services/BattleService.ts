@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { battleActions, battleSnapshots, battles, characters, teamMembers, teams, userCharacters, users, economyTransactions, pveStages } from "@workspace/db";
 import { db } from "@workspace/db";
 import { BattleEngine } from "../battle/BattleEngine";
+import { SkillManager } from "../battle/SkillManager";
 import type { Combatant } from "../battle/BattleState";
 
 export class BattleServiceError extends Error {}
@@ -18,23 +19,52 @@ export async function runPlayerBattle(discordId: string, stageId?: string) {
     .innerJoin(characters, eq(userCharacters.characterId, characters.id))
     .where(eq(teamMembers.teamId, team.id)).orderBy(asc(teamMembers.position));
   if (!members.length) throw new BattleServiceError("Your team is empty.");
-  const player: Combatant[] = members.map(({ owned, character }) => ({
-    id: owned.id, name: character.name, role: character.role, maxHp: character.baseHp + owned.level * 40,
-    hp: character.baseHp + owned.level * 40, attack: character.baseAttack + owned.level * 8,
-    defense: character.baseDefense + owned.level * 5, speed: character.baseSpeed, critChance: 15,
-    critDamage: 1.5, energy: 0, alive: true,
-  }));
+
+  const player: Combatant[] = members.map(({ owned, character }) => {
+    const maxHp = character.baseHp + owned.level * 40;
+    return SkillManager.createCombatant({
+      id: owned.id,
+      name: character.name,
+      role: character.role,
+      maxHp,
+      hp: maxHp,
+      attack: character.baseAttack + owned.level * 8,
+      defense: character.baseDefense + owned.level * 5,
+      speed: character.baseSpeed,
+      critChance: 15,
+      critDamage: 1.5,
+      energy: 0,
+      alive: true,
+      passive: character.passive ?? undefined,
+    });
+  });
+
   const stage = stageId
     ? await database.query.pveStages.findFirst({ where: and(eq(pveStages.id, stageId), eq(pveStages.active, 1)) })
     : await database.select().from(pveStages).where(eq(pveStages.active, 1)).orderBy(asc(pveStages.position)).limit(1).then((rows) => rows[0]);
   if (!stage) throw new BattleServiceError("PvE stage not found.");
-  const enemy: Combatant[] = [{
-    id: stage.id, name: stage.enemyName, role: "tank", maxHp: stage.enemyHp, hp: stage.enemyHp,
-    attack: stage.enemyAttack, defense: stage.enemyDefense, speed: stage.enemySpeed, critChance: 8, critDamage: 1.4, energy: 0, alive: true,
-  }];
+
+  const enemy: Combatant[] = [
+    SkillManager.createCombatant({
+      id: stage.id,
+      name: stage.enemyName,
+      role: "tank",
+      maxHp: stage.enemyHp,
+      hp: stage.enemyHp,
+      attack: stage.enemyAttack,
+      defense: stage.enemyDefense,
+      speed: stage.enemySpeed,
+      critChance: 8,
+      critDamage: 1.4,
+      energy: 0,
+      alive: true,
+    }),
+  ];
+
   const result = new BattleEngine(player, enemy).run();
   const status = result.phase === "VICTORY" ? "victory" : result.phase === "DEFEAT" ? "defeat" : "draw";
   const rewards = status === "victory" ? { gold: stage.rewardGold, xp: stage.rewardXp } : { gold: 0, xp: 0 };
+
   return database.transaction(async (tx) => {
     const [battle] = await tx.insert(battles).values({ userId: user.id, status, round: result.round, rewards, completedAt: new Date() }).returning();
     await tx.insert(battleSnapshots).values({ battleId: battle.id, round: result.round, turn: result.turn, state: result as unknown as Record<string, unknown> });
