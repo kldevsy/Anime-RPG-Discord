@@ -223,6 +223,12 @@ export class SkillManager {
       cooldowns: partial.cooldowns ?? {},
       skills,
       passive: partial.passive,
+      isBoss: partial.isBoss,
+      currentPhase: partial.currentPhase,
+      maxPhases: partial.maxPhases,
+      enrageRound: partial.enrageRound,
+      isEnraged: partial.isEnraged,
+      drops: partial.drops,
     };
   }
 }

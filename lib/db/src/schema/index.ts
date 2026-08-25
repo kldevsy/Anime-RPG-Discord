@@ -199,10 +199,22 @@ export const pveStages = pgTable("pve_stages", {
   enemyAttack: integer("enemy_attack").notNull(),
   enemyDefense: integer("enemy_defense").notNull(),
   enemySpeed: integer("enemy_speed").notNull(),
+  bossPhases: integer("boss_phases").notNull().default(1),
+  enrageRound: integer("enrage_round").notNull().default(10),
+  drops: jsonb("drops").$type<Array<{ itemKey: string; quantity: number; chance: number }>>().default([]),
   rewardGold: integer("reward_gold").notNull().default(0),
   rewardXp: integer("reward_xp").notNull().default(0),
   active: integer("active").notNull().default(1),
 });
+
+export const userPveProgress = pgTable("user_pve_progress", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  stageId: uuid("stage_id").notNull().references(() => pveStages.id, { onDelete: "cascade" }),
+  clearedAt: timestamp("cleared_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("user_pve_progress_user_stage_unique").on(table.userId, table.stageId),
+]);
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCharacterSchema = createInsertSchema(characters).omit({ id: true, createdAt: true });

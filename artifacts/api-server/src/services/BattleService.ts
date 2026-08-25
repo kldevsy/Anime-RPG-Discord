@@ -1,14 +1,125 @@
 import { and, asc, eq } from "drizzle-orm";
-import { battleActions, battleSnapshots, battles, characters, teamMembers, teams, userCharacters, users, economyTransactions, pveStages } from "@workspace/db";
+import { battleActions, battleSnapshots, battles, characters, teamMembers, teams, userCharacters, users, economyTransactions, inventory } from "@workspace/db";
 import { db } from "@workspace/db";
 import { BattleEngine } from "../battle/BattleEngine";
 import { SkillManager } from "../battle/SkillManager";
 import type { Combatant } from "../battle/BattleState";
+import { getPveStageById, listPveStages, recordPveProgress, type PveStageDrop } from "./PveService";
+import { getProfile, getTeam } from "./PhaseOneService";
 
 export class BattleServiceError extends Error {}
 
+interface MemoryBattleRecord {
+  id: string;
+  userId: string;
+  status: "victory" | "defeat" | "draw";
+  round: number;
+  rewards: { gold: number; xp: number };
+  createdAt: Date;
+  completedAt: Date;
+}
+
+const memoryBattles: MemoryBattleRecord[] = [];
+
 export async function runPlayerBattle(discordId: string, stageId?: string) {
-  if (!db) throw new BattleServiceError("PostgreSQL is required for persistent battles.");
+  if (!db) {
+    const profile = await getProfile(discordId);
+    if (!profile) throw new BattleServiceError("Profile not found.");
+    let teamData = await getTeam(discordId);
+    if (!teamData || !teamData.members.length) {
+      if (profile.collection.length > 0) {
+        const { replaceTeam } = await import("./PhaseOneService");
+        await replaceTeam(discordId, "Equipe Principal", profile.collection.slice(0, 5).map((c) => c.ownedId));
+        teamData = await getTeam(discordId);
+      }
+    }
+    if (!teamData || !teamData.members.length) throw new BattleServiceError("Create a team before starting a battle.");
+
+    const player: Combatant[] = teamData.members.map(({ ownedId, level, character }) => {
+      const maxHp = character.baseHp + level * 40;
+      return SkillManager.createCombatant({
+        id: ownedId,
+        name: character.name,
+        role: character.role,
+        maxHp,
+        hp: maxHp,
+        attack: character.baseAttack + level * 8,
+        defense: character.baseDefense + level * 5,
+        speed: character.baseSpeed,
+        critChance: 15,
+        critDamage: 1.5,
+        energy: 0,
+        alive: true,
+        passive: character.passive ?? undefined,
+      });
+    });
+
+    let stage = stageId ? await getPveStageById(stageId) : null;
+    if (!stage) {
+      const stages = await listPveStages();
+      stage = stages[0] ?? null;
+    }
+    if (!stage) throw new BattleServiceError("PvE stage not found.");
+
+    const isBossStage = stage.type === "boss" || stage.type === "raid" || stage.bossPhases > 1;
+
+    const enemy: Combatant[] = [
+      SkillManager.createCombatant({
+        id: stage.id,
+        name: stage.enemyName,
+        role: "tank",
+        maxHp: stage.enemyHp,
+        hp: stage.enemyHp,
+        attack: stage.enemyAttack,
+        defense: stage.enemyDefense,
+        speed: stage.enemySpeed,
+        critChance: 8,
+        critDamage: 1.4,
+        energy: 0,
+        alive: true,
+        isBoss: isBossStage,
+        currentPhase: isBossStage ? 1 : undefined,
+        maxPhases: isBossStage ? stage.bossPhases : undefined,
+        enrageRound: isBossStage ? stage.enrageRound : undefined,
+        drops: stage.drops,
+      }),
+    ];
+
+    const result = new BattleEngine(player, enemy).run();
+    const status = result.phase === "VICTORY" ? "victory" : result.phase === "DEFEAT" ? "defeat" : "draw";
+    const rewards = status === "victory" ? { gold: stage.rewardGold, xp: stage.rewardXp } : { gold: 0, xp: 0 };
+
+    const awardedDrops: PveStageDrop[] = [];
+    if (status === "victory" && stage.drops && stage.drops.length > 0) {
+      for (const drop of stage.drops) {
+        if (Math.random() * 100 < drop.chance) {
+          awardedDrops.push(drop);
+          if (drop.itemKey === "gems") profile.user.gems += drop.quantity;
+          else if (drop.itemKey === "tickets") profile.user.tickets += drop.quantity;
+          else if (drop.itemKey === "gold") profile.user.gold += drop.quantity;
+        }
+      }
+    }
+
+    if (status === "victory") {
+      profile.user.gold += rewards.gold;
+      await recordPveProgress(profile.user.id, stage.id);
+    }
+
+    const battleRecord: MemoryBattleRecord = {
+      id: crypto.randomUUID(),
+      userId: profile.user.id,
+      status,
+      round: result.round,
+      rewards,
+      createdAt: new Date(),
+      completedAt: new Date(),
+    };
+    memoryBattles.push(battleRecord);
+
+    return { battle: battleRecord, result, rewards, drops: awardedDrops };
+  }
+
   const database = db;
   const user = await database.query.users.findFirst({ where: eq(users.discordId, discordId) });
   if (!user) throw new BattleServiceError("Profile not found.");
@@ -39,10 +150,14 @@ export async function runPlayerBattle(discordId: string, stageId?: string) {
     });
   });
 
-  const stage = stageId
-    ? await database.query.pveStages.findFirst({ where: and(eq(pveStages.id, stageId), eq(pveStages.active, 1)) })
-    : await database.select().from(pveStages).where(eq(pveStages.active, 1)).orderBy(asc(pveStages.position)).limit(1).then((rows) => rows[0]);
+  let stage = stageId ? await getPveStageById(stageId) : null;
+  if (!stage) {
+    const stages = await listPveStages();
+    stage = stages[0] ?? null;
+  }
   if (!stage) throw new BattleServiceError("PvE stage not found.");
+
+  const isBossStage = stage.type === "boss" || stage.type === "raid" || stage.bossPhases > 1;
 
   const enemy: Combatant[] = [
     SkillManager.createCombatant({
@@ -58,12 +173,26 @@ export async function runPlayerBattle(discordId: string, stageId?: string) {
       critDamage: 1.4,
       energy: 0,
       alive: true,
+      isBoss: isBossStage,
+      currentPhase: isBossStage ? 1 : undefined,
+      maxPhases: isBossStage ? stage.bossPhases : undefined,
+      enrageRound: isBossStage ? stage.enrageRound : undefined,
+      drops: stage.drops,
     }),
   ];
 
   const result = new BattleEngine(player, enemy).run();
   const status = result.phase === "VICTORY" ? "victory" : result.phase === "DEFEAT" ? "defeat" : "draw";
   const rewards = status === "victory" ? { gold: stage.rewardGold, xp: stage.rewardXp } : { gold: 0, xp: 0 };
+
+  const awardedDrops: PveStageDrop[] = [];
+  if (status === "victory" && stage.drops && stage.drops.length > 0) {
+    for (const drop of stage.drops) {
+      if (Math.random() * 100 < drop.chance) {
+        awardedDrops.push(drop);
+      }
+    }
+  }
 
   return database.transaction(async (tx) => {
     const [battle] = await tx.insert(battles).values({ userId: user.id, status, round: result.round, rewards, completedAt: new Date() }).returning();
@@ -75,15 +204,34 @@ export async function runPlayerBattle(discordId: string, stageId?: string) {
       })));
     }
     if (status === "victory") {
-      await tx.update(users).set({ gold: user.gold + rewards.gold, updatedAt: new Date() }).where(eq(users.id, user.id));
+      let updatedGold = user.gold + rewards.gold;
+      let updatedGems = user.gems;
+      let updatedTickets = user.tickets;
+
+      for (const drop of awardedDrops) {
+        if (drop.itemKey === "gems") updatedGems += drop.quantity;
+        else if (drop.itemKey === "tickets") updatedTickets += drop.quantity;
+        else if (drop.itemKey === "gold") updatedGold += drop.quantity;
+        else {
+          await tx.insert(inventory).values({ userId: user.id, itemKey: drop.itemKey, quantity: drop.quantity })
+            .onConflictDoUpdate({ target: [inventory.userId, inventory.itemKey], set: { quantity: drop.quantity, updatedAt: new Date() } });
+        }
+      }
+
+      await tx.update(users).set({ gold: updatedGold, gems: updatedGems, tickets: updatedTickets, updatedAt: new Date() }).where(eq(users.id, user.id));
       await tx.insert(economyTransactions).values({ userId: user.id, currency: "gold", amount: rewards.gold, type: "earn", source: "battle", referenceId: `battle:${battle.id}` });
+      await recordPveProgress(user.id, stage.id);
     }
-    return { battle, result };
+    return { battle, result, rewards, drops: awardedDrops };
   });
 }
 
 export async function listPlayerBattles(discordId: string) {
-  if (!db) throw new BattleServiceError("PostgreSQL is required for persistent battles.");
+  if (!db) {
+    const profile = await getProfile(discordId);
+    if (!profile) return null;
+    return memoryBattles.filter((b) => b.userId === profile.user.id);
+  }
   const user = await db.query.users.findFirst({ where: eq(users.discordId, discordId) });
   if (!user) return null;
   return db.select().from(battles).where(eq(battles.userId, user.id)).orderBy(asc(battles.createdAt));

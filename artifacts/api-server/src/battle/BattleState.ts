@@ -92,6 +92,12 @@ export interface Combatant {
     ultimate: Skill;
   };
   passive?: string;
+  isBoss?: boolean;
+  currentPhase?: number;
+  maxPhases?: number;
+  enrageRound?: number;
+  isEnraged?: boolean;
+  drops?: Array<{ itemKey: string; quantity: number; chance: number }>;
 }
 
 export interface BattleAction {
@@ -112,7 +118,9 @@ export interface BattleAction {
     | "revive"
     | "defeat"
     | "status_applied"
-    | "status_dot";
+    | "status_dot"
+    | "boss_phase_change"
+    | "boss_enrage";
   targetId?: string;
   targetName?: string;
   amount?: number;
