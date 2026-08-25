@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getOrCreateUser } from "../PhaseOneService";
+import { getOrCreateUser, getProfile, getTeam, replaceTeam } from "../PhaseOneService";
 import {
   getSummonHistory,
   getUserInventory,
@@ -75,6 +75,25 @@ describe("SummonService (Phase 2)", () => {
     const idempotencyKey = "key_insufficient_funds_001";
 
     await expect(summon(discordId, banner.id, 1, idempotencyKey)).rejects.toThrow(SummonError);
+  });
+
+  it("stores summoned ownership in the same memory collection used by profile and team", async () => {
+    const discordId = "user_summon_team_shared_store";
+    await getOrCreateUser(discordId, "SharedStoreSummoner");
+
+    const banners = await listActiveBanners();
+    const banner = banners[0];
+    const result = await summon(discordId, banner.id, 1, "key_shared_store_summon_001");
+    const ownedId = result.results[0].ownedId;
+
+    const profile = await getProfile(discordId);
+    expect(profile?.collection.some((owned) => owned.ownedId === ownedId)).toBe(true);
+
+    const teamResult = await replaceTeam(discordId, "Equipe invocada", [ownedId]);
+    expect(teamResult?.members[0].ownedId).toBe(ownedId);
+
+    const fetchedTeam = await getTeam(discordId);
+    expect(fetchedTeam?.members[0].ownedId).toBe(ownedId);
   });
 
   it("fetches summon history and inventory correctly", async () => {
