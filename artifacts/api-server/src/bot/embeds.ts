@@ -67,8 +67,12 @@ export function createSummonResultEmbed(username: string, results: any[], curren
   let desc = "";
   for (let i = 0; i < results.length; i += 1) {
     const r = results[i];
-    const rarityLabel = RARITY_NAMES[r.rarity] || r.rarity;
-    desc += `**${i + 1}.** Raridade: **${rarityLabel.toUpperCase()}** • ID: \`${r.characterId}\`\n`;
+    const rarityLabel = RARITY_NAMES[r.rarity] || r.rarity || "Desconhecida";
+    const characterName = r.name ? `**${r.name}**` : "**Personagem desconhecido**";
+    const anime = r.anime ? ` [${r.anime}]` : "";
+    const teamId = r.ownedId ?? r.characterId;
+    const teamIdText = teamId ? ` • ID para equipe: \`${teamId}\`` : "";
+    desc += `**${i + 1}.**${anime} ${characterName} • Raridade: **${rarityLabel.toUpperCase()}**${teamIdText}\n`;
   }
 
   embed.addFields({ name: "🎴 Personagens Obtidos", value: desc || "Nenhum resultado." });
