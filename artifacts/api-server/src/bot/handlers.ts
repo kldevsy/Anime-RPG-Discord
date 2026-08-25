@@ -14,7 +14,7 @@ import {
   summon,
 } from "../services/SummonService";
 import { listPlayerBattles, runPlayerBattle } from "../services/BattleService";
-import { listPveStages, listPveWorlds } from "../services/PveService";
+import { getPveStageById, listPveStages, listPveWorlds } from "../services/PveService";
 import { getTransactionHistory } from "../services/EconomyService";
 import { claimQuestReward, getUserQuests } from "../services/QuestService";
 import { claimDailyReward, getDailyRewardStatus } from "../services/DailyRewardService";
@@ -35,6 +35,7 @@ import {
 import {
   createBannersEmbed,
   createBattleResultEmbed,
+  createBattleProgressEmbed,
   createInventoryEmbed,
   createLeaderboardEmbed,
   createProfileEmbed,
@@ -347,9 +348,18 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     if (commandName === "batalha") {
       await interaction.deferReply();
       const stageId = interaction.options.getString("estagio_id") ?? undefined;
+      const selectedStage = stageId ? await getPveStageById(stageId) : null;
+      const stageName = selectedStage?.name ?? (stageId ? `Estágio ${stageId.slice(0, 8)}` : "Mundo 1: Fase Inicial");
+      let lastUpdate = 0;
 
-      const { result, rewards, drops } = await runPlayerBattle(discordId, stageId);
-      const stageName = stageId ? `Estágio ${stageId.slice(0, 8)}` : "Mundo 1: Fase Inicial";
+      const { result, rewards, drops } = await runPlayerBattle(discordId, stageId, async (snapshot) => {
+        const now = Date.now();
+        if (snapshot.actions.length > 0 && now - lastUpdate < 650) {
+          await new Promise((resolve) => setTimeout(resolve, 650 - (now - lastUpdate)));
+        }
+        await interaction.editReply({ embeds: [createBattleProgressEmbed(username, stageName, snapshot)] });
+        lastUpdate = Date.now();
+      });
 
       const embed = createBattleResultEmbed(username, stageName, result, rewards, drops);
       await interaction.editReply({ embeds: [embed] });

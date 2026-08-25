@@ -1,3 +1,4 @@
 - [Phase 1 persistence](phase-one-persistence.md) — Keep RPG state server-authoritative in PostgreSQL; do not substitute silent in-memory data when the database is unavailable.
 - [PvE schema drift](pve-schema-drift.md) — Compare live PvE tables and Drizzle history before changing battle queries.
 - [Discord autocomplete retries](discord-autocomplete.md) — Treat duplicate autocomplete acknowledgements as harmless and never let them crash the bot.
+- [Discord battle presentation](discord-battle-presentation.md) — Render server battle snapshots as paced embed updates instead of duplicating combat logic in the bot.

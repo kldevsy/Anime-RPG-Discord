@@ -18,6 +18,7 @@ export class BattleEngine {
       phase: this.phase,
       round: this.round,
       turn: this.turn,
+      initiative: this.initiative.map((unit) => unit.name),
       playerTeam: structuredClone(this.playerTeam),
       enemyTeam: structuredClone(this.enemyTeam),
       actions: structuredClone(this.actions),
@@ -31,6 +32,25 @@ export class BattleEngine {
     if (this.isFinished()) this.phase = this.resultPhase();
     else this.phase = "DRAW";
     return this.snapshot();
+  }
+
+  async runAnimated(onSnapshot: (snapshot: BattleSnapshot) => Promise<void> | void, maxRounds = 100): Promise<BattleSnapshot> {
+    let snapshot = this.snapshot();
+    let lastActionCount = -1;
+    await onSnapshot(snapshot);
+
+    for (let step = 0; step < maxRounds * 30 && !this.isFinished(); step += 1) {
+      snapshot = this.step();
+      if (snapshot.actions.length !== lastActionCount || this.isFinished()) {
+        lastActionCount = snapshot.actions.length;
+        await onSnapshot(snapshot);
+      }
+    }
+
+    this.phase = this.isFinished() ? this.resultPhase() : "DRAW";
+    snapshot = this.snapshot();
+    await onSnapshot(snapshot);
+    return snapshot;
   }
 
   step(): BattleSnapshot {

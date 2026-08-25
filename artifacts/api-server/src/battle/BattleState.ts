@@ -133,6 +133,7 @@ export interface BattleSnapshot {
   phase: BattlePhase;
   round: number;
   turn: number;
+  initiative: string[];
   playerTeam: Combatant[];
   enemyTeam: Combatant[];
   actions: BattleAction[];

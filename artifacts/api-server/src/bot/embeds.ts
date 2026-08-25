@@ -1,4 +1,5 @@
 import { EmbedBuilder } from "discord.js";
+import type { BattleAction, BattleSnapshot, Combatant } from "../battle/BattleState";
 
 const RARITY_COLORS: Record<string, number> = {
   common: 0x95a5a6, // Gray
@@ -123,34 +124,63 @@ export function createTeamEmbed(username: string, team: any, members: any[]) {
   return embed;
 }
 
-export function createBattleResultEmbed(username: string, stageName: string, battleResult: any, rewards: any, drops: any[]) {
-  const isVictory = battleResult.phase === "VICTORY";
-  const statusTitle = isVictory ? "🏆 VICTÓRIA!" : battleResult.phase === "DEFEAT" ? "☠️ DERROTA!" : "🤝 EMPATE!";
-  const color = isVictory ? 0x2ecc71 : 0xe74c3c;
+function hpBar(unit: Combatant): string {
+  const ratio = unit.maxHp > 0 ? Math.max(0, Math.min(1, unit.hp / unit.maxHp)) : 0;
+  const filled = Math.round(ratio * 10);
+  return `${"🟩".repeat(filled)}${"⬛".repeat(10 - filled)} ${unit.hp}/${unit.maxHp}`;
+}
 
-  const embed = new EmbedBuilder()
-    .setTitle(`${statusTitle} • Batalha em ${stageName}`)
-    .setColor(color)
-    .setDescription(`**Jogador:** ${username}\n**Rodadas Totais:** ${battleResult.round}\n**Ações Calculadas:** ${battleResult.actions?.length ?? 0}`);
+function unitLine(unit: Combatant): string {
+  const state = unit.alive ? "" : " • **DERROTADO**";
+  const phase = unit.isBoss && unit.currentPhase && unit.maxPhases ? ` • Fase ${unit.currentPhase}/${unit.maxPhases}` : "";
+  return `**${unit.name}**${phase}${state}\n❤️ ${hpBar(unit)}\n⚡ ${unit.energy}/100 • 🛡️ ${unit.statusEffects.length ? unit.statusEffects.map((s) => s.type).join(", ") : "nenhum"}`;
+}
 
+function actionLine(action: BattleAction): string {
+  const target = action.targetName ? ` → **${action.targetName}**` : "";
+  const amount = action.amount ? ` • ${action.type === "heal" ? "+" : "-"}${action.amount}` : "";
+  const critical = action.critical ? " • 💥 **CRÍTICO**" : "";
+  const skill = action.skillName ? ` *${action.skillName}*` : "";
+  return `• R${action.round} **${action.actorName}**${target}${skill}${amount}${critical}`;
+}
+
+function battleStatus(snapshot: BattleSnapshot): { title: string; color: number } {
+  if (snapshot.phase === "VICTORY") return { title: "🏆 VITÓRIA", color: 0x2ecc71 };
+  if (snapshot.phase === "DEFEAT") return { title: "☠️ DERROTA", color: 0xe74c3c };
+  if (snapshot.phase === "DRAW") return { title: "🤝 EMPATE", color: 0xf1c40f };
+  return { title: "⚔️ COMBATE AUTOMÁTICO", color: 0x3498db };
+}
+
+export function createBattleProgressEmbed(username: string, stageName: string, snapshot: BattleSnapshot) {
+  const status = battleStatus(snapshot);
+  const latestAction = snapshot.actions.at(-1);
+  const actionText = latestAction ? actionLine(latestAction) : "Os combatentes estão se preparando...";
+  const playerText = snapshot.playerTeam.map(unitLine).join("\n\n") || "Nenhum combatente";
+  const enemyText = snapshot.enemyTeam.map(unitLine).join("\n\n") || "Nenhum inimigo";
+  const initiative = snapshot.initiative.length ? snapshot.initiative.join(" → ") : "Calculando iniciativa...";
+  const recentActions = snapshot.actions.slice(-5).map(actionLine).join("\n") || "Aguardando o primeiro turno...";
+
+  return new EmbedBuilder()
+    .setTitle(`${status.title} • ${stageName}`)
+    .setColor(status.color)
+    .setDescription(`**Jogador:** ${username}\n**Rodada:** ${snapshot.round || 1} • **Ação:** ${snapshot.actions.length}\n\n${actionText}`)
+    .addFields(
+      { name: "🧑‍🤝‍🧑 Jogador", value: playerText, inline: true },
+      { name: "👹 NPCs", value: enemyText, inline: true },
+      { name: "🎲 Iniciativa", value: initiative },
+      { name: "📜 Últimas ações", value: recentActions }
+    )
+    .setFooter({ text: snapshot.phase === "VICTORY" || snapshot.phase === "DEFEAT" || snapshot.phase === "DRAW" ? "Batalha encerrada • resultado salvo no servidor" : "Turnos automáticos • atualizando em tempo real" })
+    .setTimestamp();
+}
+
+export function createBattleResultEmbed(username: string, stageName: string, battleResult: BattleSnapshot, rewards: any, drops: any[]) {
+  const embed = createBattleProgressEmbed(username, stageName, battleResult);
   let rewardsStr = `• **Gold:** +${rewards.gold}\n• **XP:** +${rewards.xp}`;
   if (drops && drops.length > 0) {
-    for (const drop of drops) {
-      rewardsStr += `\n• **Item Drop:** +${drop.quantity} ${drop.itemKey}`;
-    }
+    for (const drop of drops) rewardsStr += `\n• **Item Drop:** +${drop.quantity} ${drop.itemKey}`;
   }
-  embed.addFields({ name: "🎁 Recompensas Obtidas", value: rewardsStr });
-
-  if (battleResult.actions && battleResult.actions.length > 0) {
-    const lastActions = battleResult.actions.slice(-6);
-    let logStr = "";
-    for (const act of lastActions) {
-      const critStr = act.critical ? "💥 **CRÍTICO!**" : "";
-      logStr += `• R${act.round} | **${act.actorId.slice(0, 8)}** → *${act.type}* (${act.amount} dano/cura) ${critStr}\n`;
-    }
-    embed.addFields({ name: "📜 Log dos Últimos Turnos", value: logStr || "Nenhum log registrado." });
-  }
-
+  embed.addFields({ name: "🎁 Recompensas acumuladas", value: rewardsStr });
   return embed;
 }
 
