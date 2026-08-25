@@ -14,6 +14,7 @@ export interface SummonResult {
   name: string;
   anime: string;
   rarity: string;
+  imageUrl: string | null;
 }
 
 export class SummonError extends Error {}
@@ -135,6 +136,7 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         name: character.name,
         anime: character.anime,
         rarity: character.rarity,
+        imageUrl: character.imageUrl,
       });
       if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }
@@ -214,6 +216,7 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         name: character.name,
         anime: character.anime,
         rarity: character.rarity,
+        imageUrl: character.imageUrl,
       });
       if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }

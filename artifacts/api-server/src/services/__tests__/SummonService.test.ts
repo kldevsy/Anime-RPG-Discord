@@ -31,6 +31,7 @@ describe("SummonService (Phase 2)", () => {
     expect(result.results).toHaveLength(1);
     expect(result.results[0]).toHaveProperty("characterId");
     expect(result.results[0]).toHaveProperty("rarity");
+    expect(result.results[0].imageUrl).toMatch(/^https:\/\//);
 
     const inventory = await getUserInventory(discordId);
     expect(inventory).not.toBeNull();
