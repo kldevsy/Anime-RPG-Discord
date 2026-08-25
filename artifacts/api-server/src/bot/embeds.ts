@@ -1,6 +1,28 @@
 import { EmbedBuilder } from "discord.js";
 import type { BattleAction, BattleSnapshot, Combatant } from "../battle/BattleState";
 
+/** A Discord-hosted image that is available when a character has no usable artwork. */
+export const DEFAULT_EMBED_IMAGE_URL = "https://cdn.discordapp.com/embed/avatars/0.png";
+
+/**
+ * Sets an embed image only from an absolute HTTP(S) URL, falling back to a
+ * Discord-hosted image so embeds always have media that Discord can proxy.
+ */
+export function applyEmbedImage(embed: EmbedBuilder, imageUrl: unknown): EmbedBuilder {
+  if (typeof imageUrl === "string") {
+    try {
+      const { protocol } = new URL(imageUrl);
+      if (protocol === "http:" || protocol === "https:") {
+        return embed.setImage(imageUrl);
+      }
+    } catch {
+      // Use the default image below when the supplied URL cannot be parsed.
+    }
+  }
+
+  return embed.setImage(DEFAULT_EMBED_IMAGE_URL);
+}
+
 const RARITY_COLORS: Record<string, number> = {
   common: 0x95a5a6, // Gray
   uncommon: 0x2ecc71, // Green
@@ -95,9 +117,7 @@ export function createSummonResultEmbed(username: string, results: any[], curren
     }
     return current;
   }, undefined);
-  if (featuredResult?.imageUrl) {
-    embed.setImage(featuredResult.imageUrl);
-  }
+  applyEmbedImage(embed, featuredResult?.imageUrl);
 
   return embed;
 }

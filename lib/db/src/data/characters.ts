@@ -67,7 +67,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 180,
       baseDefense: 105,
       baseSpeed: 118,
-      imageUrl: "https://placehold.co/600x400/png?text=Naruto%20Uzumaki",
+      imageUrl: "https://cdn.discordapp.com/embed/avatars/0.png",
       passive:
         "Determinação: recebe um pequeno bônus de ataque abaixo de 50% de HP.",
     },
@@ -80,7 +80,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 120,
       baseDefense: 115,
       baseSpeed: 100,
-      imageUrl: "https://placehold.co/600x400/png?text=Sakura%20Haruno",
+      imageUrl: "https://cdn.discordapp.com/embed/avatars/1.png",
       passive: "Controle de chakra: cura aliada com menor HP.",
     },
     {
@@ -92,7 +92,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 165,
       baseDefense: 135,
       baseSpeed: 96,
-      imageUrl: "https://placehold.co/600x400/png?text=Monkey%20D.%20Luffy",
+      imageUrl: "https://cdn.discordapp.com/embed/avatars/2.png",
       passive: "Resiliência: reduz o primeiro dano recebido em cada combate.",
     },
     {
@@ -104,7 +104,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 230,
       baseDefense: 110,
       baseSpeed: 125,
-      imageUrl: "https://placehold.co/600x400/png?text=Ichigo%20Kurosaki",
+      imageUrl: "https://cdn.discordapp.com/embed/avatars/3.png",
       passive:
         "Pressão espiritual: ataques têm chance de causar dano adicional.",
     },
@@ -116,8 +116,9 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseHp: 1400,
       baseAttack: 280,
       baseDefense: 145,
-      baseSpeed: 130,
+      baseSpeed: 130
       imageUrl: "https://i.imgur.com/4retA79.png",
+
       passive:
         "Instinto de batalha: ganha força ao sobreviver a um golpe crítico.",
     },
@@ -130,7 +131,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 220,
       baseDefense: 112,
       baseSpeed: 122,
-      imageUrl: "https://placehold.co/600x400/png?text=Sasuke%20Uchiha",
+      imageUrl: "https://cdn.discordapp.com/embed/avatars/5.png",
       passive: "Sharingan",
     },
     {
@@ -142,7 +143,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 195,
       baseDefense: 120,
       baseSpeed: 110,
-      imageUrl: "https://placehold.co/600x400/png?text=Roronoa%20Zoro",
+      imageUrl: "https://cdn.discordapp.com/embed/avatars/6.png",
       passive: "Santoryu",
     },
     {
@@ -154,7 +155,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 160,
       baseDefense: 110,
       baseSpeed: 112,
-      imageUrl: "https://placehold.co/600x400/png?text=Tanjiro%20Kamado",
+      imageUrl: "https://cdn.discordapp.com/embed/avatars/7.png",
       passive: "Respiração da Água",
     },
     {
@@ -166,7 +167,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 140,
       baseDefense: 100,
       baseSpeed: 105,
-      imageUrl: "https://placehold.co/600x400/png?text=Yuji%20Itadori",
+      imageUrl: "https://cdn.discordapp.com/embed/avatars/8.png",
       passive: "Força Sobre-humana",
     },
   ]);
