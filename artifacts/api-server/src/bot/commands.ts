@@ -131,6 +131,17 @@ export const commandDefinitions = [
         .setDescription("Selecione um estágio PvE para a batalha (opcional)")
         .setRequired(false)
         .setAutocomplete(true)
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName("velocidade")
+        .setDescription("Velocidade da animação da batalha (padrão: lento)")
+        .setRequired(false)
+        .addChoices(
+          { name: "Lento", value: "slow" },
+          { name: "Médio", value: "medium" },
+          { name: "Rápido", value: "fast" }
+        )
     ),
 
   // 8. /missoes

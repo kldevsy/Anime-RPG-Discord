@@ -350,12 +350,15 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       const stageId = interaction.options.getString("estagio_id") ?? undefined;
       const selectedStage = stageId ? await getPveStageById(stageId) : null;
       const stageName = selectedStage?.name ?? (stageId ? `Estágio ${stageId.slice(0, 8)}` : "Mundo 1: Fase Inicial");
+      const animationSpeed = interaction.options.getString("velocidade") ?? "slow";
+      const delayBySpeed: Record<string, number> = { slow: 1400, medium: 800, fast: 350 };
+      const animationDelay = delayBySpeed[animationSpeed] ?? delayBySpeed.slow;
       let lastUpdate = 0;
 
       const { result, rewards, drops } = await runPlayerBattle(discordId, stageId, async (snapshot) => {
         const now = Date.now();
-        if (snapshot.actions.length > 0 && now - lastUpdate < 650) {
-          await new Promise((resolve) => setTimeout(resolve, 650 - (now - lastUpdate)));
+        if (snapshot.actions.length > 0 && now - lastUpdate < animationDelay) {
+          await new Promise((resolve) => setTimeout(resolve, animationDelay - (now - lastUpdate)));
         }
         await interaction.editReply({ embeds: [createBattleProgressEmbed(username, stageName, snapshot)] });
         lastUpdate = Date.now();
