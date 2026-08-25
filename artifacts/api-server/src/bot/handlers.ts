@@ -33,6 +33,7 @@ import {
   adminRemoveResources,
 } from "../services/AdminService";
 import {
+  applyEmbedImage,
   createBannersEmbed,
   createBattleResultEmbed,
   createBattleProgressEmbed,
@@ -244,9 +245,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           { name: "🔮 Passiva", value: found.passive ?? "Nenhuma", inline: true }
         );
 
-      if (found.imageUrl) {
-        embed.setImage(found.imageUrl);
-      }
+      applyEmbedImage(embed, found.imageUrl);
 
       await interaction.editReply({ embeds: [embed] });
       return;
