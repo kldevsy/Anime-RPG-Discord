@@ -18,7 +18,11 @@ export const commandDefinitions = [
         .addChoices({ name: "1 Invocação", value: 1 }, { name: "10 Invocações", value: 10 })
     )
     .addStringOption((opt) =>
-      opt.setName("banner").setDescription("ID do Banner desejado").setRequired(false)
+      opt
+        .setName("banner")
+        .setDescription("Escolha ou pesquise um banner ativo")
+        .setRequired(false)
+        .setAutocomplete(true)
     ),
 
   // 3. /banner

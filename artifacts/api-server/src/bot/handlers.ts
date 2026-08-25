@@ -57,6 +57,18 @@ function filterChoicesByFocusedValue(choices: AutocompleteChoice[], focusedValue
 }
 
 export async function handleAutocompleteInteraction(interaction: AutocompleteInteraction): Promise<void> {
+  if (interaction.commandName === "invocar") {
+    const focused = interaction.options.getFocused(true);
+    if (focused.name === "banner") {
+      const activeBanners = await listActiveBanners();
+      const choices = activeBanners.map((banner) => ({ name: banner.name, value: banner.id }));
+      await interaction.respond(filterChoicesByFocusedValue(choices, String(focused.value)));
+      return;
+    }
+    await interaction.respond([]);
+    return;
+  }
+
   if (interaction.commandName !== "equipe") {
     await interaction.respond([]);
     return;
@@ -118,6 +130,10 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         const activeBanners = await listActiveBanners();
         if (!activeBanners.length) {
           await interaction.editReply("❌ Nenhum banner de invocação ativo no momento.");
+          return;
+        }
+        if (activeBanners.length > 1) {
+          await interaction.editReply("⚠️ Existem múltiplos banners ativos. Por favor, selecione um banner para invocar.");
           return;
         }
         bannerId = activeBanners[0].id;
