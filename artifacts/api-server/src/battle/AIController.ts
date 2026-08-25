@@ -24,21 +24,28 @@ export function chooseAction(actor: Combatant, allies: Combatant[], enemies: Com
   const highestAttackEnemy = [...aliveEnemies].sort((a, b) => StatusManager.getEffectiveAttack(b) - StatusManager.getEffectiveAttack(a))[0];
 
   const canUse = (skill: Skill, key: "basic" | "skill1" | "skill2" | "ultimate"): boolean => {
+    if (key === "ultimate") return actor.ultimateReady && (actor.cooldowns[key] ?? 0) <= 0;
     if (actor.energy < skill.energyCost) return false;
     const cd = actor.cooldowns[key] ?? 0;
     return cd <= 0;
   };
 
-  // Rule 1: Fully charged ultimate -> prioritize it.
-  if (actor.energy >= actor.skills.ultimate.energyCost && canUse(actor.skills.ultimate, "ultimate")) {
+  // Rule 1: A ready ultimate is only prioritized when its target would benefit.
+  if (canUse(actor.skills.ultimate, "ultimate")) {
     const ult = actor.skills.ultimate;
     let target = lowestHpEnemy;
+    let advantageous = aliveEnemies.length > 0;
     if (ult.targetType === "aoe_ally" || ult.targetType === "single_ally" || ult.type === "HEAL" || ult.type === "REVIVE" || ult.type === "SHIELD") {
       target = lowestHpAlly || actor;
+      advantageous = ult.type === "REVIVE"
+        ? allies.some((unit) => !unit.alive)
+        : ult.type === "HEAL" || ult.type === "SHIELD"
+          ? aliveAllies.some((unit) => unit.hp < unit.maxHp)
+          : aliveAllies.length > 0;
     } else if (ult.type === "EXECUTE" || ult.type === "DAMAGE") {
       target = lowestHpEnemy;
     }
-    return { skill: ult, actionKey: "ultimate", target };
+    if (advantageous && target) return { skill: ult, actionKey: "ultimate", target };
   }
 
   // Rule 2: Ally low HP (< 40%) -> prioritize Heal / Shield / Defensive skill

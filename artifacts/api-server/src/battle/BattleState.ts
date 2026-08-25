@@ -68,6 +68,48 @@ export interface Skill {
     duration: number;
     value: number;
   }>;
+  /** Machine-readable modifiers; never infer mechanics from a display name. */
+  conditionalEffects?: SkillConditionalEffect[];
+}
+
+export type UltimateChargeSource = "turn_start" | "basic_hit" | "damage_dealt" | "damage_received" | "critical_hit" | "defeat";
+
+/**
+ * Charge is intentionally separate from `energy`: energy pays ordinary skills,
+ * while ultimate charge is reset only by an ultimate.  Charge is capped at
+ * `ultimateChargeRequired`; stun/freeze do not remove it; death and revive
+ * preserve it; boss phase changes preserve it; and each AoE victim contributes
+ * its own damage/critical/defeat trigger.
+ */
+export interface UltimateChargePolicy {
+  onTurnStart?: number;
+  onBasicHit?: number;
+  onDamageDealt?: number;
+  onDamageReceived?: number;
+  onCriticalHit?: number;
+  onDefeat?: number;
+  /** An ultimate may opt into a cooldown; the default is no cooldown. */
+  cooldown?: number;
+}
+
+export interface SkillConditionalEffect {
+  condition: "target_missing_hp_above" | "critical_hit";
+  threshold?: number;
+  damageMultiplierBonus?: number;
+  ultimateChargeBonus?: number;
+}
+
+export interface UltimateSkill extends Skill {
+  stableKey: string;
+  chargePolicy: UltimateChargePolicy;
+}
+
+export interface UltimateChargeTelemetry {
+  source: UltimateChargeSource | "ultimate_used";
+  previous: number;
+  delta: number;
+  final: number;
+  round: number;
 }
 
 export interface Combatant {
@@ -83,9 +125,10 @@ export interface Combatant {
   critDamage: number;
   energy: number;
   maxEnergy: number;
-  chargeOnBasic: number;
-  chargeOnDamageTaken: number;
-  chargeOnCritical: number;
+  ultimateCharge: number;
+  ultimateChargeRequired: number;
+  ultimateReady: boolean;
+  ultimateChargeTelemetry: UltimateChargeTelemetry[];
   alive: boolean;
   statusEffects: StatusEffect[];
   cooldowns: Record<string, number>;
@@ -93,7 +136,7 @@ export interface Combatant {
     basic: Skill;
     skill1: Skill;
     skill2: Skill;
-    ultimate: Skill;
+    ultimate: UltimateSkill;
   };
   passive?: string;
   isBoss?: boolean;
@@ -124,13 +167,21 @@ export interface BattleAction {
     | "status_applied"
     | "status_dot"
     | "boss_phase_change"
-    | "boss_enrage";
+    | "boss_enrage"
+    | "ultimate_charge"
+    | "ultimate_ready"
+    | "ultimate_used";
   targetId?: string;
   targetName?: string;
   amount?: number;
   critical?: boolean;
   skillName?: string;
   statusType?: StatusType;
+  ultimateKey?: string;
+  chargeSource?: UltimateChargeSource | "ultimate_used";
+  previousCharge?: number;
+  chargeDelta?: number;
+  finalCharge?: number;
 }
 
 export interface BattleSnapshot {

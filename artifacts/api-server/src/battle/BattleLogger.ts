@@ -25,6 +25,10 @@ export class BattleLogger {
         return `${r} • ${actor} • Dano Contínuo (${action.statusType})${target} • dano ${action.amount || 0}`;
       case "revive":
         return `${r} • ${actor} • Ressuscitou${target} • ${action.amount || 0} HP`;
+      case "ultimate_charge":
+      case "ultimate_ready":
+      case "ultimate_used":
+        return `${r} • ${actor} • Ultimate ${action.ultimateKey} (${action.chargeSource}): ${action.previousCharge ?? 0} ${action.chargeDelta && action.chargeDelta > 0 ? "+" : ""}${action.chargeDelta ?? 0} = ${action.finalCharge ?? 0}`;
       case "defeat":
         return `${r} • Sistema • ${actor} foi derrotado`;
       default:
