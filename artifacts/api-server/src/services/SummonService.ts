@@ -7,6 +7,14 @@ import { getOrCreateUser } from "./PhaseOneService";
 const rarities = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
 type Rarity = typeof rarities[number];
 
+export interface SummonResult {
+  characterId: string;
+  ownedId: string;
+  name: string;
+  anime: string;
+  rarity: string;
+}
+
 export class SummonError extends Error {}
 
 export interface MemoryBanner {
@@ -29,7 +37,7 @@ export interface MemorySummon {
   userId: string;
   bannerId: string;
   quantity: number;
-  results: Array<{ characterId: string; rarity: string }>;
+  results: SummonResult[];
   currency: "tickets" | "gems" | "gold";
   cost: number;
   createdAt: Date;
@@ -138,26 +146,34 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
       memoryUserCharactersMap.set(user.id, owned);
     }
 
-    const results: Array<{ characterId: string; rarity: string }> = [];
+    const results: SummonResult[] = [];
     for (let i = 0; i < quantity; i += 1) {
       const rarity = chooseRarity(banner.rates ?? {}, pity, banner.softPityStart, banner.hardPity);
       const pool = memoryDefaultCharacters.filter((c) => c.rarity === rarity);
       const fallbackPool = pool.length > 0 ? pool : memoryDefaultCharacters;
       const character = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
 
-      results.push({ characterId: character.id, rarity });
-      if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
-
-      if (!owned.some((item) => item.characterId === character.id)) {
-        owned.push({
+      let ownedCharacter = owned.find((item) => item.characterId === character.id);
+      if (!ownedCharacter) {
+        ownedCharacter = {
           id: crypto.randomUUID(),
           userId: user.id,
           characterId: character.id,
           level: 1,
           xp: 0,
           acquiredAt: new Date(),
-        });
+        };
+        owned.push(ownedCharacter);
       }
+
+      results.push({
+        characterId: character.id,
+        ownedId: ownedCharacter.id,
+        name: character.name,
+        anime: character.anime,
+        rarity: character.rarity,
+      });
+      if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }
 
     memoryPityMap.set(pityKey, pity);
@@ -211,18 +227,31 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
     const owned = await tx.select({ character: characters, owned: userCharacters })
       .from(userCharacters).innerJoin(characters, eq(userCharacters.characterId, characters.id))
       .where(eq(userCharacters.userId, user.id));
-    const results: Array<{ characterId: string; rarity: string }> = [];
+    const results: SummonResult[] = [];
     for (let index = 0; index < quantity; index += 1) {
       const rarity = chooseRarity(banner.rates ?? {}, pity, banner.softPityStart, banner.hardPity);
       const pool = await tx.select().from(characters).where(eq(characters.rarity, rarity));
       const fallbackPool = pool.length > 0 ? pool : await tx.select().from(characters);
       if (!fallbackPool.length) throw new SummonError(`No characters configured for rarity ${rarity}.`);
       const character = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
-      results.push({ characterId: character.id, rarity });
-      if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
-      if (!owned.some((item) => item.character.id === character.id)) {
+      let ownedCharacter = owned.find((item) => item.character.id === character.id)?.owned;
+      if (!ownedCharacter) {
         await tx.insert(userCharacters).values({ userId: user.id, characterId: character.id }).onConflictDoNothing();
+        ownedCharacter = await tx.query.userCharacters.findFirst({
+          where: and(eq(userCharacters.userId, user.id), eq(userCharacters.characterId, character.id)),
+        });
+        if (!ownedCharacter) throw new SummonError(`Could not find owned character for ${character.id}.`);
+        owned.push({ character, owned: ownedCharacter });
       }
+
+      results.push({
+        characterId: character.id,
+        ownedId: ownedCharacter.id,
+        name: character.name,
+        anime: character.anime,
+        rarity: character.rarity,
+      });
+      if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }
     await tx.insert(bannerPity).values({ userId: user.id, bannerId: banner.id, count: pity })
       .onConflictDoUpdate({ target: [bannerPity.userId, bannerPity.bannerId], set: { count: pity } });
