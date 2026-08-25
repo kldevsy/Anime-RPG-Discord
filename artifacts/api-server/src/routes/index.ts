@@ -9,6 +9,10 @@ import economyRouter from "./economy";
 import questsRouter from "./quests";
 import dailyRouter from "./daily";
 import rankingRouter from "./ranking";
+import eventsRouter from "./events";
+import raidsRouter from "./raids";
+import pvpRouter from "./pvp";
+import towerRouter from "./tower";
 
 const router: IRouter = Router();
 
@@ -22,5 +26,9 @@ router.use(economyRouter);
 router.use(questsRouter);
 router.use(dailyRouter);
 router.use(rankingRouter);
+router.use(eventsRouter);
+router.use(raidsRouter);
+router.use(pvpRouter);
+router.use(towerRouter);
 
 export default router;

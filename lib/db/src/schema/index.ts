@@ -255,6 +255,88 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertCharacterSchema = createInsertSchema(characters).omit({ id: true, createdAt: true });
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true, createdAt: true, updatedAt: true });
 
+export const events = pgTable("events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  enemyName: text("enemy_name").notNull(),
+  enemyHp: integer("enemy_hp").notNull(),
+  enemyAttack: integer("enemy_attack").notNull(),
+  enemyDefense: integer("enemy_defense").notNull(),
+  enemySpeed: integer("enemy_speed").notNull(),
+  rewardGold: integer("reward_gold").notNull().default(0),
+  rewardGems: integer("reward_gems").notNull().default(0),
+  rewardTickets: integer("reward_tickets").notNull().default(0),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userEvents = pgTable("user_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventId: uuid("event_id").notNull().references(() => events.id, { onDelete: "cascade" }),
+  completed: integer("completed").notNull().default(0),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("user_events_user_event_unique").on(table.userId, table.eventId),
+]);
+
+export const raids = pgTable("raids", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  bossName: text("boss_name").notNull(),
+  currentHp: integer("current_hp").notNull(),
+  maxHp: integer("max_hp").notNull(),
+  bossAttack: integer("boss_attack").notNull(),
+  bossDefense: integer("boss_defense").notNull(),
+  bossSpeed: integer("boss_speed").notNull(),
+  bossPhases: integer("boss_phases").notNull().default(1),
+  enrageRound: integer("enrage_round").notNull().default(10),
+  rewardGold: integer("reward_gold").notNull().default(0),
+  rewardGems: integer("reward_gems").notNull().default(0),
+  active: integer("active").notNull().default(1),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const raidParticipants = pgTable("raid_participants", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  raidId: uuid("raid_id").notNull().references(() => raids.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  damageDealt: integer("damage_dealt").notNull().default(0),
+  attempts: integer("attempts").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("raid_participants_raid_user_unique").on(table.raidId, table.userId),
+]);
+
+export const pvpProfiles = pgTable("pvp_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  rating: integer("rating").notNull().default(1000),
+  wins: integer("wins").notNull().default(0),
+  losses: integer("losses").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const pvpMatches = pgTable("pvp_matches", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  challengerId: uuid("challenger_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  defenderId: uuid("defender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  winnerId: uuid("winner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  round: integer("round").notNull(),
+  ratingChange: integer("rating_change").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const towerProgress = pgTable("tower_progress", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  highestFloor: integer("highest_floor").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type Character = typeof characters.$inferSelect;
 export type UserCharacter = typeof userCharacters.$inferSelect;
@@ -263,3 +345,10 @@ export type TeamMember = typeof teamMembers.$inferSelect;
 export type Quest = typeof quests.$inferSelect;
 export type UserQuest = typeof userQuests.$inferSelect;
 export type DailyReward = typeof dailyRewards.$inferSelect;
+export type Event = typeof events.$inferSelect;
+export type UserEvent = typeof userEvents.$inferSelect;
+export type Raid = typeof raids.$inferSelect;
+export type RaidParticipant = typeof raidParticipants.$inferSelect;
+export type PvpProfile = typeof pvpProfiles.$inferSelect;
+export type PvpMatch = typeof pvpMatches.$inferSelect;
+export type TowerProgress = typeof towerProgress.$inferSelect;
