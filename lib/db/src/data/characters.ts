@@ -116,7 +116,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseHp: 1400,
       baseAttack: 280,
       baseDefense: 145,
-      baseSpeed: 130
+      baseSpeed: 130,
       imageUrl: "https://i.imgur.com/4retA79.png",
 
       passive:

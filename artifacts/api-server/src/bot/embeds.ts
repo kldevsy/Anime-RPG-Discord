@@ -9,11 +9,12 @@ export const DEFAULT_EMBED_IMAGE_URL = "https://cdn.discordapp.com/embed/avatars
  * Discord-hosted image so embeds always have media that Discord can proxy.
  */
 export function applyEmbedImage(embed: EmbedBuilder, imageUrl: unknown): EmbedBuilder {
-  if (typeof imageUrl === "string") {
+  if (typeof imageUrl === "string" && imageUrl.trim().length > 0) {
+    const cleanUrl = imageUrl.trim();
     try {
-      const { protocol } = new URL(imageUrl);
+      const { protocol } = new URL(cleanUrl);
       if (protocol === "http:" || protocol === "https:") {
-        return embed.setImage(imageUrl);
+        return embed.setImage(cleanUrl);
       }
     } catch {
       // Use the default image below when the supplied URL cannot be parsed.

@@ -164,6 +164,33 @@ describe("Discord Bot System", () => {
     expect(embed.data.image?.url).toBe("https://cdn.discordapp.com/embed/avatars/0.png");
   });
 
+  it("uses character image in the /personagens catalog list embed", async () => {
+    const editReplyMock = vi.fn();
+    const mockInteraction: any = {
+      commandName: "personagens",
+      user: { id: "bot_catalog_user", username: "CatalogTester" },
+      options: { getString: () => null },
+      deferReply: vi.fn().mockResolvedValue(undefined),
+      editReply: editReplyMock,
+    };
+
+    await handleInteraction(mockInteraction);
+
+    expect(editReplyMock).toHaveBeenCalled();
+    const embed = editReplyMock.mock.calls[0][0].embeds[0];
+    expect(embed.data.title).toContain("Catálogo e Coleção de Personagens");
+    expect(embed.data.image?.url).toBeDefined();
+    expect(embed.data.image?.url).toMatch(/^https:\/\//);
+  });
+
+  it("trims whitespace from character image URLs in summon embeds", () => {
+    const embed = createSummonResultEmbed("ImageTester", [
+      { name: "Com Espaços", rarity: "rare", imageUrl: "   https://example.com/untrimmed.png   " },
+    ], "tickets", 1);
+
+    expect(embed.data.image?.url).toBe("https://example.com/untrimmed.png");
+  });
+
   it("uses the first highest-rarity character image for a 10x summon embed", () => {
     const embed = createSummonResultEmbed("ImageTester", [
       { name: "Primeiro Lendário", rarity: "legendary", imageUrl: "https://example.com/first-legendary.png" },
