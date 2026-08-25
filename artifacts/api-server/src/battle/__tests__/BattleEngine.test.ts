@@ -120,4 +120,17 @@ describe("Phase 3 Battle Engine", () => {
     const result = new BattleEngine([repeater], [repeatEnemy]).run(3);
     expect(result.actions.filter((action) => action.type === "ultimate_used" && action.actorId === repeater.id).length).toBeGreaterThan(1);
   });
+
+  it("rejects an uncharged or invalid player ultimate decision on the server", () => {
+    const hero = SkillManager.createCombatant({ id: "hero", name: "Hero", role: "dps", ultimateCharge: 0, speed: 200 });
+    const enemy = SkillManager.createCombatant({ id: "enemy", name: "Enemy", role: "tank", speed: 1 });
+    const engine = new BattleEngine([hero], [enemy]);
+    for (let index = 0; index < 5; index += 1) engine.step();
+
+    expect(engine.validateUltimateDecision({ actorId: hero.id, targetId: enemy.id, useUltimate: true })).toEqual({ ok: false, error: "Ultimate charge is not ready." });
+    hero.ultimateCharge = hero.ultimateChargeRequired;
+    hero.ultimateReady = true;
+    expect(engine.validateUltimateDecision({ actorId: hero.id, targetId: "forged-target", useUltimate: true })).toEqual({ ok: false, error: "Ultimate target is invalid." });
+    expect(engine.validateUltimateDecision({ actorId: hero.id, targetId: enemy.id, useUltimate: true })).toMatchObject({ ok: true, target: { id: enemy.id } });
+  });
 });

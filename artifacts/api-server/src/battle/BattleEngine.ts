@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto";
 import { chooseAction } from "./AIController";
 import { calculateDamage } from "./DamageCalculator";
 import { StatusManager } from "./StatusManager";
-import type { BattleAction, BattlePhase, BattleSnapshot, Combatant } from "./BattleState";
+import type { BattleAction, BattlePhase, BattleSnapshot, Combatant, UltimateDecision, UltimateDecisionProvider } from "./BattleState";
 
 export class BattleEngine {
   private phase: BattlePhase = "WAITING";
@@ -10,6 +10,7 @@ export class BattleEngine {
   private turn = 0;
   private initiative: Combatant[] = [];
   private actions: BattleAction[] = [];
+  private pendingUltimateDecision: UltimateDecision | null = null;
 
   constructor(private readonly playerTeam: Combatant[], private readonly enemyTeam: Combatant[]) {}
 
@@ -34,12 +35,23 @@ export class BattleEngine {
     return this.snapshot();
   }
 
-  async runAnimated(onSnapshot: (snapshot: BattleSnapshot) => Promise<void> | void, maxRounds = 100): Promise<BattleSnapshot> {
+  async runAnimated(onSnapshot: (snapshot: BattleSnapshot) => Promise<void> | void, maxRounds = 100, ultimateDecisionProvider?: UltimateDecisionProvider): Promise<BattleSnapshot> {
     let snapshot = this.snapshot();
     let lastActionCount = -1;
     await onSnapshot(snapshot);
 
     for (let step = 0; step < maxRounds * 30 && !this.isFinished(); step += 1) {
+      // Decisions are requested only at the authoritative ACTION state. The
+      // provider may be a Discord interaction, but the engine still validates
+      // every id against this in-memory server state before spending charge.
+      if (this.phase === "ACTION") {
+        const actor = this.initiative[this.turn];
+        if (actor && this.playerTeam.includes(actor) && actor.alive && actor.ultimateReady && ultimateDecisionProvider) {
+          this.pendingUltimateDecision = await ultimateDecisionProvider({
+            snapshot: this.snapshot(), actor: structuredClone(actor), validTargets: this.validUltimateTargets(actor).map((target) => structuredClone(target)),
+          });
+        }
+      }
       snapshot = this.step();
       if (snapshot.actions.length !== lastActionCount || this.isFinished()) {
         lastActionCount = snapshot.actions.length;
@@ -170,7 +182,10 @@ export class BattleEngine {
     const allies = this.teamOf(actor);
     const enemies = allies === this.playerTeam ? this.enemyTeam : this.playerTeam;
 
-    const selected = chooseAction(actor, allies, enemies);
+    const selected = this.pendingUltimateDecision?.useUltimate
+      ? this.selectionFromUltimateDecision(this.pendingUltimateDecision, actor)
+      : chooseAction(actor, allies, enemies);
+    this.pendingUltimateDecision = null;
     if (!selected) return;
 
     const { skill, actionKey, target } = selected;
@@ -203,6 +218,7 @@ export class BattleEngine {
           targetName: tgt.name,
           amount: actualHeal,
           skillName: skill.name,
+          isHealing: actionKey === "ultimate",
         });
         if (skill.statusEffects) {
           for (const eff of skill.statusEffects) {
@@ -275,6 +291,7 @@ export class BattleEngine {
           amount: dmgResult.finalDamage,
           critical: dmgResult.critical,
           skillName: skill.name,
+          isHealing: false,
         });
 
         if (skill.statusEffects && tgt.alive) {
@@ -301,6 +318,40 @@ export class BattleEngine {
         }
       }
     }
+  }
+
+  /** Returns targets that this actor may legally select for its ultimate. */
+  validUltimateTargets(actor: Combatant): Combatant[] {
+    const allies = this.teamOf(actor);
+    const enemies = allies === this.playerTeam ? this.enemyTeam : this.playerTeam;
+    const ultimate = actor.skills.ultimate;
+    if (ultimate.targetType === "self") return actor.alive ? [actor] : [];
+    if (ultimate.targetType === "single_enemy" || ultimate.targetType === "aoe_enemy") return enemies.filter((unit) => unit.alive);
+    if (ultimate.targetType === "single_ally") return allies.filter((unit) => ultimate.type === "REVIVE" ? !unit.alive : unit.alive);
+    return allies.filter((unit) => unit.alive);
+  }
+
+  /**
+   * Server-side gate for user supplied decisions. IDs from Discord/API clients
+   * are never trusted: the actor must be the current living player actor with
+   * an unused ready charge and the target must match the ultimate target type.
+   */
+  validateUltimateDecision(decision: UltimateDecision, actor = this.initiative[this.turn]): { ok: true; target: Combatant } | { ok: false; error: string } {
+    if (!decision.useUltimate) return { ok: false, error: "Ultimate was not requested." };
+    if (!actor || !actor.alive) return { ok: false, error: "Actor is not alive or is not taking this turn." };
+    if (!this.playerTeam.includes(actor) || actor.id !== decision.actorId) return { ok: false, error: "Actor does not belong to the player or is not the current actor." };
+    if (!actor.ultimateReady || actor.ultimateCharge < actor.ultimateChargeRequired) return { ok: false, error: "Ultimate charge is not ready." };
+    if ((actor.cooldowns.ultimate ?? 0) > 0) return { ok: false, error: "Ultimate is on cooldown." };
+    const targets = this.validUltimateTargets(actor);
+    const target = targets.find((unit) => unit.id === (decision.targetId ?? (actor.skills.ultimate.targetType === "self" ? actor.id : "")));
+    if (!target) return { ok: false, error: "Ultimate target is invalid." };
+    return { ok: true, target };
+  }
+
+  private selectionFromUltimateDecision(decision: UltimateDecision, actor: Combatant) {
+    const result = this.validateUltimateDecision(decision, actor);
+    if (!result.ok) return chooseAction(actor, this.playerTeam, this.enemyTeam);
+    return { skill: actor.skills.ultimate, actionKey: "ultimate" as const, target: result.target };
   }
 
   private determineSkillTargets(
