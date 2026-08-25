@@ -1,9 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 import { commandDefinitions } from "../commands";
-import { handleInteraction } from "../handlers";
+import { handleAutocompleteInteraction, handleInteraction } from "../handlers";
 import { validateBotEnv } from "../index";
 
 describe("Discord Bot System", () => {
+  it("should configure /invocar banner option with autocomplete true and proper description", () => {
+    const invocarCmd = commandDefinitions.find((cmd) => cmd.name === "invocar");
+    expect(invocarCmd).toBeDefined();
+    const json = invocarCmd?.toJSON();
+    const bannerOpt = json?.options?.find((opt: any) => opt.name === "banner") as any;
+    expect(bannerOpt).toBeDefined();
+    expect(bannerOpt.autocomplete).toBe(true);
+    expect(bannerOpt.description).toBe("Escolha ou pesquise um banner ativo");
+  });
   it("should define all required user and admin slash commands", () => {
     const commandNames = commandDefinitions.map((cmd) => cmd.name);
     expect(commandNames).toContain("perfil");
@@ -48,6 +57,47 @@ describe("Discord Bot System", () => {
     const payload = editReplyMock.mock.calls[0][0];
     expect(payload.embeds).toBeDefined();
     expect(payload.embeds[0].data.title).toContain("Perfil de BotTester");
+  });
+
+  it("should handle /invocar autocomplete interaction for banner option", async () => {
+    const respondMock = vi.fn();
+    const mockInteraction: any = {
+      commandName: "invocar",
+      user: { id: "bot_test_user_1", username: "BotTester" },
+      options: {
+        getFocused: (full: boolean) => ({ name: "banner", value: "Normal" }),
+      },
+      respond: respondMock,
+    };
+
+    await handleAutocompleteInteraction(mockInteraction);
+
+    expect(respondMock).toHaveBeenCalled();
+    const choices = respondMock.mock.calls[0][0];
+    expect(choices.length).toBeGreaterThan(0);
+    expect(choices[0].name).toContain("Normal");
+    expect(choices[0].value).toBeDefined();
+  });
+
+  it("should ask user to select banner when multiple banners are active and none specified in /invocar", async () => {
+    const editReplyMock = vi.fn();
+    const mockInteraction: any = {
+      commandName: "invocar",
+      user: { id: "bot_test_user_1", username: "BotTester" },
+      options: {
+        getInteger: () => 1,
+        getString: () => null,
+      },
+      deferReply: vi.fn().mockResolvedValue(undefined),
+      editReply: editReplyMock,
+    };
+
+    await handleInteraction(mockInteraction);
+
+    expect(mockInteraction.deferReply).toHaveBeenCalled();
+    expect(editReplyMock).toHaveBeenCalled();
+    const responseText = editReplyMock.mock.calls[0][0];
+    expect(responseText).toContain("Existem múltiplos banners ativos");
   });
 
   it("should handle /banner command interaction", async () => {
