@@ -504,25 +504,52 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     // 7. /batalha
     if (commandName === "batalha") {
       await interaction.deferReply();
-      const stageId = interaction.options.getString("estagio_id") ?? undefined;
-      const selectedStage = stageId ? await getPveStageById(stageId) : null;
-      const stageName = selectedStage?.name ?? (stageId ? `Estágio ${stageId.slice(0, 8)}` : "Mundo 1: Fase Inicial");
-      const animationSpeed = interaction.options.getString("velocidade") ?? "slow";
-      const delayBySpeed: Record<string, number> = { slow: 1400, medium: 800, fast: 350 };
-      const animationDelay = delayBySpeed[animationSpeed] ?? delayBySpeed.slow;
-      let lastUpdate = 0;
+      
+      try {
+        const stageId = interaction.options.getString("estagio_id") ?? undefined;
+        const selectedStage = stageId ? await getPveStageById(stageId) : null;
+        const stageName = selectedStage?.name ?? (stageId ? `Estágio ${stageId.slice(0, 8)}` : "Mundo 1: Fase Inicial");
+        const animationSpeed = interaction.options.getString("velocidade") ?? "slow";
+        const delayBySpeed: Record<string, number> = { slow: 1400, medium: 800, fast: 350 };
+        const animationDelay = delayBySpeed[animationSpeed] ?? delayBySpeed.slow;
+        let lastUpdate = 0;
 
-      const { result, rewards, drops } = await runPlayerBattle(discordId, stageId, async (snapshot) => {
-        const now = Date.now();
-        if (snapshot.actions.length > 0 && now - lastUpdate < animationDelay) {
-          await new Promise((resolve) => setTimeout(resolve, animationDelay - (now - lastUpdate)));
+        const { result, rewards, drops } = await runPlayerBattle(discordId, stageId, async (snapshot) => {
+          const now = Date.now();
+          if (snapshot.actions.length > 0 && now - lastUpdate < animationDelay) {
+            await new Promise((resolve) => setTimeout(resolve, animationDelay - (now - lastUpdate)));
+          }
+          await interaction.editReply({ embeds: [createBattleProgressEmbed(username, stageName, snapshot)] });
+          lastUpdate = Date.now();
+        });
+
+        const embed = createBattleResultEmbed(username, stageName, result, rewards, drops);
+        await interaction.editReply({ embeds: [embed] });
+      } catch (error: any) {
+        const errorMsg = error.message || String(error);
+        
+        if (errorMsg.includes("Profile not found")) {
+          await interaction.editReply(
+            "❌ **Perfil não encontrado!**\n\n" +
+            "Você precisa criar seu perfil primeiro.\n" +
+            "Use o comando `/perfil` para começar sua jornada!"
+          );
+        } else if (errorMsg.includes("No characters in collection")) {
+          await interaction.editReply(
+            "❌ **Nenhum personagem na coleção!**\n\n" +
+            "Você precisa invocar personagens primeiro.\n" +
+            "Use o comando `/invocar` para obter seus primeiros personagens!"
+          );
+        } else if (errorMsg.includes("Create a team")) {
+          await interaction.editReply(
+            "❌ **Time não configurado!**\n\n" +
+            "Você precisa montar um time primeiro.\n" +
+            "Use o comando `/time` para configurar sua equipe!"
+          );
+        } else {
+          throw error; // Re-throw outros erros
         }
-        await interaction.editReply({ embeds: [createBattleProgressEmbed(username, stageName, snapshot)] });
-        lastUpdate = Date.now();
-      });
-
-      const embed = createBattleResultEmbed(username, stageName, result, rewards, drops);
-      await interaction.editReply({ embeds: [embed] });
+      }
       return;
     }
 

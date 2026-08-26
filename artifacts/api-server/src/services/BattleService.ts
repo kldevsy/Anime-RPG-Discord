@@ -30,7 +30,8 @@ async function runEngine(engine: BattleEngine, onSnapshot?: BattleSnapshotHandle
 export async function runPlayerBattle(discordId: string, stageId?: string, onSnapshot?: BattleSnapshotHandler, ultimateDecisionProvider?: UltimateDecisionProvider) {
   if (!db) {
     const profile = await getProfile(discordId);
-    if (!profile) throw new BattleServiceError("Profile not found.");
+    if (!profile) throw new BattleServiceError("Profile not found. Use /perfil to create your profile.");
+    
     let teamData = await getTeam(discordId);
     if (!teamData || !teamData.members.length) {
       if (profile.collection.length > 0) {
@@ -39,7 +40,10 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
         teamData = await getTeam(discordId);
       }
     }
-    if (!teamData || !teamData.members.length) throw new BattleServiceError("Create a team before starting a battle.");
+    
+    if (!teamData || !teamData.members.length) {
+      throw new BattleServiceError("No characters in collection. Use /invocar to summon characters first.");
+    }
 
     const player: Combatant[] = teamData.members.map(({ ownedId, level, character }) => {
       const maxHp = character.baseHp + level * 40;
