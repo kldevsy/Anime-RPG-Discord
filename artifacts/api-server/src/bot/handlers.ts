@@ -190,9 +190,22 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
   const username = user.username;
 
   try {
+    // Defer IMEDIATAMENTE para evitar timeout de 3 segundos
+    // Alguns comandos podem sobrescrever com seu próprio defer
+    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens"];
+    
+    if (shouldDeferEarly.includes(commandName)) {
+      try {
+        await interaction.deferReply();
+      } catch (deferError) {
+        console.error(`Failed to defer ${commandName}:`, deferError);
+        // Se o defer falhar, tentamos responder diretamente
+        return;
+      }
+    }
+
     // 1. /perfil
     if (commandName === "perfil") {
-      await interaction.deferReply();
       const profile = (await getProfile(discordId)) ?? { user: await getOrCreateUser(discordId, username), collection: [] };
       const teamData = await getTeam(discordId);
       const embed = createProfileEmbed(profile.user, profile.collection.length, teamData?.members?.length ?? 0);
@@ -202,7 +215,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 2. /invocar
     if (commandName === "invocar") {
-      await interaction.deferReply();
       const quantity = (interaction.options.getInteger("quantidade") ?? 1) as 1 | 10;
       let bannerId = interaction.options.getString("banner");
 
@@ -228,7 +240,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 3. /banner
     if (commandName === "banner") {
-      await interaction.deferReply();
       const activeBanners = await listActiveBanners();
       const embed = createBannersEmbed(activeBanners);
       await interaction.editReply({ embeds: [embed] });
@@ -237,7 +248,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 4. /personagens
     if (commandName === "personagens") {
-      await interaction.deferReply();
       const animeFilter = interaction.options.getString("anime") ?? undefined;
       const rarityFilter = (interaction.options.getString("raridade") as any) ?? undefined;
 
@@ -273,125 +283,129 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 5. /personagem
     if (commandName === "personagem") {
-      await interaction.deferReply();
-      const query = interaction.options.getString("nome", true).toLowerCase();
-      const catalog = await listCharacters({});
-      const found = catalog.find((c: any) => c.name.toLowerCase().includes(query) || c.id === query);
+      try {
+        const query = interaction.options.getString("nome", true).toLowerCase();
+        const catalog = await listCharacters({});
+        const found = catalog.find((c: any) => c.name.toLowerCase().includes(query) || c.id === query);
 
-      if (!found) {
-        await interaction.editReply("❌ Personagem não encontrado no catálogo.");
-        return;
-      }
+        if (!found) {
+          await interaction.editReply("❌ Personagem não encontrado no catálogo.");
+          return;
+        }
 
-      // Formatar detalhes da passiva
-      let passiveDetails = found.passive ?? "Nenhuma";
-      
-      if (found.passiveAbility) {
-        const pa = found.passiveAbility;
+        // Formatar detalhes da passiva
+        let passiveDetails = found.passive ?? "Nenhuma";
         
-        // Trigger formatado
-        const triggerMap: Record<string, string> = {
-          "on_battle_start": "Início da Batalha",
-          "on_round_start": "Início de Rodada",
-          "on_turn_start": "Início do Turno",
-          "on_hit": "Ao Acertar",
-          "on_critical_hit": "Ao Dar Crítico",
-          "on_damaged": "Ao Receber Dano",
-          "on_kill": "Ao Derrotar Inimigo",
-          "on_basic_attack": "Ao Atacar (Básico)",
-          "always": "Sempre Ativo",
-        };
-        
-        const triggerText = triggerMap[pa.trigger] || pa.trigger;
-        
-        // Efeitos formatados
-        const effectsList: string[] = [];
-        for (const effect of pa.effects.slice(0, 3)) { // Máx 3 efeitos para não ficar grande
-          const effectMap: Record<string, string> = {
-            "increase_attack": `+${effect.value}% Ataque`,
-            "increase_defense": `+${effect.value}% Defesa`,
-            "increase_speed": `+${effect.value} Velocidade`,
-            "increase_crit_chance": `+${effect.value}% Chance Crítico`,
-            "increase_crit_damage": `+${effect.value}% Dano Crítico`,
-            "bonus_damage_percent": `+${effect.value}% Dano`,
-            "lifesteal": `${effect.value}% Lifesteal`,
-            "heal_percent": `Cura ${effect.value}% HP`,
-            "heal_self": `Cura ${effect.value} HP`,
-            "damage_reduction": `${effect.value}% Redução de Dano`,
-            "shield": `Escudo de ${effect.value} HP`,
-            "reflect_damage": `Reflete ${effect.value}% do Dano`,
-            "counter_attack": `Contra-ataque ${effect.value}%`,
-            "gain_ultimate_charge": `+${effect.value} Carga Ultimate`,
-            "apply_status": effect.statusType ? `Aplica ${effect.statusType}` : `Aplica Status`,
-            "cleanse_debuff": `Remove ${effect.value} Debuff(s)`,
+        if (found.passiveAbility) {
+          const pa = found.passiveAbility;
+          
+          // Trigger formatado
+          const triggerMap: Record<string, string> = {
+            "on_battle_start": "Início da Batalha",
+            "on_round_start": "Início de Rodada",
+            "on_turn_start": "Início do Turno",
+            "on_hit": "Ao Acertar",
+            "on_critical_hit": "Ao Dar Crítico",
+            "on_damaged": "Ao Receber Dano",
+            "on_kill": "Ao Derrotar Inimigo",
+            "on_basic_attack": "Ao Atacar (Básico)",
+            "always": "Sempre Ativo",
           };
           
-          const effectText = effectMap[effect.type] || effect.type;
-          effectsList.push(effectText);
-        }
-        
-        // Condições formatadas
-        const conditionsList: string[] = [];
-        if (pa.conditions && pa.conditions.length > 0) {
-          for (const condition of pa.conditions.slice(0, 2)) {
-            const condMap: Record<string, string> = {
-              "hp_below_percent": `HP < ${condition.value}%`,
-              "hp_above_percent": `HP > ${condition.value}%`,
-              "target_hp_below_percent": `Alvo HP < ${condition.value}%`,
-              "is_critical": "Crítico",
-              "is_last_standing": "Último Vivo",
-              "round_above": `Após Rodada ${condition.value}`,
+          const triggerText = triggerMap[pa.trigger] || pa.trigger;
+          
+          // Efeitos formatados (máx 3 para não ficar grande)
+          const effectsList: string[] = [];
+          for (const effect of pa.effects.slice(0, 3)) {
+            const effectMap: Record<string, string> = {
+              "increase_attack": `+${effect.value}% Ataque`,
+              "increase_defense": `+${effect.value}% Defesa`,
+              "increase_speed": `+${effect.value} Velocidade`,
+              "increase_crit_chance": `+${effect.value}% Chance Crítico`,
+              "increase_crit_damage": `+${effect.value}% Dano Crítico`,
+              "bonus_damage_percent": `+${effect.value}% Dano`,
+              "lifesteal": `${effect.value}% Lifesteal`,
+              "heal_percent": `Cura ${effect.value}% HP`,
+              "heal_self": `Cura ${effect.value} HP`,
+              "damage_reduction": `${effect.value}% Redução de Dano`,
+              "shield": `Escudo de ${effect.value} HP`,
+              "reflect_damage": `Reflete ${effect.value}% do Dano`,
+              "counter_attack": `Contra-ataque ${effect.value}%`,
+              "gain_ultimate_charge": `+${effect.value} Carga Ultimate`,
+              "apply_status": effect.statusType ? `Aplica ${effect.statusType}` : `Aplica Status`,
+              "cleanse_debuff": `Remove ${effect.value} Debuff(s)`,
             };
             
-            const condText = condMap[condition.type] || condition.type;
-            conditionsList.push(condText);
+            const effectText = effectMap[effect.type] || effect.type;
+            effectsList.push(effectText);
+          }
+          
+          // Condições formatadas (máx 2)
+          const conditionsList: string[] = [];
+          if (pa.conditions && pa.conditions.length > 0) {
+            for (const condition of pa.conditions.slice(0, 2)) {
+              const condMap: Record<string, string> = {
+                "hp_below_percent": `HP < ${condition.value}%`,
+                "hp_above_percent": `HP > ${condition.value}%`,
+                "target_hp_below_percent": `Alvo HP < ${condition.value}%`,
+                "is_critical": "Crítico",
+                "is_last_standing": "Último Vivo",
+                "round_above": `Após Rodada ${condition.value}`,
+              };
+              
+              const condText = condMap[condition.type] || condition.type;
+              conditionsList.push(condText);
+            }
+          }
+          
+          // Limites
+          const limits: string[] = [];
+          if (pa.maxActivationsPerBattle) {
+            limits.push(`${pa.maxActivationsPerBattle}x por batalha`);
+          }
+          if (pa.maxActivationsPerRound) {
+            limits.push(`${pa.maxActivationsPerRound}x por rodada`);
+          }
+          if (pa.cooldownRounds) {
+            limits.push(`${pa.cooldownRounds} rodadas de cooldown`);
+          }
+          
+          // Monta descrição completa
+          passiveDetails = `**${pa.name}**\n${pa.description}\n\n` +
+            `**🎯 Trigger:** ${triggerText}\n` +
+            `**💫 Efeitos:** ${effectsList.join(", ")}`;
+          
+          if (conditionsList.length > 0) {
+            passiveDetails += `\n**✅ Condições:** ${conditionsList.join(", ")}`;
+          }
+          
+          if (limits.length > 0) {
+            passiveDetails += `\n**⏱️ Limites:** ${limits.join(", ")}`;
           }
         }
-        
-        // Limites
-        const limits: string[] = [];
-        if (pa.maxActivationsPerBattle) {
-          limits.push(`${pa.maxActivationsPerBattle}x por batalha`);
-        }
-        if (pa.maxActivationsPerRound) {
-          limits.push(`${pa.maxActivationsPerRound}x por rodada`);
-        }
-        if (pa.cooldownRounds) {
-          limits.push(`${pa.cooldownRounds} rodadas de cooldown`);
-        }
-        
-        // Monta descrição completa
-        passiveDetails = `**${pa.name}**\n${pa.description}\n\n` +
-          `**🎯 Trigger:** ${triggerText}\n` +
-          `**💫 Efeitos:** ${effectsList.join(", ")}`;
-        
-        if (conditionsList.length > 0) {
-          passiveDetails += `\n**✅ Condições:** ${conditionsList.join(", ")}`;
-        }
-        
-        if (limits.length > 0) {
-          passiveDetails += `\n**⏱️ Limites:** ${limits.join(", ")}`;
-        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(`🎴 Personagem: ${found.name}`)
+          .setColor(0xf1c40f)
+          .addFields(
+            { name: "📺 Anime", value: found.anime, inline: true },
+            { name: "⭐ Raridade", value: found.rarity.toUpperCase(), inline: true },
+            { name: "🗡️ Função", value: found.role.toUpperCase(), inline: true },
+            { name: "❤️ HP Base", value: `${found.baseHp}`, inline: true },
+            { name: "⚔️ Ataque Base", value: `${found.baseAttack}`, inline: true },
+            { name: "🛡️ Defesa Base", value: `${found.baseDefense}`, inline: true },
+            { name: "⚡ Velocidade", value: `${found.baseSpeed}`, inline: true },
+            { name: "🔮 Passiva", value: passiveDetails.slice(0, 1024), inline: false },
+            { name: "✨ Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
+          );
+
+        applyEmbedImage(embed, found.imageUrl);
+
+        await interaction.editReply({ embeds: [embed] });
+      } catch (error) {
+        console.error("Error in /personagem command:", error);
+        await interaction.editReply("❌ Erro ao buscar informações do personagem.").catch(() => {});
       }
-
-      const embed = new EmbedBuilder()
-        .setTitle(`🎴 Personagem: ${found.name}`)
-        .setColor(0xf1c40f)
-        .addFields(
-          { name: "📺 Anime", value: found.anime, inline: true },
-          { name: "⭐ Raridade", value: found.rarity.toUpperCase(), inline: true },
-          { name: "🗡️ Função", value: found.role.toUpperCase(), inline: true },
-          { name: "❤️ HP Base", value: `${found.baseHp}`, inline: true },
-          { name: "⚔️ Ataque Base", value: `${found.baseAttack}`, inline: true },
-          { name: "🛡️ Defesa Base", value: `${found.baseDefense}`, inline: true },
-          { name: "⚡ Velocidade", value: `${found.baseSpeed}`, inline: true },
-          { name: "🔮 Passiva", value: passiveDetails.slice(0, 1024), inline: false }, // Discord limit 1024 chars
-          { name: "✨ Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
-        );
-
-      applyEmbedImage(embed, found.imageUrl);
-
-      await interaction.editReply({ embeds: [embed] });
       return;
     }
 
