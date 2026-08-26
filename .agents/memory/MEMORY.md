@@ -3,3 +3,4 @@
 - [Discord autocomplete retries](discord-autocomplete.md) — Treat duplicate autocomplete acknowledgements as harmless and never let them crash the bot.
 - [Discord battle presentation](discord-battle-presentation.md) — Render server battle snapshots as paced embed updates instead of duplicating combat logic in the bot.
 - [Discord battle speed](discord-battle-speed.md) — Keep slow as the default while allowing per-battle medium and fast playback.
+- [Bot startup synchronization](bot-startup-sync.md) — Startup must migrate, sync catalog data, rebuild, and surface missing Discord configuration before login.
