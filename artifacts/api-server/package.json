@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
+    "dev": "export NODE_ENV=development && pnpm run startup-sync && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "bot": "node --enable-source-maps ./dist/bot/index.mjs",
+    "bot": "pnpm run startup-sync && pnpm run build && node --enable-source-maps ./dist/bot/index.mjs",
+    "startup-sync": "node ./scripts/startup-sync.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

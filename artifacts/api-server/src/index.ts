@@ -31,11 +31,18 @@ async function startServer() {
 
     logger.info({ port }, "Server listening");
 
-    if (process.env["DISCORD_TOKEN"]) {
-      startBot().catch((botErr) => {
+    startBot()
+      .then((client) => {
+        if (!client) {
+          logger.error(
+            "Discord bot was not started because DISCORD_TOKEN is missing.",
+          );
+        }
+      })
+      .catch((botErr) => {
         logger.error({ err: botErr }, "Error starting Discord bot");
+        process.exitCode = 1;
       });
-    }
   });
 }
 

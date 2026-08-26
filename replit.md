@@ -18,7 +18,7 @@ Backend foundation for a professional Discord anime RPG, starting with persisten
 
 ## Deploy
 
-The bot workflow runs `pnpm --filter @workspace/db run migrate` before building and starting the bot. Configure `DATABASE_URL` (and `USE_DATABASE=true`) in the deployment environment before restarting or deploying; do not run the bot against a database until this migration step succeeds.
+The API workflow runs `startup-sync` before every start/restart. When `USE_DATABASE=true` and `DATABASE_URL` are configured, it applies migrations and synchronizes the character catalog before rebuilding the API and Discord bot. Configure those values in the deployment environment before enabling database mode.
 
 ## Stack
 
