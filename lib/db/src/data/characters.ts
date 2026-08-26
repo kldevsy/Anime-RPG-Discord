@@ -189,7 +189,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 105,
       baseSpeed: 118,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
       passive:
         "Determinação: recebe um pequeno bônus de ataque abaixo de 50% de HP.",
       passiveAbility: DETERMINATION,
@@ -226,7 +226,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 115,
       baseSpeed: 100,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/35.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542302133620179063/file_00000000d6c4820ea072e274eda736f4.png?ex=6a90bc4b&is=6a8f6acb&hm=0b62c43c919d44a038090ce7a402ac8ff00e502fad2adb399a674efce222dd7f",
       passive: "Controle de chakra: cura aliada com menor HP.",
       passiveAbility: CHAKRA_CONTROL,
       ultimate: {
@@ -263,7 +263,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 135,
       baseSpeed: 96,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/130.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542301848269095032/file_00000000534c820ebbab3e2662196527.png?ex=6a90bc07&is=6a8f6a87&hm=d2fff6c47a1b466316931e18efc7aca1a7d5e907a8476e63535df443a63bd852",
       passive: "Resiliência: reduz o primeiro dano recebido em cada combate.",
       passiveAbility: RESILIENCE,
       ultimate: {
@@ -294,7 +294,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 110,
       baseSpeed: 125,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300801836384286/file_00000000f550820eaf36a021f8edac38.png?ex=6a90bb0d&is=6a8f698d&hm=dd733a63294ff4dc64333dedb8f9257bb7573095d36dce1c6e22ccb8b58f8c8b&",
       passive:
         "Pressão espiritual: ataques têm chance de causar dano adicional.",
       passiveAbility: SPIRITUAL_PRESSURE,
@@ -366,7 +366,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 112,
       baseSpeed: 122,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512302736580658/file_000000005108820eb47bf843d683fb26.png?ex=6a907fb4&is=6a8f2e34&hm=bf81301688ee4a55a0a278142a7549ab90ec7fb6006c34f356b56c8096e6bce8&",
       passive: "Sharingan: aumenta chance de crítico e dano crítico",
       passiveAbility: SHARINGAN,
       ultimate: {
@@ -402,7 +402,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 120,
       baseSpeed: 110,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/212.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512302178861216/file_00000000ccf0820ebd98e66f889802a4.png?ex=6a907fb4&is=6a8f2e34&hm=6b44559e0eae1e350b0323d0b63d0478242389c8b0e9053bb3b62d0fb72a7066&",
       passive: "Santoryu: ataques básicos podem causar sangramento",
       passiveAbility: THREE_SWORD_STYLE,
       ultimate: {
@@ -435,7 +435,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 110,
       baseSpeed: 112,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/448.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300800741539940/file_0000000062f4820e98cb248ffd8a582c.png?ex=6a90bb0d&is=6a8f698d&hm=2d8e6a2db7ca7786f85f8265164af4c3635cf4457988742ce53ee1d6a9438586&",
       passive: "Respiração da Água: aumenta velocidade e defesa",
       passiveAbility: WATER_BREATHING,
       ultimate: {
@@ -469,7 +469,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 100,
       baseSpeed: 105,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300801274351726/file_00000000e684820e9891b29b8290cb54.png?ex=6a90bb0d&is=6a8f698d&hm=c91d993f7b948c4a7dc41362993d81396849927761abe99f3c5eb89472783641&",
       passive: "Força Sobre-humana: ganha carga ao dar crítico",
       passiveAbility: SUPERHUMAN_STRENGTH,
       ultimate: {
