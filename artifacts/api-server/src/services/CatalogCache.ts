@@ -8,7 +8,7 @@ export class CatalogCache {
   private static lastFetched = 0;
   private static lastCatalogCheck = 0;
   private static TTL = 300000; // 5 minutes cache TTL
-  private static catalogCheckInterval = 5000; // Verifica mudanças a cada 5 segundos
+  private static catalogCheckInterval = 1000; // Verifica mudanças a cada 1 segundo (reduzido de 5s)
 
   /**
    * Verifica se o catálogo mudou e invalida cache se necessário
@@ -23,8 +23,9 @@ export class CatalogCache {
     this.lastCatalogCheck = now;
 
     if (hasCatalogChanged()) {
-      console.log("[CatalogCache] Mudança no catálogo detectada, invalidando cache");
+      console.log("🔄 [CatalogCache] Mudança no catálogo detectada! Invalidando cache...");
       this.invalidate();
+      console.log("✅ [CatalogCache] Cache invalidado com sucesso");
     }
   }
 
