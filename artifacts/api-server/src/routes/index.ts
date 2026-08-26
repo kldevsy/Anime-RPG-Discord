@@ -13,6 +13,7 @@ import eventsRouter from "./events";
 import raidsRouter from "./raids";
 import pvpRouter from "./pvp";
 import towerRouter from "./tower";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(eventsRouter);
 router.use(raidsRouter);
 router.use(pvpRouter);
 router.use(towerRouter);
+router.use(adminRouter);
 
 export default router;

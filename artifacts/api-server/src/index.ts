@@ -1,7 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startBot } from "./bot";
-import { syncCharacterCatalog } from "@workspace/db";
+import { syncCharacterCatalog, startCatalogWatcher } from "@workspace/db";
 
 const rawPort = process.env["PORT"];
 
@@ -20,7 +20,16 @@ if (Number.isNaN(port) || port <= 0) {
 async function startServer() {
   const catalogSync = await syncCharacterCatalog();
   if (!catalogSync.skipped) {
-    logger.info({ count: catalogSync.insertedOrUpdated }, "Character catalog synchronized");
+    logger.info({ count: catalogSync.insertedOrUpdated, hash: catalogSync.hash }, "Character catalog synchronized");
+  } else {
+    logger.info({ reason: catalogSync.reason }, "Character catalog sync skipped");
+  }
+
+  // Ativa monitoramento automático em modo desenvolvimento
+  const isDevelopment = process.env.NODE_ENV !== "production";
+  if (isDevelopment) {
+    startCatalogWatcher(5000); // Verifica a cada 5 segundos
+    logger.info("Auto-sync do catálogo ativado (modo desenvolvimento)");
   }
 
   app.listen(port, (err) => {

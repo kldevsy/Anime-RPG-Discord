@@ -1,18 +1,50 @@
 import { characterCatalog, type Character, type User, type UserCharacter } from "@workspace/db";
+import { createHash } from "node:crypto";
 
 export const customMemoryCharacters: Character[] = [];
 
+let catalogCache: Character[] | null = null;
+let catalogHashCache: string | null = null;
+
+/**
+ * Calcula hash do catálogo para detectar mudanças
+ */
+function computeCatalogHash(): string {
+  const catalogData = JSON.stringify(characterCatalog);
+  return createHash("sha256").update(catalogData).digest("hex");
+}
+
+/**
+ * Obtém personagens da memória, detectando automaticamente mudanças no catálogo.
+ * 
+ * Elimina necessidade de reiniciar o servidor ao adicionar/modificar personagens
+ * em characters.ts. O cache é invalidado automaticamente quando detecta mudanças.
+ */
 export function getMemoryCharacters(): Character[] {
-  const catalogChars: Character[] = characterCatalog.map((character, index) => ({
-    ...character,
-    imageUrl: character.imageUrl ?? null,
-    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
-    level: 1,
-    catalogManaged: true,
-    evolution: null,
-    createdAt: new Date(Date.UTC(2026, 0, index + 1)),
-  }));
-  return [...catalogChars, ...customMemoryCharacters];
+  const currentHash = computeCatalogHash();
+
+  // Invalida cache se o catálogo mudou
+  if (catalogHashCache !== currentHash) {
+    catalogCache = null;
+    catalogHashCache = currentHash;
+    console.log("[MemoryStore] Catálogo atualizado detectado, cache invalidado");
+  }
+
+  // Reconstrói cache se necessário
+  if (!catalogCache) {
+    const catalogChars: Character[] = characterCatalog.map((character, index) => ({
+      ...character,
+      imageUrl: character.imageUrl ?? null,
+      id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+      level: 1,
+      catalogManaged: true,
+      evolution: null,
+      createdAt: new Date(Date.UTC(2026, 0, index + 1)),
+    }));
+    catalogCache = [...catalogChars, ...customMemoryCharacters];
+  }
+
+  return catalogCache;
 }
 
 /**

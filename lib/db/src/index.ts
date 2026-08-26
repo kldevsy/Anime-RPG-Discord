@@ -15,3 +15,4 @@ export const db = pool ? drizzle(pool, { schema }) : null;
 export * from "./schema";
 export * from "./data/characters";
 export * from "./catalog-sync";
+export * from "./catalog-watcher";

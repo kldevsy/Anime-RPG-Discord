@@ -1,17 +1,54 @@
 import { eq, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import { characterCatalog } from "./data/characters";
 import { characters } from "./schema";
 import { db } from "./index";
 
 /**
- * Keeps the database catalog in sync with the editable TypeScript catalog.
- *
- * Character names are unique, so an administrative character with a different
- * name is preserved. Existing catalog names are intentionally synchronized as
- * well; this repairs older rows that were created before catalogManaged existed.
+ * Calcula hash do catálogo para detectar mudanças
  */
-export async function syncCharacterCatalog() {
-  if (!db) return { insertedOrUpdated: 0, skipped: true };
+function computeCatalogHash(): string {
+  const catalogData = JSON.stringify(characterCatalog);
+  return createHash("sha256").update(catalogData).digest("hex");
+}
+
+let lastKnownHash: string | null = null;
+let lastSyncTime = 0;
+
+/**
+ * Verifica se o catálogo mudou desde a última verificação
+ */
+export function hasCatalogChanged(): boolean {
+  const currentHash = computeCatalogHash();
+  if (lastKnownHash === null || lastKnownHash !== currentHash) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Mantém o catálogo de banco de dados sincronizado com o catálogo TypeScript editável.
+ * 
+ * Agora detecta automaticamente mudanças no catálogo através de hash,
+ * eliminando necessidade de sincronização manual.
+ *
+ * Personagens com nomes únicos e `catalogManaged = false` (criados via admin)
+ * são preservados. Entradas existentes do catálogo são sincronizadas.
+ */
+export async function syncCharacterCatalog(options?: { force?: boolean }) {
+  if (!db) return { insertedOrUpdated: 0, skipped: true, reason: "no-database" };
+
+  const currentHash = computeCatalogHash();
+  const force = options?.force ?? false;
+
+  // Verifica se precisa sincronizar
+  if (!force && lastKnownHash === currentHash) {
+    const timeSinceSync = Date.now() - lastSyncTime;
+    // Permite re-sync manual após 5 minutos
+    if (timeSinceSync < 300000) {
+      return { insertedOrUpdated: 0, skipped: true, reason: "no-changes" };
+    }
+  }
 
   const values = characterCatalog.map((character) => ({
     ...character,
@@ -37,5 +74,13 @@ export async function syncCharacterCatalog() {
       },
     });
 
-  return { insertedOrUpdated: values.length, skipped: false };
+  lastKnownHash = currentHash;
+  lastSyncTime = Date.now();
+
+  return { 
+    insertedOrUpdated: values.length, 
+    skipped: false, 
+    hash: currentHash,
+    reason: force ? "forced" : "changed" 
+  };
 }
