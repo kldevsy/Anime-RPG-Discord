@@ -123,75 +123,89 @@ function formatPveStageChoice(stage: Awaited<ReturnType<typeof listPveStages>>[n
 }
 
 export async function handleAutocompleteInteraction(interaction: AutocompleteInteraction): Promise<void> {
-  if (interaction.commandName === "invocar") {
-    const focused = interaction.options.getFocused(true);
-    if (focused.name === "banner") {
-      const activeBanners = await listActiveBanners();
-      const choices = activeBanners.map((banner) => ({ name: banner.name, value: banner.id }));
+  try {
+    if (interaction.commandName === "invocar") {
+      const focused = interaction.options.getFocused(true);
+      if (focused.name === "banner") {
+        const activeBanners = await listActiveBanners();
+        const choices = activeBanners.map((banner) => ({ name: banner.name, value: banner.id }));
+        await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
+        return;
+      }
+      await respondToAutocomplete(interaction, []);
+      return;
+    }
+
+    if (interaction.commandName === "batalha") {
+      const focused = interaction.options.getFocused(true);
+      if (focused.name !== "estagio_id") {
+        await respondToAutocomplete(interaction, []);
+        return;
+      }
+
+      const [stages, worlds] = await Promise.all([listPveStages(), listPveWorlds()]);
+      const worldNames = new Map(worlds.map((world) => [world.id, world.name]));
+      const choices = stages.map((stage) => formatPveStageChoice(stage, worldNames.get(stage.worldId)));
       await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
       return;
     }
-    await respondToAutocomplete(interaction, []);
-    return;
-  }
 
-  if (interaction.commandName === "batalha") {
+    if (interaction.commandName !== "equipe") {
+      await respondToAutocomplete(interaction, []);
+      return;
+    }
+
+    const subcommand = interaction.options.getSubcommand();
     const focused = interaction.options.getFocused(true);
-    if (focused.name !== "estagio_id") {
+    if (focused.name !== "personagem_id") {
       await respondToAutocomplete(interaction, []);
       return;
     }
 
-    const [stages, worlds] = await Promise.all([listPveStages(), listPveWorlds()]);
-    const worldNames = new Map(worlds.map((world) => [world.id, world.name]));
-    const choices = stages.map((stage) => formatPveStageChoice(stage, worldNames.get(stage.worldId)));
-    await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
-    return;
-  }
-
-  if (interaction.commandName !== "equipe") {
-    await respondToAutocomplete(interaction, []);
-    return;
-  }
-
-  const subcommand = interaction.options.getSubcommand();
-  const focused = interaction.options.getFocused(true);
-  if (focused.name !== "personagem_id") {
-    await respondToAutocomplete(interaction, []);
-    return;
-  }
-
-  const discordId = interaction.user.id;
-  const teamData = await getTeam(discordId);
-  const currentMembers: OwnedCharacterChoiceSource[] = teamData?.members ?? [];
-
-  if (subcommand === "adicionar") {
-    const profile = await getProfile(discordId);
-    console.log(`[AUTOCOMPLETE DEBUG] User ${discordId} - Profile collection size: ${profile?.collection?.length ?? 0}`);
+    const discordId = interaction.user.id;
     
-    if (!profile || !profile.collection || profile.collection.length === 0) {
+    // Timeout de 2.5 segundos para garantir resposta a tempo
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+    
+    const dataPromise = (async () => {
+      const teamData = await getTeam(discordId);
+      const currentMembers: OwnedCharacterChoiceSource[] = teamData?.members ?? [];
+
+      if (subcommand === "adicionar") {
+        const profile = await getProfile(discordId);
+        
+        if (!profile || !profile.collection || profile.collection.length === 0) {
+          return [];
+        }
+        
+        const currentOwnedIds = new Set(currentMembers.map((member) => member.ownedId));
+        const choices = ((profile.collection ?? []) as OwnedCharacterChoiceSource[])
+          .filter((item) => !currentOwnedIds.has(item.ownedId))
+          .map((item) => formatCharacterChoice(item));
+        
+        return filterChoicesByFocusedValue(choices, String(focused.value));
+      }
+
+      if (subcommand === "remover" || subcommand === "mover") {
+        const choices = currentMembers.map((member) => formatCharacterChoice(member, member.position));
+        return filterChoicesByFocusedValue(choices, String(focused.value));
+      }
+
+      return [];
+    })();
+    
+    const result = await Promise.race([dataPromise, timeoutPromise]);
+    await respondToAutocomplete(interaction, result ?? []);
+    
+  } catch (error) {
+    console.error("Autocomplete error:", error);
+    // Sempre responder, mesmo com erro
+    try {
       await respondToAutocomplete(interaction, []);
-      return;
+    } catch (e) {
+      // Ignorar erro de resposta
     }
-    
-    const currentOwnedIds = new Set(currentMembers.map((member) => member.ownedId));
-    const choices = ((profile.collection ?? []) as OwnedCharacterChoiceSource[])
-      .filter((item) => !currentOwnedIds.has(item.ownedId))
-      .map((item) => formatCharacterChoice(item));
-    
-    console.log(`[AUTOCOMPLETE DEBUG] Available choices: ${choices.length}, Current team size: ${currentMembers.length}`);
-    
-    await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
-    return;
   }
-
-  if (subcommand === "remover" || subcommand === "mover") {
-    const choices = currentMembers.map((member) => formatCharacterChoice(member, member.position));
-    await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
-    return;
-  }
-
-  await respondToAutocomplete(interaction, []);
 }
 
 export async function handleInteraction(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -225,33 +239,38 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 2. /invocar
     if (commandName === "invocar") {
-      const quantity = (interaction.options.getInteger("quantidade") ?? 1) as 1 | 10;
-      let bannerId = interaction.options.getString("banner");
+      try {
+        const quantity = (interaction.options.getInteger("quantidade") ?? 1) as 1 | 10;
+        let bannerId = interaction.options.getString("banner");
 
-      if (!bannerId) {
-        const activeBanners = await listActiveBanners();
-        if (!activeBanners.length) {
-          await interaction.editReply("❌ Nenhum banner de invocação ativo no momento.");
-          return;
+        if (!bannerId) {
+          const activeBanners = await listActiveBanners();
+          if (!activeBanners.length) {
+            await interaction.editReply("❌ Nenhum banner de invocação ativo no momento.");
+            return;
+          }
+          if (activeBanners.length > 1) {
+            await interaction.editReply("⚠️ Existem múltiplos banners ativos. Por favor, selecione um banner para invocar.");
+            return;
+          }
+          bannerId = activeBanners[0].id;
         }
-        if (activeBanners.length > 1) {
-          await interaction.editReply("⚠️ Existem múltiplos banners ativos. Por favor, selecione um banner para invocar.");
-          return;
-        }
-        bannerId = activeBanners[0].id;
+
+        const idempotencyKey = `bot_summon_${discordId}_${Date.now()}`;
+        const result = await summon(discordId, bannerId!, quantity, idempotencyKey);
+        
+        console.log(`✅ [SUMMON] User ${discordId} summoned ${result.results.length} characters`);
+        
+        // Verificar se os personagens foram adicionados
+        const profileAfterSummon = await getProfile(discordId);
+        console.log(`✅ [SUMMON] Profile collection size: ${profileAfterSummon?.collection?.length ?? 0}`);
+        
+        const embeds = createSummonResultEmbeds(username, result.results, result.currency, result.cost);
+        await interaction.editReply({ embeds });
+      } catch (error: any) {
+        console.error("❌ [SUMMON ERROR]", error);
+        await interaction.editReply(`❌ Erro ao invocar: ${error.message}`).catch(() => {});
       }
-
-      const idempotencyKey = `bot_summon_${discordId}_${Date.now()}`;
-      const result = await summon(discordId, bannerId!, quantity, idempotencyKey);
-      
-      console.log(`[SUMMON DEBUG] User ${discordId} summoned ${result.results.length} characters`);
-      
-      // Verificar se os personagens foram adicionados
-      const profileAfterSummon = await getProfile(discordId);
-      console.log(`[SUMMON DEBUG] Profile collection size after summon: ${profileAfterSummon?.collection?.length ?? 0}`);
-      
-      const embeds = createSummonResultEmbeds(username, result.results, result.currency, result.cost);
-      await interaction.editReply({ embeds });
       return;
     }
 
