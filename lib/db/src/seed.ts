@@ -1,5 +1,5 @@
-import { pool } from "./index";
-import { syncCharacterCatalog } from "./catalog-sync";
+import { pool } from "./index.js";
+import { syncCharacterCatalog } from "./catalog-sync.js";
 
 if (!pool) throw new Error("DATABASE_URL must be set before running the seed.");
 
