@@ -11,7 +11,8 @@
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
     "generate": "drizzle-kit generate --config ./drizzle.config.ts",
-    "migrate": "drizzle-kit migrate --config ./drizzle.config.ts",
+    "migrate": "node --experimental-strip-types ./src/migrate.ts",
+    "migrate:drizzle-kit": "drizzle-kit migrate --config ./drizzle.config.ts",
     "seed": "node --experimental-strip-types ./src/seed.ts"
   },
   "dependencies": {
