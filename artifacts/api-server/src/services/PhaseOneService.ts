@@ -91,13 +91,47 @@ export async function getTeam(discordId: string) {
   if (!db) {
     const user = findMemoryUserByDiscordId(discordId);
     if (!user) return null;
+    
+    console.log(`[TEAM DEBUG] Getting team for discord:${discordId}, user:${user.id}`);
+    
     const team = memoryTeams.find((item) => item.userId === user.id);
-    if (!team) return { team: null, members: [] };
+    if (!team) {
+      console.log(`[TEAM DEBUG] No team found`);
+      return { team: null, members: [] };
+    }
+    
+    console.log(`[TEAM DEBUG] Found team:${team.id}`);
+    
     const allChars = getMemoryCharacters();
-    const members = memoryMembers.filter((member) => member.teamId === team.id).sort((a, b) => a.position - b.position).map((member) => {
-      const owned = memoryOwned.find((item) => item.id === member.userCharacterId)!;
-      return { position: member.position, ownedId: owned.id, level: owned.level, xp: owned.xp, character: allChars.find((item) => item.id === owned.characterId)! };
-    });
+    const teamMemberRecords = memoryMembers.filter((member) => member.teamId === team.id);
+    
+    console.log(`[TEAM DEBUG] Team has ${teamMemberRecords.length} member records`);
+    
+    const members = teamMemberRecords
+      .sort((a, b) => a.position - b.position)
+      .map((member) => {
+        const owned = memoryOwned.find((item) => item.id === member.userCharacterId);
+        if (!owned) {
+          console.warn(`[TEAM DEBUG] WARNING: Owned character ${member.userCharacterId} not found!`);
+          return null;
+        }
+        const character = allChars.find((item) => item.id === owned.characterId);
+        if (!character) {
+          console.warn(`[TEAM DEBUG] WARNING: Character ${owned.characterId} not found!`);
+          return null;
+        }
+        return { 
+          position: member.position, 
+          ownedId: owned.id, 
+          level: owned.level, 
+          xp: owned.xp, 
+          character 
+        };
+      })
+      .filter(Boolean) as any[];
+    
+    console.log(`[TEAM DEBUG] Returning ${members.length} valid members`);
+    
     return { team, members };
   }
   const database = requireDb();
@@ -121,20 +155,41 @@ export async function replaceTeam(discordId: string, name: string, ownedCharacte
   if (!db) {
     const user = findMemoryUserByDiscordId(discordId);
     if (!user) throw new Error("User not found. Create a profile first.");
+    
+    console.log(`[REPLACE TEAM] User ${user.id} replacing team with characters: ${ownedCharacterIds.join(", ")}`);
+    
     const owned = getMemoryOwnedCharacters(user.id).filter((item) => ownedCharacterIds.includes(item.id));
-    if (owned.length !== ownedCharacterIds.length) throw new Error("One or more characters do not belong to this user.");
+    console.log(`[REPLACE TEAM] Found ${owned.length} owned characters out of ${ownedCharacterIds.length} requested`);
+    
+    if (owned.length !== ownedCharacterIds.length) {
+      console.error(`[REPLACE TEAM] ERROR: Missing characters!`);
+      console.error(`[REPLACE TEAM] Requested: ${ownedCharacterIds.join(", ")}`);
+      console.error(`[REPLACE TEAM] Found: ${owned.map(o => o.id).join(", ")}`);
+      throw new Error("One or more characters do not belong to this user.");
+    }
+    
     let team = memoryTeams.find((item) => item.userId === user.id && item.name === name);
     if (!team) {
       const now = new Date();
       team = { id: crypto.randomUUID(), userId: user.id, name, createdAt: now, updatedAt: now };
       memoryTeams.push(team);
+      console.log(`[REPLACE TEAM] Created new team: ${team.id}`);
     } else {
       team.updatedAt = new Date();
+      console.log(`[REPLACE TEAM] Updating existing team: ${team.id}`);
     }
+    
+    // Remove old members
+    const oldMemberCount = memoryMembers.filter(m => m.teamId === team.id).length;
     for (let index = memoryMembers.length - 1; index >= 0; index -= 1) {
       if (memoryMembers[index].teamId === team.id) memoryMembers.splice(index, 1);
     }
+    console.log(`[REPLACE TEAM] Removed ${oldMemberCount} old members`);
+    
+    // Add new members
     ownedCharacterIds.forEach((id, index) => memoryMembers.push({ teamId: team!.id, userCharacterId: id, position: index + 1 }));
+    console.log(`[REPLACE TEAM] Added ${ownedCharacterIds.length} new members`);
+    
     return getTeam(discordId);
   }
   const database = requireDb();

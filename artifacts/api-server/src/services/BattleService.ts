@@ -33,17 +33,25 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
     if (!profile) throw new BattleServiceError("Profile not found. Use /perfil to create your profile.");
     
     let teamData = await getTeam(discordId);
-    if (!teamData || !teamData.members.length) {
-      if (profile.collection.length > 0) {
-        const { replaceTeam } = await import("./PhaseOneService");
-        await replaceTeam(discordId, "Equipe Principal", profile.collection.slice(0, 5).map((c) => c.ownedId));
-        teamData = await getTeam(discordId);
-      }
+    
+    console.log(`[BATTLE] User ${discordId} team status: team=${!!teamData?.team}, members=${teamData?.members.length ?? 0}`);
+    
+    // Só cria time automático se NÃO existir time nenhum
+    if (!teamData?.team && profile.collection.length > 0) {
+      console.log(`[BATTLE] Auto-creating team from first ${Math.min(5, profile.collection.length)} characters`);
+      const { replaceTeam } = await import("./PhaseOneService");
+      await replaceTeam(discordId, "Equipe Principal", profile.collection.slice(0, 5).map((c) => c.ownedId));
+      teamData = await getTeam(discordId);
     }
     
     if (!teamData || !teamData.members.length) {
       throw new BattleServiceError("No characters in collection. Use /invocar to summon characters first.");
     }
+    
+    console.log(`[BATTLE] Starting battle with ${teamData.members.length} team members`);
+    teamData.members.forEach((m, i) => {
+      console.log(`[BATTLE]   ${i + 1}. ${m.character.name} (${m.ownedId})`);
+    });
 
     const player: Combatant[] = teamData.members.map(({ ownedId, level, character }) => {
       const maxHp = character.baseHp + level * 40;
