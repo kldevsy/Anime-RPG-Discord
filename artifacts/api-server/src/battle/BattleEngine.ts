@@ -2,7 +2,9 @@ import { randomInt } from "node:crypto";
 import { chooseAction } from "./AIController";
 import { calculateDamage } from "./DamageCalculator";
 import { StatusManager } from "./StatusManager";
+import { PassiveManager } from "./PassiveManager";
 import type { BattleAction, BattlePhase, BattleSnapshot, Combatant, UltimateDecision, UltimateDecisionProvider } from "./BattleState";
+import type { PassiveContext } from "./PassiveTypes";
 
 export class BattleEngine {
   private phase: BattlePhase = "WAITING";
@@ -11,8 +13,13 @@ export class BattleEngine {
   private initiative: Combatant[] = [];
   private actions: BattleAction[] = [];
   private pendingUltimateDecision: UltimateDecision | null = null;
+  private passiveManager: PassiveManager;
 
-  constructor(private readonly playerTeam: Combatant[], private readonly enemyTeam: Combatant[]) {}
+  constructor(private readonly playerTeam: Combatant[], private readonly enemyTeam: Combatant[]) {
+    this.passiveManager = new PassiveManager(0);
+    // Trigger passivas de início de batalha
+    this.triggerPassivesForAllCombatants("on_battle_start");
+  }
 
   snapshot(): BattleSnapshot {
     return {
@@ -129,8 +136,18 @@ export class BattleEngine {
   }
 
   private processRoundStart() {
+    // Atualiza round no PassiveManager
+    this.passiveManager.setRound(this.round);
+    
+    // Trigger passivas de início de rodada
+    this.triggerPassivesForAllCombatants("on_round_start");
+    
     for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
       if (!unit.alive) continue;
+      
+      // Trigger passivas de início de turno
+      this.triggerPassiveForUnit(unit, "on_turn_start");
+      
       if (unit.isBoss && !unit.isEnraged) {
         const enrageRoundThreshold = unit.enrageRound ?? 10;
         if (this.round >= enrageRoundThreshold || (unit.hp / unit.maxHp) <= 0.3) {
@@ -189,6 +206,16 @@ export class BattleEngine {
     if (!selected) return;
 
     const { skill, actionKey, target } = selected;
+    
+    // Trigger passivas antes de usar skill
+    if (actionKey === "basic") {
+      this.triggerPassiveForUnit(actor, "on_basic_attack", { target, allies, enemies });
+    } else if (actionKey === "ultimate") {
+      this.triggerPassiveForUnit(actor, "on_ultimate_use", { target, allies, enemies });
+    } else {
+      this.triggerPassiveForUnit(actor, "on_skill_use", { target, allies, enemies });
+    }
+    
     actor.cooldowns[actionKey] = actionKey === "ultimate"
       ? (actor.skills.ultimate.chargePolicy.cooldown ?? skill.cooldown)
       : skill.cooldown;
@@ -271,14 +298,67 @@ export class BattleEngine {
       } else {
         const critRoll = randomInt(0, 100);
         const dmgResult = calculateDamage(actor, tgt, skill, critRoll);
-
-        tgt.hp = Math.max(0, tgt.hp - dmgResult.finalDamage);
-        if (dmgResult.finalDamage > 0) {
+        
+        // Criar contexto para passivas modificarem dano
+        const passiveContext: PassiveContext = {
+          owner: actor,
+          trigger: "on_hit",
+          round: this.round,
+          actor: actor,
+          target: tgt,
+          damage: dmgResult.finalDamage,
+          isCritical: dmgResult.critical,
+          modifiedDamage: dmgResult.finalDamage,
+          allies,
+          enemies,
+        };
+        
+        // Trigger passivas on_hit do atacante
+        this.triggerPassiveForUnit(actor, "on_hit", passiveContext);
+        
+        // Trigger passivas on_critical_hit se for crítico
+        if (dmgResult.critical) {
+          this.triggerPassiveForUnit(actor, "on_critical_hit", passiveContext);
+        }
+        
+        // Usar dano modificado por passivas
+        const finalDamage = passiveContext.modifiedDamage ?? dmgResult.finalDamage;
+        
+        // Trigger passivas on_damaged e on_hit_taken do alvo antes de aplicar dano
+        const targetContext: PassiveContext = {
+          owner: tgt,
+          trigger: "on_damaged",
+          round: this.round,
+          actor: actor,
+          target: tgt,
+          damage: finalDamage,
+          isCritical: dmgResult.critical,
+          modifiedDamage: finalDamage,
+          allies: enemies,
+          enemies: allies,
+        };
+        
+        this.triggerPassiveForUnit(tgt, "on_damaged", targetContext);
+        this.triggerPassiveForUnit(tgt, "on_hit_taken", targetContext);
+        
+        if (dmgResult.critical) {
+          this.triggerPassiveForUnit(tgt, "on_critical_taken", targetContext);
+        }
+        
+        // Aplicar dano final (pode ter sido modificado por passivas defensivas)
+        const actualDamage = targetContext.modifiedDamage ?? finalDamage;
+        tgt.hp = Math.max(0, tgt.hp - actualDamage);
+        
+        if (actualDamage > 0) {
           if (actionKey === "basic") this.addUltimateCharge(actor, "basic_hit");
           this.addUltimateCharge(actor, "damage_dealt");
           this.addUltimateCharge(tgt, "damage_received");
           if (dmgResult.critical) this.addUltimateCharge(actor, "critical_hit");
-          if (tgt.hp === 0) this.addUltimateCharge(actor, "defeat");
+          if (tgt.hp === 0) {
+            this.addUltimateCharge(actor, "defeat");
+            // Trigger passivas on_kill do atacante
+            this.triggerPassiveForUnit(actor, "on_kill", { target: tgt, allies, enemies });
+          }
         }
 
         this.actions.push({
@@ -288,7 +368,7 @@ export class BattleEngine {
           type: actionType,
           targetId: tgt.id,
           targetName: tgt.name,
-          amount: dmgResult.finalDamage,
+          amount: actualDamage,
           critical: dmgResult.critical,
           skillName: skill.name,
           isHealing: false,
@@ -422,6 +502,28 @@ export class BattleEngine {
   private checkDeaths() {
     for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
       if (unit.hp <= 0) {
+        // Trigger passiva on_death antes de marcar como morto
+        if (unit.alive) {
+          const allies = this.teamOf(unit);
+          const enemies = allies === this.playerTeam ? this.enemyTeam : this.playerTeam;
+          
+          this.triggerPassiveForUnit(unit, "on_death", { allies, enemies });
+          
+          // Trigger passivas on_ally_defeated para aliados
+          for (const ally of allies) {
+            if (ally.id !== unit.id && ally.alive) {
+              this.triggerPassiveForUnit(ally, "on_ally_defeated", { target: unit, allies, enemies });
+            }
+          }
+          
+          // Trigger passivas on_enemy_defeated para inimigos
+          for (const enemy of enemies) {
+            if (enemy.alive) {
+              this.triggerPassiveForUnit(enemy, "on_enemy_defeated", { target: unit, allies: enemies, enemies: allies });
+            }
+          }
+        }
+        
         if (unit.isBoss && unit.currentPhase && unit.maxPhases && unit.currentPhase < unit.maxPhases) {
           unit.currentPhase += 1;
           unit.maxHp = Math.floor(unit.maxHp * 1.2);
@@ -467,5 +569,46 @@ export class BattleEngine {
       return "DEFEAT";
     }
     return "DRAW";
+  }
+
+  /**
+   * Trigger passivas para todos os combatentes
+   */
+  private triggerPassivesForAllCombatants(trigger: import("./PassiveTypes").PassiveTrigger): void {
+    for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
+      if (!unit.alive) continue;
+      this.triggerPassiveForUnit(unit, trigger);
+    }
+  }
+
+  /**
+   * Trigger passivas para um combatente específico
+   */
+  private triggerPassiveForUnit(
+    unit: Combatant,
+    trigger: import("./PassiveTypes").PassiveTrigger,
+    extra?: Partial<PassiveContext>
+  ): void {
+    const allies = this.teamOf(unit);
+    const enemies = allies === this.playerTeam ? this.enemyTeam : this.playerTeam;
+
+    const context: PassiveContext = {
+      owner: unit,
+      trigger,
+      round: this.round,
+      allies,
+      enemies,
+      ...extra,
+    };
+
+    const results = this.passiveManager.processTrigger(context, this.actions);
+
+    // Log passivas ativadas (opcional - pode adicionar ao actions se quiser feedback visual)
+    for (const result of results) {
+      if (result.activated && result.effects.some(e => e.success)) {
+        // Passiva foi ativada com sucesso
+        // Pode adicionar log aqui se desejar
+      }
+    }
   }
 }

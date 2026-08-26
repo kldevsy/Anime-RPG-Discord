@@ -1,5 +1,16 @@
 import { z } from "zod";
 import { characterRarities, characterRoles } from "../schema";
+import {
+  DETERMINATION,
+  CHAKRA_CONTROL,
+  RESILIENCE,
+  SPIRITUAL_PRESSURE,
+  BATTLE_INSTINCT,
+  SHARINGAN,
+  THREE_SWORD_STYLE,
+  WATER_BREATHING,
+  SUPERHUMAN_STRENGTH,
+} from "./passive-library";
 
 /**
  * Catálogo canônico e versionado de personagens iniciais.
@@ -100,6 +111,38 @@ export const characterUltimateSchema = z.object({
 
 export type CharacterUltimate = z.infer<typeof characterUltimateSchema>;
 
+// Schema para passivas estruturadas
+export const passiveEffectSchema = z.object({
+  type: z.string(),
+  value: z.number(),
+  duration: z.number().optional(),
+  statusType: z.string().optional(),
+  chance: z.number().min(0).max(100).optional(),
+  target: z.enum(["self", "attacker", "target", "allies", "enemies", "all", "random_enemy", "random_ally", "lowest_hp_ally", "lowest_hp_enemy"]).optional(),
+});
+
+export const passiveConditionSchema = z.object({
+  type: z.string(),
+  value: z.number().optional(),
+  statusType: z.string().optional(),
+  role: z.string().optional(),
+});
+
+export const passiveAbilitySchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  trigger: z.string(),
+  conditions: z.array(passiveConditionSchema).optional(),
+  effects: z.array(passiveEffectSchema),
+  maxActivationsPerBattle: z.number().int().positive().optional(),
+  maxActivationsPerRound: z.number().int().positive().optional(),
+  cooldownRounds: z.number().int().nonnegative().optional(),
+  priority: z.number().int().optional(),
+});
+
+export type PassiveAbility = z.infer<typeof passiveAbilitySchema>;
+
 export const characterCatalogEntrySchema = z.object({
   anime: z.string().trim().min(1),
   name: z.string().trim().min(1),
@@ -109,7 +152,8 @@ export const characterCatalogEntrySchema = z.object({
   baseAttack: z.number().int().nonnegative(),
   baseDefense: z.number().int().nonnegative(),
   baseSpeed: z.number().int().nonnegative(),
-  passive: z.string(),
+  passive: z.string(), // Mantém string para compatibilidade com descrição visual
+  passiveAbility: passiveAbilitySchema.optional(), // Nova: passiva funcional
   imageUrl: optionalImageUrlSchema,
   ultimate: characterUltimateSchema,
 });
@@ -148,6 +192,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png",
       passive:
         "Determinação: recebe um pequeno bônus de ataque abaixo de 50% de HP.",
+      passiveAbility: DETERMINATION,
       ultimate: {
         id: "naruto_rasengan",
         name: "Rasengan",
@@ -183,6 +228,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       imageUrl:
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/35.png",
       passive: "Controle de chakra: cura aliada com menor HP.",
+      passiveAbility: CHAKRA_CONTROL,
       ultimate: {
         id: "sakura_hundred_healings",
         name: "Força de Cem Selos",
@@ -219,6 +265,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       imageUrl:
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/130.png",
       passive: "Resiliência: reduz o primeiro dano recebido em cada combate.",
+      passiveAbility: RESILIENCE,
       ultimate: {
         id: "luffy_red_roc",
         name: "Gear Third: Gomu Gomu no Red Roc",
@@ -250,6 +297,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/150.png",
       passive:
         "Pressão espiritual: ataques têm chance de causar dano adicional.",
+      passiveAbility: SPIRITUAL_PRESSURE,
       ultimate: {
         id: "ichigo_getsuga",
         name: "Getsuga Tensho",
@@ -284,6 +332,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
         "https://i.imgur.com/4retA79.png",
       passive:
         "Instinto de batalha: ganha força ao sobreviver a um golpe crítico.",
+      passiveAbility: BATTLE_INSTINCT,
       ultimate: {
         id: "goku_kamehameha",
         name: "Kamehameha",
@@ -318,7 +367,8 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 122,
       imageUrl:
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/6.png",
-      passive: "Sharingan",
+      passive: "Sharingan: aumenta chance de crítico e dano crítico",
+      passiveAbility: SHARINGAN,
       ultimate: {
         id: "sasuke_kirin",
         name: "Kirin / Chidori",
@@ -353,7 +403,8 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 110,
       imageUrl:
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/212.png",
-      passive: "Santoryu",
+      passive: "Santoryu: ataques básicos podem causar sangramento",
+      passiveAbility: THREE_SWORD_STYLE,
       ultimate: {
         id: "zoro_ichidai_sanzen",
         name: "Santoryu: Ichidai Sanzen Daisen Sekai",
@@ -385,7 +436,8 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 112,
       imageUrl:
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/448.png",
-      passive: "Respiração da Água",
+      passive: "Respiração da Água: aumenta velocidade e defesa",
+      passiveAbility: WATER_BREATHING,
       ultimate: {
         id: "tanjiro_hinokami_kagura",
         name: "Hinokami Kagura",
@@ -418,7 +470,8 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 105,
       imageUrl:
         "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/94.png",
-      passive: "Força Sobre-humana",
+      passive: "Força Sobre-humana: ganha carga ao dar crítico",
+      passiveAbility: SUPERHUMAN_STRENGTH,
       ultimate: {
         id: "yuji_black_flash",
         name: "Black Flash",

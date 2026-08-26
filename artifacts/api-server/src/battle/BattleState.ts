@@ -139,6 +139,7 @@ export interface Combatant {
     ultimate: UltimateSkill;
   };
   passive?: string;
+  passiveAbility?: import("./PassiveTypes").PassiveAbility;
   isBoss?: boolean;
   currentPhase?: number;
   maxPhases?: number;
