@@ -231,6 +231,12 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     // 1. /perfil
     if (commandName === "perfil") {
       const profile = (await getProfile(discordId)) ?? { user: await getOrCreateUser(discordId, username), collection: [] };
+      
+      console.log(`[PERFIL] User ${discordId} - Collection size: ${profile.collection?.length ?? 0}`);
+      if (profile.collection && profile.collection.length > 0) {
+        console.log(`[PERFIL] Characters: ${profile.collection.map((c: any) => c.character?.name || 'unknown').join(', ')}`);
+      }
+      
       const teamData = await getTeam(discordId);
       const embed = createProfileEmbed(profile.user, profile.collection.length, teamData?.members?.length ?? 0);
       await interaction.editReply({ embeds: [embed] });
