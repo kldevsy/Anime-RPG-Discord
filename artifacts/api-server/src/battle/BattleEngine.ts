@@ -328,7 +328,7 @@ export class BattleEngine {
     if (ultimate.targetType === "self") return actor.alive ? [actor] : [];
     if (ultimate.targetType === "single_enemy" || ultimate.targetType === "aoe_enemy") return enemies.filter((unit) => unit.alive);
     if (ultimate.targetType === "single_ally") return allies.filter((unit) => ultimate.type === "REVIVE" ? !unit.alive : unit.alive);
-    return allies.filter((unit) => unit.alive);
+    return ultimate.type === "REVIVE" ? allies : allies.filter((unit) => unit.alive);
   }
 
   /**
@@ -355,7 +355,7 @@ export class BattleEngine {
   }
 
   private determineSkillTargets(
-    skill: { targetType: string },
+    skill: { targetType: string; type?: string },
     primaryTarget: Combatant,
     allies: Combatant[],
     enemies: Combatant[]
@@ -364,7 +364,7 @@ export class BattleEngine {
       case "aoe_enemy":
         return enemies.filter((u) => u.alive);
       case "aoe_ally":
-        return allies.filter((u) => u.alive || skill.targetType === "REVIVE");
+        return skill.type === "REVIVE" ? allies : allies.filter((u) => u.alive);
       case "self":
         return [primaryTarget];
       case "single_ally":

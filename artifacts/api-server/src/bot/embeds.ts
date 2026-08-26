@@ -167,6 +167,35 @@ export function createSummonResultEmbed(username: string, results: SummonedChara
   return embed;
 }
 
+/**
+ * Discord only supports one primary image per embed. A 10x summon therefore
+ * gets one embed per character, so every result can display its own artwork.
+ */
+export function createSummonResultEmbeds(username: string, results: SummonedCharacter[], currency: string, cost: number) {
+  if (!results.length) return [createSummonResultEmbed(username, results, currency, cost)];
+
+  return results.slice(0, 10).map((result, index) => {
+    const rarityLabel = RARITY_NAMES[result.rarity ?? ""] || result.rarity || "Desconhecida";
+    const teamId = result.ownedId ?? result.characterId;
+    const teamIdText = teamId ? `\n• **ID para equipe:** \`${teamId}\`` : "";
+    const embed = new EmbedBuilder()
+      .setTitle(`🌟 Invocação ${index + 1}/${results.length} • ${result.name ?? "Personagem"}`)
+      .setColor(RARITY_COLORS[result.rarity ?? ""] ?? 0xf1c40f)
+      .setDescription(
+        index === 0
+          ? `**${username}**, você gastou **${cost} ${currency}**.\n[${result.anime ?? "Anime desconhecido"}] • **${rarityLabel}**`
+          : `[${result.anime ?? "Anime desconhecido"}] • **${rarityLabel}**`,
+      )
+      .addFields({
+        name: "✨ Ultimate",
+        value: truncateDiscordText(formatUltimateSummary(result.ultimate, 700) + teamIdText, DISCORD_FIELD_VALUE_LIMIT),
+      })
+      .setFooter({ text: `Resultado ${index + 1} de ${results.length} • Anime RPG` });
+    applyEmbedImage(embed, result.imageUrl);
+    return embed;
+  });
+}
+
 export function createTeamEmbed(username: string, team: unknown, members: TeamMember[]) {
   const embed = new EmbedBuilder()
     .setTitle(`🛡️ Equipe Principal de ${username}`)

@@ -31,6 +31,13 @@ const httpUrlSchema = z
     return protocol === "http:" || protocol === "https:";
   }, "imageUrl must use HTTP(S)");
 
+// An empty value is convenient while creating a character in the catalog.
+// Store it as undefined instead of making the entire catalog fail at startup.
+const optionalImageUrlSchema = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  httpUrlSchema.optional(),
+);
+
 const statusEffectSchema = z.object({
   type: z.enum([
     "burn",
@@ -103,7 +110,7 @@ export const characterCatalogEntrySchema = z.object({
   baseDefense: z.number().int().nonnegative(),
   baseSpeed: z.number().int().nonnegative(),
   passive: z.string(),
-  imageUrl: httpUrlSchema.optional(),
+  imageUrl: optionalImageUrlSchema,
   ultimate: characterUltimateSchema,
 });
 

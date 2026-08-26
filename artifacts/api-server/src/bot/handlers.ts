@@ -42,10 +42,12 @@ import {
   createLeaderboardEmbed,
   createProfileEmbed,
   createSummonResultEmbed,
+  createSummonResultEmbeds,
   createTeamEmbed,
   formatUltimateSummary,
 } from "./embeds";
 import type { UltimateDecisionProvider } from "../battle/BattleState";
+import { logger } from "../lib/logger";
 
 type AutocompleteChoice = { name: string; value: string };
 type OwnedCharacterChoiceSource = { ownedId: string; level: number; position?: number; character: { id?: string; name: string; anime: string; rarity: string; role?: string; ultimate?: CharacterUltimate | null } };
@@ -219,8 +221,8 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
       const idempotencyKey = `bot_summon_${discordId}_${Date.now()}`;
       const result = await summon(discordId, bannerId!, quantity, idempotencyKey);
-      const embed = createSummonResultEmbed(username, result.results, result.currency, result.cost);
-      await interaction.editReply({ embeds: [embed] });
+      const embeds = createSummonResultEmbeds(username, result.results, result.currency, result.cost);
+      await interaction.editReply({ embeds });
       return;
     }
 
@@ -407,7 +409,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         }
         await interaction.editReply({ embeds: [createBattleProgressEmbed(username, stageName, snapshot)] });
         lastUpdate = Date.now();
-      }, discordUltimateDecisionProvider(interaction));
+      });
 
       const embed = createBattleResultEmbed(username, stageName, result, rewards, drops);
       await interaction.editReply({ embeds: [embed] });
@@ -658,10 +660,12 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     await interaction.reply({ content: "Comando não reconhecido.", ephemeral: true });
   } catch (err: any) {
+    console.error("Discord command handler failed:", err);
+    logger.error({ err, command: commandName }, "Discord command handler failed");
     const errorMsg = `❌ **Erro:** ${err.message || "Ocorreu um erro ao processar o comando."}`;
-    if (interaction.deferred || interaction.replied) {
+    if (interaction.deferred || interaction.replied || typeof interaction.editReply === "function") {
       await interaction.editReply(errorMsg);
-    } else {
+    } else if (typeof interaction.reply === "function") {
       await interaction.reply({ content: errorMsg, ephemeral: true });
     }
   }

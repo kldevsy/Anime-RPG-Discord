@@ -26,6 +26,24 @@ export interface AdminCreateCharacterInput {
   passive?: string;
 }
 
+function createDefaultUltimate(name: string) {
+  const stableName = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "character";
+  return {
+    id: `${stableName}_ultimate`,
+    name: `Ultimate de ${name}`,
+    description: `Libera todo o poder de ${name} em um ataque decisivo.`,
+    chargeRequired: 100,
+    chargeOnBasic: 25,
+    chargeOnDamageTaken: 10,
+    chargeOnCritical: 10,
+    type: "DAMAGE" as const,
+    targetType: "single_enemy" as const,
+    multiplier: 2.5,
+    statusEffects: [],
+    conditionalRules: [],
+  };
+}
+
 export interface AdminCreateBannerInput {
   name: string;
   type: "normal" | "limited" | "event";
@@ -65,10 +83,10 @@ export async function adminCreateCharacter(input: AdminCreateCharacterInput) {
       baseAttack: input.baseAttack,
       baseDefense: input.baseDefense,
       baseSpeed: input.baseSpeed,
-      imageUrl: input.imageUrl ?? null,
+      imageUrl: input.imageUrl?.trim() || null,
       passive: input.passive ?? null,
       catalogManaged: false,
-      ultimate: null,
+      ultimate: createDefaultUltimate(input.name),
       evolution: null,
       createdAt: new Date(),
     };
@@ -86,9 +104,10 @@ export async function adminCreateCharacter(input: AdminCreateCharacterInput) {
     baseAttack: input.baseAttack,
     baseDefense: input.baseDefense,
     baseSpeed: input.baseSpeed,
-    imageUrl: input.imageUrl ?? null,
+    imageUrl: input.imageUrl?.trim() || null,
     passive: input.passive ?? null,
     catalogManaged: false,
+    ultimate: createDefaultUltimate(input.name),
   }).returning();
 
   return created;
