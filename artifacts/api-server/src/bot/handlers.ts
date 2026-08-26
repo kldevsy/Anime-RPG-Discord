@@ -216,7 +216,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
   try {
     // Defer IMEDIATAMENTE para evitar timeout de 3 segundos
     // Alguns comandos podem sobrescrever com seu próprio defer
-    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens"];
+    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha"];
     
     if (shouldDeferEarly.includes(commandName)) {
       try {
@@ -447,7 +447,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 6. /equipe
     if (commandName === "equipe") {
-      await interaction.deferReply();
       const subcommand = interaction.options.getSubcommand();
       let teamData = await getTeam(discordId);
 
@@ -539,8 +538,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 7. /batalha
     if (commandName === "batalha") {
-      await interaction.deferReply();
-      
       try {
         const stageId = interaction.options.getString("estagio_id") ?? undefined;
         const selectedStage = stageId ? await getPveStageById(stageId) : null;
