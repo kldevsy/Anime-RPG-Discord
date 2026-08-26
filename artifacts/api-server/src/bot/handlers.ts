@@ -258,7 +258,12 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         text += `• **${c.name}** (${c.anime}) — *${c.rarity.toUpperCase()}* | ${c.role.toUpperCase()} ${ownedSymbol}\n  ID: \`${c.id}\`\n`;
       }
 
-      embed.addFields({ name: "Lista de Personagens", value: text || "Nenhum personagem encontrado com os filtros." });
+      embed.addFields({
+        name: "Lista de Personagens",
+        value: text
+          ? text.slice(0, 1024)
+          : "Nenhum personagem encontrado com os filtros.",
+      });
       if (catalog.length > 0) {
         applyEmbedImage(embed, catalog[0].imageUrl);
       }
@@ -660,7 +665,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     await interaction.reply({ content: "Comando não reconhecido.", ephemeral: true });
   } catch (err: any) {
-    console.error("Discord command handler failed:", err);
     logger.error({ err, command: commandName }, "Discord command handler failed");
     const errorMsg = `❌ **Erro:** ${err.message || "Ocorreu um erro ao processar o comando."}`;
     if (interaction.deferred || interaction.replied || typeof interaction.editReply === "function") {

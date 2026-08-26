@@ -281,7 +281,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 145,
       baseSpeed: 130,
       imageUrl:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/384.png",
+        "https://i.imgur.com/4retA79.png",
       passive:
         "Instinto de batalha: ganha força ao sobreviver a um golpe crítico.",
       ultimate: {
