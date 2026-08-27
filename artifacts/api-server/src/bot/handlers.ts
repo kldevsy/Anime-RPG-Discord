@@ -144,8 +144,13 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
       }
 
       const [stages, worlds] = await Promise.all([listPveStages(), listPveWorlds()]);
+      console.log(`[AUTOCOMPLETE BATALHA] Found ${stages.length} stages and ${worlds.length} worlds`);
+      
       const worldNames = new Map(worlds.map((world) => [world.id, world.name]));
       const choices = stages.map((stage) => formatPveStageChoice(stage, worldNames.get(stage.worldId)));
+      
+      console.log(`[AUTOCOMPLETE BATALHA] Generated ${choices.length} choices`);
+      
       await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
       return;
     }

@@ -78,7 +78,10 @@ export function findMemoryOwnedCharacter(userId: string, characterId: string) {
 
 export function getOrCreateMemoryOwnedCharacter(userId: string, characterId: string, acquiredAt = new Date()) {
   const existing = findMemoryOwnedCharacter(userId, characterId);
-  if (existing) return existing;
+  if (existing) {
+    console.log(`[MEMORY] Found existing owned character: user=${userId}, char=${characterId}, ownedId=${existing.id}`);
+    return existing;
+  }
 
   const ownedCharacter: UserCharacter = {
     id: crypto.randomUUID(),
@@ -89,5 +92,6 @@ export function getOrCreateMemoryOwnedCharacter(userId: string, characterId: str
     acquiredAt,
   };
   memoryOwned.push(ownedCharacter);
+  console.log(`[MEMORY] Created new owned character: user=${userId}, char=${characterId}, ownedId=${ownedCharacter.id}`);
   return ownedCharacter;
 }
