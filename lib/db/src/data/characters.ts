@@ -10,6 +10,10 @@ import {
   THREE_SWORD_STYLE,
   WATER_BREATHING,
   SUPERHUMAN_STRENGTH,
+  DEADLY_SENTENCING,
+  IDLE_TRANSFIGURATION,
+  RATIO_TECHNIQUE,
+  CURSED_SPIRIT_MANIPULATION,
 } from "./passive-library.ts";
 
 /**
@@ -491,6 +495,152 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Acerto crítico",
             effect: "recebe carga extra para encadear o próximo Black Flash",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Hiromi Higuruma",
+      rarity: "mythic",
+      role: "support",
+      baseHp: 1100,
+      baseAttack: 195,
+      baseDefense: 140,
+      baseSpeed: 115,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/e3/Hiromi_Higuruma.png",
+      passive: "Sentença Mortal: confisca ATK do atacante ao sofrer dano",
+      passiveAbility: DEADLY_SENTENCING,
+      ultimate: {
+        id: "higuruma_deadly_sentencing",
+        name: "Julgamento Mortal",
+        description:
+          "Invoca seu Domínio de Expansão que confisca as técnicas do alvo e julga seus crimes.",
+        chargeRequired: 100,
+        chargeOnBasic: 25,
+        chargeOnDamageTaken: 15,
+        chargeOnCritical: 20,
+        type: "DEBUFF",
+        targetType: "single_enemy",
+        multiplier: 1.5,
+        statusEffects: [
+          { type: "silence", chance: 100, duration: 3, value: 0 },
+          { type: "attack_down", chance: 100, duration: 3, value: 40 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Alvo com menos de 30% HP",
+            effect: "execução instantânea (remove do combate)",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Mahito",
+      rarity: "mythic",
+      role: "dps",
+      baseHp: 1250,
+      baseAttack: 220,
+      baseDefense: 110,
+      baseSpeed: 125,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/4/4f/Mahito_Anime.png",
+      passive: "Transfiguração Ociosa: reduz HP máximo do inimigo permanentemente",
+      passiveAbility: IDLE_TRANSFIGURATION,
+      ultimate: {
+        id: "mahito_idle_transfiguration",
+        name: "Transfiguração Ociosa: Polimórfica",
+        description:
+          "Toca a alma do inimigo e a deforma brutalmente, causando dano massivo.",
+        chargeRequired: 95,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 18,
+        chargeOnCritical: 22,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 3.5,
+        statusEffects: [
+          { type: "defense_down", chance: 100, duration: 2, value: 50 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Alvo com HP máximo reduzido",
+            effect: "dano aumenta em 50% por cada 10% de HP máximo perdido",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Kento Nanami",
+      rarity: "epic",
+      role: "dps",
+      baseHp: 950,
+      baseAttack: 175,
+      baseDefense: 120,
+      baseSpeed: 108,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/f/f3/Kento_Nanami.png",
+      passive: "Técnica 7:3: críticos causam dano extra e ignoram defesa",
+      passiveAbility: RATIO_TECHNIQUE,
+      ultimate: {
+        id: "nanami_black_flash",
+        name: "Técnica 7:3: Black Flash",
+        description:
+          "Identifica o ponto fraco do inimigo e ataca com precisão letal.",
+        chargeRequired: 80,
+        chargeOnBasic: 32,
+        chargeOnDamageTaken: 12,
+        chargeOnCritical: 25,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 3.2,
+        statusEffects: [
+          { type: "stun", chance: 70, duration: 1, value: 0 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Sempre",
+            effect: "garante acerto crítico e ignora 50% da defesa total",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Suguru Geto",
+      rarity: "legendary",
+      role: "support",
+      baseHp: 1050,
+      baseAttack: 185,
+      baseDefense: 135,
+      baseSpeed: 112,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/7/7f/Suguru_Geto_Anime.png",
+      passive: "Manipulação de Espíritos: ao matar, recupera HP e ganha carga",
+      passiveAbility: CURSED_SPIRIT_MANIPULATION,
+      ultimate: {
+        id: "geto_uzumaki",
+        name: "Uzumaki",
+        description:
+          "Combina múltiplos espíritos amaldiçoados em uma esfera massiva de energia.",
+        chargeRequired: 90,
+        chargeOnBasic: 28,
+        chargeOnDamageTaken: 14,
+        chargeOnCritical: 20,
+        type: "DAMAGE",
+        targetType: "all_enemies",
+        multiplier: 2.2,
+        statusEffects: [
+          { type: "curse", chance: 80, duration: 3, value: 30 },
+          { type: "defense_down", chance: 80, duration: 2, value: 25 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Por cada inimigo morto nesta batalha",
+            effect: "dano aumenta em 15%",
           },
         ],
       },

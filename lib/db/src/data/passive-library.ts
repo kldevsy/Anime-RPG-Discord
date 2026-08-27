@@ -361,6 +361,52 @@ export const THREE_SWORD_STYLE: PassiveAbility = {
 };
 
 /**
+ * PASSIVAS DE JUJUTSU KAISEN - TÉCNICAS AMALDIÇOADAS
+ */
+
+export const DEADLY_SENTENCING: PassiveAbility = {
+  id: "deadly_sentencing",
+  name: "Sentença Mortal",
+  description: "Ao ser atacado, tem 30% de chance de confiscar 20% do ATK do inimigo por 2 turnos (stackável)",
+  trigger: "on_damaged",
+  effects: [
+    { type: "steal_stats", value: 20, duration: 2, statType: "attack", chance: 30, target: "attacker" }
+  ],
+};
+
+export const IDLE_TRANSFIGURATION: PassiveAbility = {
+  id: "idle_transfiguration",
+  name: "Transfiguração Ociosa",
+  description: "Ao acertar, tem 25% de chance de reduzir HP máximo do inimigo em 8% permanentemente",
+  trigger: "on_hit",
+  effects: [
+    { type: "reduce_max_hp", value: 8, chance: 25, target: "target" }
+  ],
+};
+
+export const RATIO_TECHNIQUE: PassiveAbility = {
+  id: "ratio_technique",
+  name: "Técnica 7:3",
+  description: "Ataques críticos causam 40% de dano extra e ignoram 25% da defesa do alvo",
+  trigger: "on_critical_hit",
+  effects: [
+    { type: "damage_bonus", value: 40, target: "self" },
+    { type: "ignore_defense", value: 25, target: "self" }
+  ],
+};
+
+export const CURSED_SPIRIT_MANIPULATION: PassiveAbility = {
+  id: "cursed_spirit_manipulation",
+  name: "Manipulação de Espíritos",
+  description: "Ao matar inimigo, recupera 15% do HP máximo e ganha 30 de carga de ultimate",
+  trigger: "on_kill",
+  effects: [
+    { type: "heal_percent", value: 15, target: "self" },
+    { type: "gain_ultimate_charge", value: 30, target: "self" }
+  ],
+};
+
+/**
  * PASSIVAS DE BOSS E INIMIGOS ESPECIAIS
  */
 
