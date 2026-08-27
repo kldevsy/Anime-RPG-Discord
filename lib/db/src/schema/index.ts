@@ -77,6 +77,8 @@ export const userCharacters = pgTable("user_characters", {
   characterId: uuid("character_id").notNull().references(() => characters.id, { onDelete: "restrict" }),
   level: integer("level").notNull().default(1),
   xp: integer("xp").notNull().default(0),
+  masteryLevel: integer("mastery_level").notNull().default(1),
+  masteryXp: integer("mastery_xp").notNull().default(0),
   acquiredAt: timestamp("acquired_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex("user_characters_user_character_unique").on(table.userId, table.characterId),

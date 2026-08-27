@@ -89,6 +89,8 @@ export function getOrCreateMemoryOwnedCharacter(userId: string, characterId: str
     characterId,
     level: 1,
     xp: 0,
+    masteryLevel: 1,
+    masteryXp: 0,
     acquiredAt,
   };
   memoryOwned.push(ownedCharacter);

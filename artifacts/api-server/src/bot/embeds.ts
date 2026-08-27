@@ -178,13 +178,26 @@ export function createSummonResultEmbeds(username: string, results: SummonedChar
     const rarityLabel = RARITY_NAMES[result.rarity ?? ""] || result.rarity || "Desconhecida";
     const teamId = result.ownedId ?? result.characterId;
     const teamIdText = teamId ? `\n• **ID para equipe:** \`${teamId}\`` : "";
+    
+    // Informação de maestria (duplicata)
+    let masteryText = "";
+    if (result.isDuplicate && result.masteryGained) {
+      const { xpGained, oldLevel, newLevel, levelsGained } = result.masteryGained;
+      
+      if (levelsGained > 0) {
+        masteryText = `\n\n⭐ **DUPLICATA!** ⭐\n🎯 Maestria: Nível ${oldLevel} → **${newLevel}**\n💫 +${xpGained} XP de Maestria`;
+      } else {
+        masteryText = `\n\n⭐ **DUPLICATA!**\n💫 +${xpGained} XP de Maestria`;
+      }
+    }
+    
     const embed = new EmbedBuilder()
       .setTitle(`🌟 Invocação ${index + 1}/${results.length} • ${result.name ?? "Personagem"}`)
-      .setColor(RARITY_COLORS[result.rarity ?? ""] ?? 0xf1c40f)
+      .setColor(result.isDuplicate ? 0x9b59b6 : (RARITY_COLORS[result.rarity ?? ""] ?? 0xf1c40f))
       .setDescription(
         index === 0
-          ? `**${username}**, você gastou **${cost} ${currency}**.\n[${result.anime ?? "Anime desconhecido"}] • **${rarityLabel}**`
-          : `[${result.anime ?? "Anime desconhecido"}] • **${rarityLabel}**`,
+          ? `**${username}**, você gastou **${cost} ${currency}**.\n[${result.anime ?? "Anime desconhecido"}] • **${rarityLabel}**${masteryText}`
+          : `[${result.anime ?? "Anime desconhecido"}] • **${rarityLabel}**${masteryText}`,
       )
       .addFields({
         name: "✨ Ultimate",

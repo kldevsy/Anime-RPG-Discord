@@ -4,7 +4,12 @@ import { db } from "@workspace/db";
 import type { CharacterUltimate } from "@workspace/db";
 import { pickWeighted } from "./RandomService";
 import { getOrCreateUser } from "./PhaseOneService";
-import { getMemoryCharacters, getOrCreateMemoryOwnedCharacter } from "./MemoryStore";
+import { getMemoryCharacters, getOrCreateMemoryOwnedCharacter, findMemoryOwnedCharacter, memoryOwned } from "./MemoryStore";
+import { 
+  getMasteryXpFromDuplicate, 
+  calculateMasteryGain,
+  MAX_MASTERY_LEVEL 
+} from "./MasteryService";
 
 const rarities = ["common", "uncommon", "rare", "epic", "legendary", "mythic"] as const;
 type Rarity = typeof rarities[number];
@@ -17,6 +22,13 @@ export interface SummonResult {
   rarity: string;
   imageUrl: string | null;
   ultimate: CharacterUltimate | null;
+  isDuplicate?: boolean;
+  masteryGained?: {
+    xpGained: number;
+    oldLevel: number;
+    newLevel: number;
+    levelsGained: number;
+  };
 }
 
 export class SummonError extends Error {}
@@ -131,7 +143,40 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
       const fallbackPool = pool.length > 0 ? pool : memoryChars;
       const character = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
 
-      const ownedCharacter = getOrCreateMemoryOwnedCharacter(user.id, character.id);
+      // Verifica se já possui o personagem
+      const existingOwned = findMemoryOwnedCharacter(user.id, character.id);
+      const isDuplicate = !!existingOwned;
+      
+      let masteryGained;
+      let ownedCharacter;
+
+      if (isDuplicate && existingOwned) {
+        // Duplicata: adiciona XP de maestria
+        const xpGained = getMasteryXpFromDuplicate(character.rarity);
+        const masteryCalc = calculateMasteryGain(
+          existingOwned.masteryLevel || 1,
+          existingOwned.masteryXp || 0,
+          xpGained
+        );
+
+        // Atualiza o personagem existente
+        existingOwned.masteryLevel = masteryCalc.newLevel;
+        existingOwned.masteryXp = masteryCalc.remainingXp;
+
+        masteryGained = {
+          xpGained,
+          oldLevel: existingOwned.masteryLevel - masteryCalc.levelsGained,
+          newLevel: masteryCalc.newLevel,
+          levelsGained: masteryCalc.levelsGained,
+        };
+
+        ownedCharacter = existingOwned;
+        
+        console.log(`[MASTERY] Duplicate ${character.name}: +${xpGained} XP, level ${masteryGained.oldLevel} → ${masteryGained.newLevel}`);
+      } else {
+        // Novo personagem
+        ownedCharacter = getOrCreateMemoryOwnedCharacter(user.id, character.id);
+      }
 
       results.push({
         characterId: character.id,
@@ -141,6 +186,8 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         rarity: character.rarity,
         imageUrl: character.imageUrl,
         ultimate: character.ultimate,
+        isDuplicate,
+        masteryGained,
       });
       if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }
@@ -204,8 +251,42 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
       const fallbackPool = pool.length > 0 ? pool : await tx.select().from(characters);
       if (!fallbackPool.length) throw new SummonError(`No characters configured for rarity ${rarity}.`);
       const character = fallbackPool[Math.floor(Math.random() * fallbackPool.length)];
+      
       let ownedCharacter = owned.find((item) => item.character.id === character.id)?.owned;
-      if (!ownedCharacter) {
+      const isDuplicate = !!ownedCharacter;
+      let masteryGained;
+
+      if (isDuplicate && ownedCharacter) {
+        // Duplicata: adiciona XP de maestria
+        const xpGained = getMasteryXpFromDuplicate(character.rarity);
+        const masteryCalc = calculateMasteryGain(
+          ownedCharacter.masteryLevel,
+          ownedCharacter.masteryXp,
+          xpGained
+        );
+
+        // Atualiza maestria no banco
+        await tx.update(userCharacters)
+          .set({
+            masteryLevel: masteryCalc.newLevel,
+            masteryXp: masteryCalc.remainingXp,
+          })
+          .where(eq(userCharacters.id, ownedCharacter.id));
+
+        masteryGained = {
+          xpGained,
+          oldLevel: ownedCharacter.masteryLevel,
+          newLevel: masteryCalc.newLevel,
+          levelsGained: masteryCalc.levelsGained,
+        };
+
+        // Atualiza o objeto local
+        ownedCharacter.masteryLevel = masteryCalc.newLevel;
+        ownedCharacter.masteryXp = masteryCalc.remainingXp;
+
+        console.log(`[MASTERY] Duplicate ${character.name}: +${xpGained} XP, level ${masteryGained.oldLevel} → ${masteryGained.newLevel}`);
+      } else {
+        // Novo personagem
         await tx.insert(userCharacters).values({ userId: user.id, characterId: character.id }).onConflictDoNothing();
         ownedCharacter = await tx.query.userCharacters.findFirst({
           where: and(eq(userCharacters.userId, user.id), eq(userCharacters.characterId, character.id)),
@@ -222,6 +303,8 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         rarity: character.rarity,
         imageUrl: character.imageUrl,
         ultimate: character.ultimate,
+        isDuplicate,
+        masteryGained,
       });
       if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }

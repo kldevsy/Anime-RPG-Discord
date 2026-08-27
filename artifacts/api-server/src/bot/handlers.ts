@@ -340,6 +340,59 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           return;
         }
 
+        // Buscar se o usuário possui este personagem
+        const profile = await getProfile(discordId);
+        const ownedChar = profile?.collection.find((c: any) => c.character.id === found.id);
+        
+        // Import do MasteryService
+        const { applyMasteryBoost, formatMasteryInfo, calculateMasteryBoost } = await import("../services/MasteryService");
+        
+        // Se possui, mostrar stats com maestria
+        let displayStats;
+        let masteryInfo = "";
+        let ownershipInfo = "";
+        
+        if (ownedChar) {
+          const masteryLevel = ownedChar.masteryLevel || 1;
+          const masteryXp = ownedChar.masteryXp || 0;
+          
+          // Calcula stats com boost
+          const boosted = applyMasteryBoost(
+            found.baseHp,
+            found.baseAttack,
+            found.baseDefense,
+            found.baseSpeed,
+            masteryLevel
+          );
+          
+          displayStats = {
+            hp: boosted.hp,
+            attack: boosted.attack,
+            defense: boosted.defense,
+            speed: boosted.speed,
+          };
+          
+          masteryInfo = formatMasteryInfo(masteryLevel, masteryXp);
+          
+          // Mostrar boost percentual
+          const boost = calculateMasteryBoost(masteryLevel);
+          if (masteryLevel > 1) {
+            ownershipInfo = `\n🌟 **Você possui este personagem!**\n` +
+              `💪 Boost: HP +${boost.hpBonus}%, ATK +${boost.attackBonus}%, DEF +${boost.defenseBonus}%, SPD +${boost.speedBonus}%`;
+          } else {
+            ownershipInfo = `\n🌟 **Você possui este personagem!**`;
+          }
+        } else {
+          // Não possui, mostrar stats base
+          displayStats = {
+            hp: found.baseHp,
+            attack: found.baseAttack,
+            defense: found.baseDefense,
+            speed: found.baseSpeed,
+          };
+          ownershipInfo = "\n❓ Você ainda não possui este personagem.";
+        }
+
         // Formatar detalhes da passiva
         let passiveDetails = found.passive ?? "Nenhuma";
         
@@ -432,19 +485,29 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         }
 
         const embed = new EmbedBuilder()
-          .setTitle(`🎴 Personagem: ${found.name}`)
-          .setColor(0xf1c40f)
+          .setTitle(`🎴 ${found.name}`)
+          .setColor(ownedChar ? 0x2ecc71 : 0xf1c40f)
+          .setDescription(ownershipInfo)
           .addFields(
             { name: "📺 Anime", value: found.anime, inline: true },
             { name: "⭐ Raridade", value: found.rarity.toUpperCase(), inline: true },
-            { name: "🗡️ Função", value: found.role.toUpperCase(), inline: true },
-            { name: "❤️ HP Base", value: `${found.baseHp}`, inline: true },
-            { name: "⚔️ Ataque Base", value: `${found.baseAttack}`, inline: true },
-            { name: "🛡️ Defesa Base", value: `${found.baseDefense}`, inline: true },
-            { name: "⚡ Velocidade", value: `${found.baseSpeed}`, inline: true },
-            { name: "🔮 Passiva", value: passiveDetails.slice(0, 1024), inline: false },
-            { name: "✨ Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
+            { name: "🗡️ Função", value: found.role.toUpperCase(), inline: true }
           );
+        
+        // Adicionar maestria se possuir
+        if (masteryInfo) {
+          embed.addFields({ name: "✨ Maestria", value: masteryInfo, inline: false });
+        }
+        
+        // Stats
+        embed.addFields(
+          { name: "❤️ HP", value: `${displayStats.hp}${ownedChar && ownedChar.masteryLevel > 1 ? ` (base: ${found.baseHp})` : ''}`, inline: true },
+          { name: "⚔️ Ataque", value: `${displayStats.attack}${ownedChar && ownedChar.masteryLevel > 1 ? ` (base: ${found.baseAttack})` : ''}`, inline: true },
+          { name: "🛡️ Defesa", value: `${displayStats.defense}${ownedChar && ownedChar.masteryLevel > 1 ? ` (base: ${found.baseDefense})` : ''}`, inline: true },
+          { name: "⚡ Velocidade", value: `${displayStats.speed}${ownedChar && ownedChar.masteryLevel > 1 ? ` (base: ${found.baseSpeed})` : ''}`, inline: true },
+          { name: "🔮 Passiva", value: passiveDetails.slice(0, 1024), inline: false },
+          { name: "✨ Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
+        );
 
         applyEmbedImage(embed, found.imageUrl);
 

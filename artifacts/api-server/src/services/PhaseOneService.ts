@@ -124,7 +124,9 @@ export async function getTeam(discordId: string) {
           position: member.position, 
           ownedId: owned.id, 
           level: owned.level, 
-          xp: owned.xp, 
+          xp: owned.xp,
+          masteryLevel: owned.masteryLevel || 1,
+          masteryXp: owned.masteryXp || 0,
           character 
         };
       })
@@ -140,7 +142,15 @@ export async function getTeam(discordId: string) {
   const team = await database.query.teams.findFirst({ where: eq(teams.userId, user.id) });
   if (!team) return { team: null, members: [] };
   const members = await database
-    .select({ position: teamMembers.position, ownedId: userCharacters.id, level: userCharacters.level, xp: userCharacters.xp, character: characters })
+    .select({ 
+      position: teamMembers.position, 
+      ownedId: userCharacters.id, 
+      level: userCharacters.level, 
+      xp: userCharacters.xp,
+      masteryLevel: userCharacters.masteryLevel,
+      masteryXp: userCharacters.masteryXp,
+      character: characters 
+    })
     .from(teamMembers)
     .innerJoin(userCharacters, eq(teamMembers.userCharacterId, userCharacters.id))
     .innerJoin(characters, eq(userCharacters.characterId, characters.id))

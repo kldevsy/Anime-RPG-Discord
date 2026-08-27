@@ -6,6 +6,7 @@ import { SkillManager } from "../battle/SkillManager";
 import type { BattleSnapshot, Combatant, UltimateDecisionProvider } from "../battle/BattleState";
 import { getPveStageById, listPveStages, recordPveProgress, type PveStageDrop } from "./PveService";
 import { getProfile, getTeam } from "./PhaseOneService";
+import { applyMasteryBoost } from "./MasteryService";
 
 export class BattleServiceError extends Error {}
 
@@ -53,17 +54,32 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
       console.log(`[BATTLE]   ${i + 1}. ${m.character.name} (${m.ownedId})`);
     });
 
-    const player: Combatant[] = teamData.members.map(({ ownedId, level, character }) => {
-      const maxHp = character.baseHp + level * 40;
+    const player: Combatant[] = teamData.members.map(({ ownedId, level, character, masteryLevel, masteryXp }) => {
+      const actualMasteryLevel = masteryLevel || 1;
+      
+      // Aplica boost de maestria aos stats base
+      const boostedStats = applyMasteryBoost(
+        character.baseHp,
+        character.baseAttack,
+        character.baseDefense,
+        character.baseSpeed,
+        actualMasteryLevel
+      );
+      
+      // Calcula HP final com level + maestria
+      const maxHp = boostedStats.hp + level * 40;
+      
+      console.log(`[BATTLE] ${character.name} - Maestria Lv${actualMasteryLevel}: HP ${boostedStats.hp}, ATK ${boostedStats.attack}, DEF ${boostedStats.defense}, SPD ${boostedStats.speed}`);
+      
       return SkillManager.createCombatant({
         id: ownedId,
         name: character.name,
         role: character.role,
         maxHp,
         hp: maxHp,
-        attack: character.baseAttack + level * 8,
-        defense: character.baseDefense + level * 5,
-        speed: character.baseSpeed,
+        attack: boostedStats.attack + level * 8,
+        defense: boostedStats.defense + level * 5,
+        speed: boostedStats.speed,
         critChance: 15,
         critDamage: 1.5,
         energy: 0,
