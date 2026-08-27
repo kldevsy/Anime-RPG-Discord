@@ -8,6 +8,13 @@
       "when": 1787789912140,
       "tag": "0000_white_katie_power",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787858726836,
+      "tag": "0001_lying_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }
