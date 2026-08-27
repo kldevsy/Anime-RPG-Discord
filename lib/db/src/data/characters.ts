@@ -14,6 +14,10 @@ import {
   IDLE_TRANSFIGURATION,
   RATIO_TECHNIQUE,
   CURSED_SPIRIT_MANIPULATION,
+  MOON_BREATHING,
+  ICE_MANIPULATION,
+  FIGHTING_SPIRIT,
+  POISON_MASTERY,
 } from "./passive-library.ts";
 
 /**
@@ -641,6 +645,154 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Por cada inimigo morto nesta batalha",
             effect: "dano aumenta em 15%",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Demon Slayer",
+      name: "Kokushibo",
+      rarity: "mythic",
+      role: "dps",
+      baseHp: 1300,
+      baseAttack: 230,
+      baseDefense: 125,
+      baseSpeed: 130,
+      imageUrl:
+        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/6/6d/Kokushibo_anime_design.png",
+      passive: "Respiração da Lua: sangramento e reduz velocidade ao acertar",
+      passiveAbility: MOON_BREATHING,
+      ultimate: {
+        id: "kokushibo_moon_breathing",
+        name: "Décima Sexta Forma: Luar Sobre Terra Solitária",
+        description:
+          "Desencadeia múltiplos cortes em forma de luas crescentes que dilaceram todos os inimigos.",
+        chargeRequired: 95,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 16,
+        chargeOnCritical: 24,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 2.6,
+        statusEffects: [
+          { type: "bleed", chance: 100, duration: 3, value: 50 },
+          { type: "speed_down", chance: 80, duration: 2, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Garante acerto crítico",
+            effect: "cada inimigo afetado por sangramento sofre 20% mais dano",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Demon Slayer",
+      name: "Douma",
+      rarity: "mythic",
+      role: "support",
+      baseHp: 1200,
+      baseAttack: 200,
+      baseDefense: 150,
+      baseSpeed: 118,
+      imageUrl:
+        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/8/82/Doma_anime_design.png",
+      passive: "Criotécnica de Sangue: congela atacantes ao sofrer dano",
+      passiveAbility: ICE_MANIPULATION,
+      ultimate: {
+        id: "douma_crystalline_divine_child",
+        name: "Estátuas de Gelo: Criança Divina",
+        description:
+          "Cria múltiplas estátuas de gelo que congelam e drenam a vida dos inimigos.",
+        chargeRequired: 100,
+        chargeOnBasic: 26,
+        chargeOnDamageTaken: 18,
+        chargeOnCritical: 20,
+        type: "DEBUFF",
+        targetType: "aoe_enemy",
+        multiplier: 1.8,
+        statusEffects: [
+          { type: "freeze", chance: 90, duration: 2, value: 0 },
+          { type: "defense_down", chance: 100, duration: 3, value: 35 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Recupera 10% do HP máximo por inimigo congelado",
+            effect: "se congelar 3+ inimigos, ganha escudo de 20% do HP máximo",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Demon Slayer",
+      name: "Akaza",
+      rarity: "mythic",
+      role: "dps",
+      baseHp: 1350,
+      baseAttack: 240,
+      baseDefense: 115,
+      baseSpeed: 135,
+      imageUrl:
+        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/8/87/Akaza_anime_design.png",
+      passive: "Espírito de Luta: ganha 2% ATK por cada 10% de HP perdido",
+      passiveAbility: FIGHTING_SPIRIT,
+      ultimate: {
+        id: "akaza_annihilation_type",
+        name: "Técnica Destrutiva: Tipo Aniquilação",
+        description:
+          "Uma sequência devastadora de socos que quebra a guarda do inimigo.",
+        chargeRequired: 85,
+        chargeOnBasic: 35,
+        chargeOnDamageTaken: 20,
+        chargeOnCritical: 28,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 3.8,
+        statusEffects: [
+          { type: "defense_down", chance: 100, duration: 2, value: 50 },
+          { type: "stun", chance: 60, duration: 1, value: 0 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Se próprio HP < 50%",
+            effect: "dano aumenta em 40% e garante crítico",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Demon Slayer",
+      name: "Gyutaro",
+      rarity: "legendary",
+      role: "dps",
+      baseHp: 1100,
+      baseAttack: 195,
+      baseDefense: 105,
+      baseSpeed: 122,
+      imageUrl:
+        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/3/3b/Gyutaro_anime_design.png",
+      passive: "Mestre do Veneno: envenena frequentemente, veneno causa mais dano",
+      passiveAbility: POISON_MASTERY,
+      ultimate: {
+        id: "gyutaro_rotating_circular_slashes",
+        name: "Cortes Circulares Giratórios: Lâminas Venenosas",
+        description:
+          "Gira suas foices envenenadas criando um redemoinho letal de veneno.",
+        chargeRequired: 88,
+        chargeOnBasic: 32,
+        chargeOnDamageTaken: 15,
+        chargeOnCritical: 22,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 2.4,
+        statusEffects: [
+          { type: "poison", chance: 100, duration: 4, value: 60 },
+          { type: "attack_down", chance: 70, duration: 2, value: 20 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Inimigos envenenados",
+            effect: "dano aumenta em 15% por cada inimigo envenenado",
           },
         ],
       },

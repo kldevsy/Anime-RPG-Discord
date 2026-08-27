@@ -407,6 +407,52 @@ export const CURSED_SPIRIT_MANIPULATION: PassiveAbility = {
 };
 
 /**
+ * PASSIVAS DE DEMON SLAYER - LUAS SUPERIORES
+ */
+
+export const MOON_BREATHING: PassiveAbility = {
+  id: "moon_breathing",
+  name: "Respiração da Lua",
+  description: "Cada ataque tem 35% de chance de aplicar sangramento e reduzir velocidade do alvo em 15% por 2 turnos",
+  trigger: "on_hit",
+  effects: [
+    { type: "apply_status", value: 40, duration: 3, statusType: "bleed", chance: 35, target: "target" },
+    { type: "apply_status", value: 15, duration: 2, statusType: "speed_down", chance: 35, target: "target" }
+  ],
+};
+
+export const ICE_MANIPULATION: PassiveAbility = {
+  id: "ice_manipulation",
+  name: "Criotécnica de Sangue",
+  description: "Ao ser atacado, tem 40% de chance de congelar o atacante por 1 turno",
+  trigger: "on_damaged",
+  effects: [
+    { type: "apply_status", value: 0, duration: 1, statusType: "freeze", chance: 40, target: "attacker" }
+  ],
+};
+
+export const FIGHTING_SPIRIT: PassiveAbility = {
+  id: "fighting_spirit",
+  name: "Espírito de Luta",
+  description: "Quanto menor o HP, mais forte fica: ganha 2% de ATK por cada 10% de HP perdido",
+  trigger: "always",
+  conditions: [{ type: "hp_below_percent", value: 90 }],
+  effects: [
+    { type: "increase_attack", value: 2, target: "self" }
+  ],
+};
+
+export const POISON_MASTERY: PassiveAbility = {
+  id: "poison_mastery",
+  name: "Mestre do Veneno",
+  description: "Ataques têm 50% de chance de envenenar por 4 turnos, veneno causa 20% mais dano",
+  trigger: "on_hit",
+  effects: [
+    { type: "apply_status", value: 40, duration: 4, statusType: "poison", chance: 50, target: "target" }
+  ],
+};
+
+/**
  * PASSIVAS DE BOSS E INIMIGOS ESPECIAIS
  */
 
