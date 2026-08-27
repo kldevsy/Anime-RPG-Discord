@@ -8,6 +8,24 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL, ensure the database is provisioned");
 }
 
+let parsedDatabaseUrl: URL;
+try {
+  parsedDatabaseUrl = new URL(databaseUrl);
+} catch {
+  throw new Error(
+    "DATABASE_URL must be the PostgreSQL connection string from Database > Settings",
+  );
+}
+
+if (
+  !["postgres:", "postgresql:"].includes(parsedDatabaseUrl.protocol) ||
+  !parsedDatabaseUrl.hostname
+) {
+  throw new Error(
+    "DATABASE_URL must be a valid PostgreSQL connection string from Database > Settings",
+  );
+}
+
 const { Pool } = pg;
 const pool = new Pool({
   connectionString: databaseUrl,
