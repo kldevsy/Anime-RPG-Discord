@@ -509,7 +509,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 140,
       baseSpeed: 115,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/e/e3/Hiromi_Higuruma.png",
+        "https://cdn.discordapp.com/attachments/1542421455969718342/1542421630356168804/file_00000000dcac820ea8cd712eb81d4b85.png?ex=6a91d455&is=6a9082d5&hm=c6d4640a04b72a05744619b58bf6d53b87f7df1b093740af627e449fef7a245f&",
       passive: "Sentença Mortal: confisca ATK do atacante ao sofrer dano",
       passiveAbility: DEADLY_SENTENCING,
       ultimate: {
@@ -546,7 +546,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 110,
       baseSpeed: 125,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/4/4f/Mahito_Anime.png",
+        "https://cdn.discordapp.com/attachments/1542421455969718342/1542421629832011776/file_00000000edec820e93ac0ef97e71cc81.png?ex=6a91d455&is=6a9082d5&hm=cd4a5b0a413fa8896c753f6dfb62a89927582fd623c64e500bd61983825051dc&",
       passive: "Transfiguração Ociosa: reduz HP máximo do inimigo permanentemente",
       passiveAbility: IDLE_TRANSFIGURATION,
       ultimate: {
@@ -582,7 +582,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 120,
       baseSpeed: 108,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/f/f3/Kento_Nanami.png",
+        "https://cdn.discordapp.com/attachments/1542421455969718342/1542421629206790215/file_00000000aafc820e97c798be6e686304.png?ex=6a91d455&is=6a9082d5&hm=b8d277bd4bccadec375982bd00fccf966888b67410e57a899a373dc8fa2560a8&",
       passive: "Técnica 7:3: críticos causam dano extra e ignoram defesa",
       passiveAbility: RATIO_TECHNIQUE,
       ultimate: {
@@ -618,7 +618,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 135,
       baseSpeed: 112,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/7/7f/Suguru_Geto_Anime.png",
+        "https://cdn.discordapp.com/attachments/1542421455969718342/1542421628799950858/file_0000000009d8820e9a32e83493ac6495.png?ex=6a91d455&is=6a9082d5&hm=e60da0645ffae2b763fe84541378e23526b8b48dc81f2693bd2d77c480178be5&",
       passive: "Manipulação de Espíritos: ao matar, recupera HP e ganha carga",
       passiveAbility: CURSED_SPIRIT_MANIPULATION,
       ultimate: {
