@@ -525,7 +525,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
         targetType: "single_enemy",
         multiplier: 1.5,
         statusEffects: [
-          { type: "silence", chance: 100, duration: 3, value: 0 },
+          { type: "stun", chance: 100, duration: 2, value: 0 },
           { type: "attack_down", chance: 100, duration: 3, value: 40 },
         ],
         conditionalRules: [
@@ -631,10 +631,10 @@ export const characterCatalog: CharacterCatalogEntry[] =
         chargeOnDamageTaken: 14,
         chargeOnCritical: 20,
         type: "DAMAGE",
-        targetType: "all_enemies",
+        targetType: "aoe_enemy",
         multiplier: 2.2,
         statusEffects: [
-          { type: "curse", chance: 80, duration: 3, value: 30 },
+          { type: "poison", chance: 80, duration: 3, value: 30 },
           { type: "defense_down", chance: 80, duration: 2, value: 25 },
         ],
         conditionalRules: [
