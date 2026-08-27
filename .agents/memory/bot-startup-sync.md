@@ -20,3 +20,9 @@ When recovering a PostgreSQL database whose schema objects predate Drizzle's mig
 **Why:** PostgreSQL aborts the surrounding transaction after an uncaught DDL error; catching the error in application code alone still prevents later migration statements from running.
 
 **How to apply:** Roll back only the statement savepoint for known duplicate-object SQLSTATEs, continue with the migration, and keep all other database errors fatal.
+
+Direct Node execution with `--experimental-strip-types` requires explicit `.ts` extensions in the imported local modules.
+
+**Why:** The bundler resolves extensionless imports, but the native Node path used by startup seed scripts does not.
+
+**How to apply:** Keep local `@workspace/db` runtime imports extension-explicit and enable `allowImportingTsExtensions` for its declaration-only TypeScript build.

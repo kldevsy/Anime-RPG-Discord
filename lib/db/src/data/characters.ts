@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { characterRarities, characterRoles } from "../schema";
+import { characterRarities, characterRoles } from "../schema/index.ts";
 import {
   DETERMINATION,
   CHAKRA_CONTROL,
@@ -10,7 +10,7 @@ import {
   THREE_SWORD_STYLE,
   WATER_BREATHING,
   SUPERHUMAN_STRENGTH,
-} from "./passive-library";
+} from "./passive-library.ts";
 
 /**
  * Catálogo canônico e versionado de personagens iniciais.

@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import * as schema from "./schema";
+import * as schema from "./schema/index.ts";
 
 const { Pool } = pg;
 
@@ -12,7 +12,7 @@ export const pool = databaseConfigured
   : null;
 export const db = pool ? drizzle(pool, { schema }) : null;
 
-export * from "./schema";
-export * from "./data/characters";
-export * from "./catalog-sync";
-export * from "./catalog-watcher";
+export * from "./schema/index.ts";
+export * from "./data/characters.ts";
+export * from "./catalog-sync.ts";
+export * from "./catalog-watcher.ts";

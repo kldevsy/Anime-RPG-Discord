@@ -1,5 +1,5 @@
-import { syncCharacterCatalog, hasCatalogChanged } from "./catalog-sync";
-import { logger } from "./logger";
+import { syncCharacterCatalog, hasCatalogChanged } from "./catalog-sync.ts";
+import { logger } from "./logger.ts";
 
 let watcherInterval: NodeJS.Timeout | null = null;
 let isWatching = false;

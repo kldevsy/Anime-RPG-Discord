@@ -1,8 +1,8 @@
 import { eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
-import { characterCatalog } from "./data/characters";
-import { characters } from "./schema";
-import { db } from "./index";
+import { characterCatalog } from "./data/characters.ts";
+import { characters } from "./schema/index.ts";
+import { db } from "./index.ts";
 
 /**
  * Calcula hash do catálogo para detectar mudanças

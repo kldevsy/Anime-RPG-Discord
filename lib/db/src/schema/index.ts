@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import type { CharacterUltimate } from "../data/characters";
+import type { CharacterUltimate } from "../data/characters.ts";
 import {
   boolean,
   integer,
