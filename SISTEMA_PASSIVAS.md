@@ -598,6 +598,4 @@ tank, dps, support, healer, control
 
 ---
 
-**Dúvidas?** Veja os exemplos em `lib/db/src/data/passive-library.ts` com 35+ passivas prontas para usar!
 
-**Próximo:** Adicione sua primeira passiva customizada! 🎮
