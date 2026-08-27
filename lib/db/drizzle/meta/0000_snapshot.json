@@ -1,5 +1,5 @@
 {
-  "id": "1babfe44-61ce-4074-9c5a-a0bf6c55e155",
+  "id": "7802e21a-9705-496f-9395-7e641ec4ff67",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -460,6 +460,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "catalog_managed": {
+          "name": "catalog_managed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "ultimate": {
           "name": "ultimate",

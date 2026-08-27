@@ -1,2 +1,0 @@
--- The base migration now creates user_pve_progress and its constraints.
--- Kept as a versioned no-op to preserve the historical migration sequence.

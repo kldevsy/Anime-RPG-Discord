@@ -70,6 +70,7 @@ CREATE TABLE "characters" (
 	"base_speed" integer NOT NULL,
 	"image_url" text,
 	"passive" text,
+	"catalog_managed" boolean DEFAULT false NOT NULL,
 	"ultimate" jsonb,
 	"evolution" jsonb,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL

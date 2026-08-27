@@ -5,57 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1787689602000,
-      "tag": "0000_base_schema",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1787689614068,
-      "tag": "0001_pve_schema",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1787689616202,
-      "tag": "0002_repair_pve_stage_columns",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1787689618483,
-      "tag": "0003_repair_user_pve_progress",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1787689620649,
-      "tag": "0004_backfill_character_image_urls",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1787689622831,
-      "tag": "0005_add_character_ultimate",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1787689625000,
-      "tag": "0006_backfill_character_ultimates",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1787691430545,
-      "tag": "0007_perfect_shatterstar",
+      "when": 1787789766694,
+      "tag": "0000_nebulous_ravenous",
       "breakpoints": true
     }
   ]
