@@ -221,7 +221,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
   try {
     // Defer IMEDIATAMENTE para evitar timeout de 3 segundos
     // Alguns comandos podem sobrescrever com seu próprio defer
-    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha"];
+    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha", "meta", "arena"];
     
     if (shouldDeferEarly.includes(commandName)) {
       try {
@@ -516,6 +516,551 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         console.error("Error in /personagem command:", error);
         await interaction.editReply("❌ Erro ao buscar informações do personagem.").catch(() => {});
       }
+      return;
+    }
+
+    // 5.5. /meta - Análise META de personagens
+    if (commandName === "meta") {
+      await interaction.deferReply();
+      
+      const catalog = await listCharacters({});
+      
+      // Criar select menu para categorias
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId("meta_category")
+        .setPlaceholder("📊 Selecione uma categoria META")
+        .addOptions([
+          { label: "🏆 Top Tier Geral", description: "Melhores personagens overall", value: "top_tier", emoji: "👑" },
+          { label: "⚔️ Melhores DPS", description: "Máximo dano por segundo", value: "dps", emoji: "⚔️" },
+          { label: "🛡️ Melhores Tanks", description: "Resistência e proteção", value: "tank", emoji: "🛡️" },
+          { label: "🎯 Melhores Controle", description: "Crowd control e debuffs", value: "control", emoji: "🎯" },
+          { label: "💚 Melhores Suporte", description: "Buffs e utility", value: "support", emoji: "💚" },
+          { label: "🔰 Melhor Custo-Benefício", description: "Raros/Épicos fortes", value: "budget", emoji: "💎" },
+          { label: "🌟 Broken/OP", description: "Personagens quebrados", value: "broken", emoji: "⚡" },
+        ]);
+      
+      const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+      
+      const mainEmbed = new EmbedBuilder()
+        .setTitle("📊 Análise META - Anime RPG")
+        .setColor(0xFFD700)
+        .setDescription(
+          "**Bem-vindo à Análise META Profissional!**\n\n" +
+          "Aqui você encontra os melhores personagens do jogo por categoria, " +
+          "com análises detalhadas sobre por que estão no META e como usar.\n\n" +
+          "🎯 **Use o menu abaixo** para selecionar uma categoria e ver:\n" +
+          "• Rankings atualizados\n" +
+          "• Análise de por que são META\n" +
+          "• Melhores composições de equipe\n" +
+          "• Pontos fortes e fracos\n\n" +
+          `📈 **Total de ${catalog.length} personagens** no catálogo.`
+        )
+        .addFields(
+          { name: "🏆 Top Tier", value: "Os melhores dos melhores", inline: true },
+          { name: "⚔️ DPS", value: "Dano explosivo", inline: true },
+          { name: "🛡️ Tank", value: "Muralha imbatível", inline: true },
+          { name: "🎯 Controle", value: "Crowd control", inline: true },
+          { name: "💚 Suporte", value: "Buffs e utility", inline: true },
+          { name: "🔰 Budget", value: "Custo-benefício", inline: true }
+        )
+        .setFooter({ text: "⚡ META atualizado • Use o menu para navegar" })
+        .setTimestamp();
+      
+      const response = await interaction.editReply({ embeds: [mainEmbed], components: [row] });
+      
+      // Collector para o menu
+      const collector = response.createMessageComponentCollector({
+        componentType: ComponentType.StringSelect,
+        time: 5 * 60 * 1000, // 5 minutos
+      });
+      
+      collector.on("collect", async (menuInteraction) => {
+        if (menuInteraction.user.id !== interaction.user.id) {
+          await menuInteraction.reply({ content: "❌ Este menu não é seu!", ephemeral: true });
+          return;
+        }
+        
+        await menuInteraction.deferUpdate();
+        const category = menuInteraction.values[0];
+        
+        let metaEmbed: EmbedBuilder;
+        
+        // Top Tier Geral
+        if (category === "top_tier") {
+          metaEmbed = new EmbedBuilder()
+            .setTitle("👑 TOP TIER GERAL - S+ Tier")
+            .setColor(0xFFD700)
+            .setDescription("**Os melhores personagens do jogo, independente de categoria.**\n\n")
+            .addFields(
+              {
+                name: "🥇 #1 - Sukuna (Mahoraga) [Mítico Tank]",
+                value: "**Por que é META:**\n" +
+                  "• Adaptação stacka até 60% resistência\n" +
+                  "• Ultimate escala 3.0x → 6.0x com stacks\n" +
+                  "• 1600 HP + 200 DEF = unkillable\n" +
+                  "• Reflete 25% de dano em 40%+ resist\n" +
+                  "**Melhor em:** Raids, Bosses, PvP Prolongado\n" +
+                  "**Fraqueza:** Burst rápido antes de adaptar"
+              },
+              {
+                name: "🥈 #2 - Itachi (Susanoo) [Lendário Control]",
+                value: "**Por que é META:**\n" +
+                  "• Totsuka Blade = debuffs PERMANENTES\n" +
+                  "• -60% all stats = boss killer definitivo\n" +
+                  "• Shield 500 + debuff immunity\n" +
+                  "• +25% ATK enquanto tiver shield\n" +
+                  "**Melhor em:** Boss Fights, PvE Difícil\n" +
+                  "**Fraqueza:** Single target only"
+              },
+              {
+                name: "🥉 #3 - Satoru Gojo [Raro Control]",
+                value: "**Por que é META:**\n" +
+                  "• 40% evasão = untouchable\n" +
+                  "• Unlimited Void aturda TODOS por 2 turnos\n" +
+                  "• Drena 30 carga + nega buffs 3 turnos\n" +
+                  "• Evasão gera carga = ultimate frequente\n" +
+                  "**Melhor em:** PvP, Speed clear, Controle\n" +
+                  "**Fraqueza:** RNG dependent"
+              },
+              {
+                name: "🏆 #4 - Yuta (Rika) [Mítico Support/DPS]",
+                value: "**Por que é META:**\n" +
+                  "• Transform mechanic: +30% ATK/+25% DEF/+20% SPD\n" +
+                  "• Ultimate 3.5x → 5.6x com transform\n" +
+                  "• Shield 500 AOE team quando transform ativo\n" +
+                  "• Cura 25% HP ao ultar\n" +
+                  "**Melhor em:** Raids, Team Protection\n" +
+                  "**Fraqueza:** Precisa baixar HP para transform"
+              },
+              {
+                name: "👑 #5 - Nakime [Lendário Support]",
+                value: "**Por que é META:**\n" +
+                  "• +15 carga POR RODADA para TODOS aliados\n" +
+                  "• Ultimate buffa +30% ATK/DEF, +20% SPD AOE\n" +
+                  "• Aturda todos inimigos + drena 20 carga\n" +
+                  "• Ultimate battery = equipe spamma ultimates\n" +
+                  "**Melhor em:** Any team comp, Universal\n" +
+                  "**Fraqueza:** Nenhuma significativa"
+              }
+            )
+            .setFooter({ text: "⚡ S+ Tier • Estes personagens dominam o META atual" });
+        }
+        
+        // Melhores DPS
+        else if (category === "dps") {
+          metaEmbed = new EmbedBuilder()
+            .setTitle("⚔️ MELHORES DPS - Damage Dealers")
+            .setColor(0xFF0000)
+            .setDescription("**Personagens especializados em causar máximo dano.**\n\n")
+            .addFields(
+              {
+                name: "🥇 S+ Tier - Meliodas (Assault Mode) [Mítico]",
+                value: "**240 ATK base • 1300 HP**\n" +
+                  "• Ganha 2% ATK por 1% HP perdido (200% ATK em 1% HP!)\n" +
+                  "• +50% crit chance abaixo de 30% HP\n" +
+                  "• Ultimate 3.8x + scaling por HP perdido\n" +
+                  "• Glass cannon extremo: high risk/high reward\n" +
+                  "**Sinergia:** Equipes que protegem ele enquanto baixa HP"
+              },
+              {
+                name: "🥈 S Tier - Ryomen Sukuna [Lendário]",
+                value: "**240 ATK base • 1250 HP**\n" +
+                  "• +15% crit chance permanente\n" +
+                  "• Críticos curam 8% HP + sangram\n" +
+                  "• Malevolent Shrine: garante crit, ignora 50% DEF\n" +
+                  "• Vampiric DPS com sustain\n" +
+                  "**Sinergia:** Builds de critical damage"
+              },
+              {
+                name: "🥉 A+ Tier - Madara Uchiha [Lendário]",
+                value: "**230 ATK base • 1150 HP**\n" +
+                  "• 30% chance de Susanoo: shield + 50% dano\n" +
+                  "• Perfect Susanoo: 3.2x → 4.48x com passiva\n" +
+                  "• Penetra 40% defesa\n" +
+                  "• Burst DPS com momentos épicos\n" +
+                  "**Sinergia:** RNG builds, luck based"
+              },
+              {
+                name: "🏆 A Tier - Nezuko [Mítico]",
+                value: "**215 ATK base • 1250 HP**\n" +
+                  "• Transform berserker: +40% ATK/+25% SPD/+30% crit\n" +
+                  "• Sangue Explosivo: 3.0x → 4.5x em berserker\n" +
+                  "• Queima ignora 30% DEF em berserker\n" +
+                  "• DoT queen com transform mechanic\n" +
+                  "**Sinergia:** Deixa HP baixo primeiro"
+              },
+              {
+                name: "⚔️ B+ Tier - Pain [Lendário]",
+                value: "**225 ATK base • 1200 HP**\n" +
+                  "• Rinnegan: +10 carga por habilidade\n" +
+                  "• A cada 3 ataques, próximo aturda\n" +
+                  "• Shinra Tensei: 3.3x → 4.95x se stun ativo\n" +
+                  "• Ultimate spammer com controle\n" +
+                  "**Sinergia:** Builds de ultimate charge"
+              }
+            )
+            .setFooter({ text: "⚔️ DPS Tier List • Foque em ATK, CRIT e penetração" });
+        }
+        
+        // Melhores Tanks
+        else if (category === "tank") {
+          metaEmbed = new EmbedBuilder()
+            .setTitle("🛡️ MELHORES TANKS - Muralhas Imbatíveis")
+            .setColor(0x3498DB)
+            .setDescription("**Personagens especializados em absorver dano e proteger.**\n\n")
+            .addFields(
+              {
+                name: "🥇 S+ Tier - Sukuna (Mahoraga) [Mítico]",
+                value: "**220 ATK • 1600 HP • 200 DEF**\n" +
+                  "• Adaptação: +15% resist por tipo (stack 4x = 60%)\n" +
+                  "• Reflete 25% dano em 40%+ resist\n" +
+                  "• Ultimate cura 60% HP em 4 stacks\n" +
+                  "• Literalmente fica mais forte quanto mais apanha\n" +
+                  "**META:** THE tank definitivo, unkillable em longo prazo"
+              },
+              {
+                name: "🥈 S Tier - Escanor [Mítico]",
+                value: "**205 ATK • 1500 HP • 180 DEF**\n" +
+                  "• The One: +5% ATK/DEF por rodada (10 stacks)\n" +
+                  "• Imune a debuffs em 5+ stacks\n" +
+                  "• Ultimate cura 10% HP por stack\n" +
+                  "• Tank que escala infinitamente\n" +
+                  "**META:** Quanto mais longa a luta, mais forte fica"
+              },
+              {
+                name: "🥉 A Tier - Itachi (Susanoo) [Lendário]",
+                value: "**215 ATK • 1150 HP • 140 DEF**\n" +
+                  "• Começa com shield 500\n" +
+                  "• Enquanto tiver shield: imune debuffs + 25% ATK\n" +
+                  "• Hybrid tank/control\n" +
+                  "• Proteção inicial forte\n" +
+                  "**META:** Tank ofensivo com utility"
+              },
+              {
+                name: "🏆 B+ Tier - Yuta (Rika) [Mítico]",
+                value: "**240 ATK • 1350 HP • 140 DEF**\n" +
+                  "• Transform <50% HP: shield 400 + buffs massivos\n" +
+                  "• Ultimate dá shield 500 AOE team\n" +
+                  "• Hybrid tank/support/dps\n" +
+                  "• Proteção de equipe\n" +
+                  "**META:** Team tank, protege todos"
+              }
+            )
+            .setFooter({ text: "🛡️ Tank Tier List • Priorize HP, DEF e sustain" });
+        }
+        
+        // Melhores Controle
+        else if (category === "control") {
+          metaEmbed = new EmbedBuilder()
+            .setTitle("🎯 MELHORES CONTROLE - Crowd Control Masters")
+            .setColor(0x9B59B6)
+            .setDescription("**Personagens especializados em desabilitar e controlar inimigos.**\n\n")
+            .addFields(
+              {
+                name: "🥇 S+ Tier - Satoru Gojo [Raro]",
+                value: "**175 ATK • 900 HP • 140 SPD**\n" +
+                  "• Infinito: 40% evasão + gera carga\n" +
+                  "• Unlimited Void: aturda TODOS por 2 turnos\n" +
+                  "• Drena 30 carga + nega buffs 3 turnos\n" +
+                  "• Controle total de campo\n" +
+                  "**META:** THE STRONGEST - melhor controle do jogo"
+              },
+              {
+                name: "🥈 S Tier - Itachi (Susanoo) [Lendário]",
+                value: "**215 ATK • 1150 HP • 130 SPD**\n" +
+                  "• Totsuka Blade: debuffs PERMANENTES (duration 999)\n" +
+                  "• -60% ATK/DEF/SPD pelo resto da batalha\n" +
+                  "• Aturda 3 turnos\n" +
+                  "• Boss eraser definitivo\n" +
+                  "**META:** Single target delete button"
+              },
+              {
+                name: "🥉 A+ Tier - Enel [Lendário]",
+                value: "**195 ATK • 1050 HP • 145 SPD**\n" +
+                  "• Passiva: 45% chance chocar + slow\n" +
+                  "• Raigo: choca todos, aturda 85%, -40% SPD\n" +
+                  "• Inimigos chocados tomam 60% mais dano\n" +
+                  "• Speed demon + mass stun\n" +
+                  "**META:** AOE control + damage amp"
+              },
+              {
+                name: "🏆 A Tier - Meliodas (Marca Demoníaca) [Lendário]",
+                value: "**210 ATK • 1100 HP • 140 SPD**\n" +
+                  "• Hellblaze: anula cura por 3 turnos\n" +
+                  "• Passiva stack reduz cura até 50%\n" +
+                  "• Drena 15 carga de ultimate\n" +
+                  "• Anti-heal META\n" +
+                  "**META:** Hard counter de healers/sustain"
+              },
+              {
+                name: "⚡ B+ Tier - Pain [Lendário]",
+                value: "**225 ATK • 1200 HP • 120 SPD**\n" +
+                  "• A cada 3 ataques, próximo aturda\n" +
+                  "• Shinra Tensei: 80% stun AOE\n" +
+                  "• -35% DEF, -30% SPD\n" +
+                  "• Rinnegan synergy\n" +
+                  "**META:** Stun cycling + debuffs"
+              }
+            )
+            .setFooter({ text: "🎯 Control Tier List • Domine o campo de batalha" });
+        }
+        
+        // Melhores Suporte
+        else if (category === "support") {
+          metaEmbed = new EmbedBuilder()
+            .setTitle("💚 MELHORES SUPORTE - Team Enablers")
+            .setColor(0x2ECC71)
+            .setDescription("**Personagens especializados em buffar e fortalecer a equipe.**\n\n")
+            .addFields(
+              {
+                name: "🥇 S+ Tier - Nakime [Lendário]",
+                value: "**160 ATK • 1000 HP • 105 SPD**\n" +
+                  "• Castelo Infinito: +15 carga POR RODADA para TODOS\n" +
+                  "• Ultimate: +30% ATK/DEF, +20% SPD AOE\n" +
+                  "• Aturda todos + drena 20 carga inimiga\n" +
+                  "• Universal support, funciona em qualquer comp\n" +
+                  "**META:** #1 suporte do jogo, ultimate battery insano"
+              },
+              {
+                name: "🥈 S Tier - Yuta (Rika) [Mítico]",
+                value: "**240 ATK • 1350 HP • 140 SPD**\n" +
+                  "• Shield 500 AOE team quando ulta com transform\n" +
+                  "• Transform: buffs massivos + proteção\n" +
+                  "• Hybrid support/dps/tank\n" +
+                  "• Team protection + damage\n" +
+                  "**META:** All-in-one package, versátil"
+              },
+              {
+                name: "🥉 A+ Tier - Enel [Lendário]",
+                value: "**195 ATK • 1050 HP • 145 SPD**\n" +
+                  "• Amplifica dano: inimigos chocados tomam 60% mais\n" +
+                  "• Mass CC que habilita DPS do time\n" +
+                  "• Speed lead (145 SPD)\n" +
+                  "• Damage amplifier + control\n" +
+                  "**META:** Enabler de DPS através de debuffs"
+              },
+              {
+                name: "🏆 B+ Tier - Daki [Épico]",
+                value: "**165 ATK • 900 HP • 125 SPD**\n" +
+                  "• Críticos reduzem SPD inimiga AOE (stackável)\n" +
+                  "• Ultimate: -35% SPD, -25% ATK, bleed\n" +
+                  "• Speed manipulation\n" +
+                  "• Budget option\n" +
+                  "**META:** Controla velocidade do campo"
+              }
+            )
+            .setFooter({ text: "💚 Support Tier List • O time é mais forte junto" });
+        }
+        
+        // Melhor Custo-Benefício
+        else if (category === "budget") {
+          metaEmbed = new EmbedBuilder()
+            .setTitle("🔰 MELHOR CUSTO-BENEFÍCIO - F2P Friendly")
+            .setColor(0xE67E22)
+            .setDescription("**Personagens Raros/Épicos que competem com Lendários/Míticos.**\n\n")
+            .addFields(
+              {
+                name: "🥇 S Tier - Satoru Gojo [RARO Control]",
+                value: "**Por que é budget META:**\n" +
+                  "• Raro mas tem poder de Mítico\n" +
+                  "• Melhor controle do jogo\n" +
+                  "• 40% evasão = survivability insana\n" +
+                  "• Unlimited Void quebrado\n" +
+                  "**Acessibilidade:** Fácil de conseguir, difícil de masterizar"
+              },
+              {
+                name: "🥈 A+ Tier - Asta [RARO DPS]",
+                value: "**Por que é budget META:**\n" +
+                  "• Anti-Magia: IMUNE A DEBUFFS\n" +
+                  "• Hard counter de buffers\n" +
+                  "• Remove todos buffs/shields\n" +
+                  "• +25% dano por buff removido\n" +
+                  "**Acessibilidade:** Counter pick perfeito, nicho poderoso"
+              },
+              {
+                name: "🥉 A Tier - Itachi [ÉPICO DPS]",
+                value: "**Por que é budget META:**\n" +
+                  "• +20% crit chance permanente\n" +
+                  "• Amaterasu irremovível\n" +
+                  "• Burn 80 por 6 turnos amplificado\n" +
+                  "• DoT king\n" +
+                  "**Acessibilidade:** Épico acessível, build simples"
+              },
+              {
+                name: "🏆 B+ Tier - Meliodas Base [ÉPICO DPS]",
+                value: "**Por que é budget META:**\n" +
+                  "• Full Counter: 35% reflect 120% dano\n" +
+                  "• Revenge Counter 3.5x → 5.2x scaled\n" +
+                  "• Counter fighter único\n" +
+                  "• Forte vs burst damage\n" +
+                  "**Acessibilidade:** Épico starter friendly"
+              },
+              {
+                name: "💎 B Tier - Daki [ÉPICO Control]",
+                value: "**Por que é budget META:**\n" +
+                  "• Speed manipulation stackável\n" +
+                  "• AOE debuffs múltiplos\n" +
+                  "• Épico com utility boa\n" +
+                  "• Team support budget\n" +
+                  "**Acessibilidade:** Fácil de buildar, simples de usar"
+              }
+            )
+            .setFooter({ text: "🔰 Budget Tier List • Você não precisa de Míticos para vencer!" });
+        }
+        
+        // Broken/OP
+        else if (category === "broken") {
+          metaEmbed = new EmbedBuilder()
+            .setTitle("🌟 BROKEN/OP - Personagens Quebrados")
+            .setColor(0xFF00FF)
+            .setDescription("**Personagens que ultrapassam os limites do balanceamento.**\n\n")
+            .addFields(
+              {
+                name: "⚡ TIER GOD - Itachi (Susanoo)",
+                value: "**Por que é QUEBRADO:**\n" +
+                  "• Totsuka Blade: debuffs com duration 999 (PERMANENTE)\n" +
+                  "• -60% ALL STATS pelo RESTO DA BATALHA\n" +
+                  "• Boss literalmente fica inútil para sempre\n" +
+                  "• Não tem counter play\n" +
+                  "**Nerf necessário?** Provavelmente, mas é fiel ao anime"
+              },
+              {
+                name: "⚡ TIER GOD - Sukuna (Mahoraga)",
+                value: "**Por que é QUEBRADO:**\n" +
+                  "• Adaptation mechanic: quanto mais apanha, mais forte fica\n" +
+                  "• 60% resistência = quase invulnerável\n" +
+                  "• Ultimate 3.0x → 6.0x (100% SCALING!)\n" +
+                  "• 1600 HP + 200 DEF = nunca morre\n" +
+                  "**Nerf necessário?** Sim, mas épico demais"
+              },
+              {
+                name: "⚡ TIER BROKEN - Nakime",
+                value: "**Por que é QUEBRADO:**\n" +
+                  "• +15 carga POR RODADA para TODO O TIME\n" +
+                  "• Time spamma ultimates infinitamente\n" +
+                  "• Buffs AOE massivos\n" +
+                  "• Não tem downside\n" +
+                  "**Nerf necessário?** Reduzir para +10 carga"
+              },
+              {
+                name: "⚡ TIER BROKEN - Gojo",
+                value: "**Por que é QUEBRADO:**\n" +
+                  "• 40% evasão passiva = untouchable\n" +
+                  "• Unlimited Void: stun 2 turnos GARANTIDO\n" +
+                  "• RARO mas poder de Mítico\n" +
+                  "• RNG pode fazer ele imortal\n" +
+                  "**Nerf necessário?** Talvez reduzir evasão para 30%"
+              },
+              {
+                name: "⚡ TIER BROKEN - Meliodas (Assault)",
+                value: "**Por que é QUEBRADO:**\n" +
+                  "• 2% ATK por 1% HP perdido = 200% ATK EM 1% HP\n" +
+                  "• Ultimate scaling infinito\n" +
+                  "• One-shot potential insano\n" +
+                  "• Glass cannon extremo\n" +
+                  "**Nerf necessário?** Cap em 100% bonus"
+              }
+            )
+            .setFooter({ text: "⚡ BROKEN Tier List • Use com responsabilidade" });
+        }
+        
+        else {
+          metaEmbed = new EmbedBuilder()
+            .setTitle("📊 Categoria META")
+            .setColor(0xFFD700)
+            .setDescription("Selecione uma categoria no menu acima.");
+        }
+        
+        await interaction.editReply({ embeds: [metaEmbed], components: [row] });
+      });
+      
+      collector.on("end", async () => {
+        try {
+          await interaction.editReply({ components: [] });
+        } catch {}
+      });
+      
+      return;
+    }
+
+    // 5.8. /arena - Batalha PvP Adaptativa
+    if (commandName === "arena") {
+      await interaction.deferReply();
+      
+      const difficulty = (interaction.options.getString("dificuldade") as "easy" | "normal" | "hard" | "nightmare") ?? "normal";
+      const speed = interaction.options.getString("velocidade") ?? "medium";
+      
+      const speedMap: Record<string, number> = {
+        slow: 2500,
+        medium: 1500,
+        fast: 800
+      };
+      
+      const delay = speedMap[speed];
+      
+      try {
+        const { runAdaptivePvpBattle } = await import("../services/AdaptivePvpService");
+        const { 
+          createAdaptivePvpVictoryEmbed, 
+          createAdaptivePvpDefeatEmbed, 
+          createAdaptivePvpProgressEmbed 
+        } = await import("./embeds");
+        
+        let lastAction: any = undefined;
+        
+        const battleResult = await runAdaptivePvpBattle(
+          discordId,
+          difficulty,
+          async (snapshot) => {
+            // Extrai última ação do log
+            if (snapshot.log.length > 0) {
+              lastAction = snapshot.log[snapshot.log.length - 1];
+            }
+            
+            const progressEmbed = createAdaptivePvpProgressEmbed(
+              username,
+              battleResult?.enemyTeamName ?? "Equipe Inimiga",
+              difficulty,
+              snapshot,
+              lastAction
+            );
+            
+            await interaction.editReply({ embeds: [progressEmbed] });
+            await new Promise(resolve => setTimeout(resolve, delay));
+          },
+          discordUltimateDecisionProvider(interaction)
+        );
+        
+        // Determina resultado
+        const isVictory = battleResult.result.victor === "ally";
+        
+        // Cria embed final
+        const finalEmbed = isVictory 
+          ? createAdaptivePvpVictoryEmbed(
+              username,
+              battleResult.enemyTeamName,
+              difficulty,
+              battleResult.rewards,
+              battleResult.result
+            )
+          : createAdaptivePvpDefeatEmbed(
+              username,
+              battleResult.enemyTeamName,
+              difficulty,
+              battleResult.rewards,
+              battleResult.result
+            );
+        
+        await interaction.editReply({ embeds: [finalEmbed] });
+        
+        // TODO: Aplicar recompensas ao jogador (integrar com EconomyService)
+        console.log(`[ARENA] ${isVictory ? "VICTORY" : "DEFEAT"} - Rewards: ${battleResult.rewards.gold}G, ${battleResult.rewards.gems}💎, ${battleResult.rewards.xp}XP`);
+        
+      } catch (error: any) {
+        console.error("❌ [ARENA ERROR]", error);
+        await interaction.editReply(`❌ Erro na arena: ${error.message}`).catch(() => {});
+      }
+      
       return;
     }
 

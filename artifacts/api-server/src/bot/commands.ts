@@ -219,7 +219,40 @@ export const commandDefinitions = [
         )
     ),
 
-  // 13. /admin
+  // 13. /meta
+  new SlashCommandBuilder()
+    .setName("meta")
+    .setDescription("Análise META de personagens top tier por categoria com detalhes profissionais."),
+
+  // 14. /arena
+  new SlashCommandBuilder()
+    .setName("arena")
+    .setDescription("Batalhe contra times aleatórios adaptativos que escalam com seu progresso!")
+    .addStringOption((opt) =>
+      opt
+        .setName("dificuldade")
+        .setDescription("Escolha a dificuldade da batalha")
+        .setRequired(false)
+        .addChoices(
+          { name: "🟢 Fácil - Treino básico", value: "easy" },
+          { name: "🟡 Normal - Desafio equilibrado", value: "normal" },
+          { name: "🔴 Difícil - Para veteranos", value: "hard" },
+          { name: "⚫ Pesadelo - Apenas os melhores", value: "nightmare" }
+        )
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName("velocidade")
+        .setDescription("Velocidade da animação da batalha")
+        .setRequired(false)
+        .addChoices(
+          { name: "Lento", value: "slow" },
+          { name: "Médio", value: "medium" },
+          { name: "Rápido", value: "fast" }
+        )
+    ),
+
+  // 15. /admin
   new SlashCommandBuilder()
     .setName("admin")
     .setDescription("Comandos administrativos para gerenciamento do RPG.")

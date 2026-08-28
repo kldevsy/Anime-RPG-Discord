@@ -363,3 +363,221 @@ export function createLeaderboardEmbed(leaderboard: any[], category: string) {
   embed.setDescription(text);
   return embed;
 }
+
+
+/**
+ * Cria embed de vitória para batalha PvP adaptativa
+ */
+export function createAdaptivePvpVictoryEmbed(
+  username: string,
+  enemyTeamName: string,
+  difficulty: string,
+  rewards: { gold: number; gems: number; xp: number },
+  result: BattleSnapshot
+): EmbedBuilder {
+  const difficultyEmojis: Record<string, string> = {
+    easy: "🟢",
+    normal: "🟡",
+    hard: "🔴",
+    nightmare: "⚫"
+  };
+  
+  const difficultyNames: Record<string, string> = {
+    easy: "Fácil",
+    normal: "Normal",
+    hard: "Difícil",
+    nightmare: "Pesadelo"
+  };
+  
+  const embed = new EmbedBuilder()
+    .setTitle("🏆 VITÓRIA ÉPICA!")
+    .setColor(0x00FF00)
+    .setDescription(
+      `**${username}** derrotou **${enemyTeamName}**!\n\n` +
+      `${difficultyEmojis[difficulty]} **Dificuldade:** ${difficultyNames[difficulty]}\n` +
+      `⚔️ **Rodadas:** ${result.round}/${result.maxRounds}\n` +
+      `💀 **Derrotados:** ${result.enemies.filter(e => !e.alive).length}/${result.enemies.length}\n\n` +
+      `**🎁 RECOMPENSAS CONQUISTADAS:**\n` +
+      `💰 **${rewards.gold} Gold**\n` +
+      `💎 **${rewards.gems} Gemas**\n` +
+      `⭐ **${rewards.xp} XP**`
+    )
+    .setFooter({ text: `🎮 Batalha PvP Adaptativa • Continue lutando para maiores recompensas!` })
+    .setTimestamp();
+  
+  // Adiciona informações do time sobrevivente
+  const survivors = result.allies.filter(a => a.alive);
+  if (survivors.length > 0) {
+    const survivorInfo = survivors.map(s => {
+      const hpPercent = Math.round((s.hp / s.maxHp) * 100);
+      const hpBar = hpPercent > 75 ? "🟢" : hpPercent > 40 ? "🟡" : hpPercent > 15 ? "🟠" : "🔴";
+      return `${hpBar} **${s.name}** - ${s.hp}/${s.maxHp} HP (${hpPercent}%)`;
+    }).join("\n");
+    
+    embed.addFields({
+      name: `✅ Sobreviventes (${survivors.length}/${result.allies.length})`,
+      value: survivorInfo
+    });
+  }
+  
+  return embed;
+}
+
+/**
+ * Cria embed de derrota para batalha PvP adaptativa
+ */
+export function createAdaptivePvpDefeatEmbed(
+  username: string,
+  enemyTeamName: string,
+  difficulty: string,
+  rewards: { gold: number; gems: number; xp: number },
+  result: BattleSnapshot
+): EmbedBuilder {
+  const difficultyEmojis: Record<string, string> = {
+    easy: "🟢",
+    normal: "🟡",
+    hard: "🔴",
+    nightmare: "⚫"
+  };
+  
+  const difficultyNames: Record<string, string> = {
+    easy: "Fácil",
+    normal: "Normal",
+    hard: "Difícil",
+    nightmare: "Pesadelo"
+  };
+  
+  const embed = new EmbedBuilder()
+    .setTitle("💀 DERROTA...")
+    .setColor(0xFF0000)
+    .setDescription(
+      `**${username}** foi derrotado por **${enemyTeamName}**.\n\n` +
+      `${difficultyEmojis[difficulty]} **Dificuldade:** ${difficultyNames[difficulty]}\n` +
+      `⚔️ **Rodadas sobrevividas:** ${result.round}/${result.maxRounds}\n` +
+      `⚰️ **Inimigos eliminados:** ${result.enemies.filter(e => !e.alive).length}/${result.enemies.length}\n\n` +
+      `❗ **Não desista! Treine e tente novamente.**\n\n` +
+      `**💰 Recompensas de Consolação:**\n` +
+      `💰 **${rewards.gold} Gold** (30% do normal)\n` +
+      `💎 **${rewards.gems} Gemas** (30% do normal)\n` +
+      `⭐ **${rewards.xp} XP** (30% do normal)`
+    )
+    .setFooter({ text: `🎮 Batalha PvP Adaptativa • Melhore sua equipe e retorne mais forte!` })
+    .setTimestamp();
+  
+  // Mostra inimigos sobreviventes (os que te derrotaram)
+  const enemySurvivors = result.enemies.filter(e => e.alive);
+  if (enemySurvivors.length > 0) {
+    const enemyInfo = enemySurvivors.map(e => {
+      const hpPercent = Math.round((e.hp / e.maxHp) * 100);
+      return `⚔️ **${e.name}** - ${hpPercent}% HP restante`;
+    }).join("\n");
+    
+    embed.addFields({
+      name: `👹 Inimigos Sobreviventes (${enemySurvivors.length}/${result.enemies.length})`,
+      value: enemyInfo
+    });
+  }
+  
+  // Dicas baseadas na dificuldade
+  const tips: Record<string, string> = {
+    easy: "💡 **Dica:** Invoque mais personagens e fortaleça sua equipe!",
+    normal: "💡 **Dica:** Aprimore seus personagens e considere mudar a formação do time.",
+    hard: "💡 **Dica:** Foque em maestria e composição de equipe balanceada (DPS + Tank + Support).",
+    nightmare: "💡 **Dica:** Somente os melhores sobrevivem. Maestria máxima e personagens META são essenciais!"
+  };
+  
+  embed.addFields({
+    name: "📚 Sugestão",
+    value: tips[difficulty]
+  });
+  
+  return embed;
+}
+
+/**
+ * Cria embed de progresso da batalha PvP (sem mostrar barras de ultimate dos inimigos)
+ */
+export function createAdaptivePvpProgressEmbed(
+  username: string,
+  enemyTeamName: string,
+  difficulty: string,
+  snapshot: BattleSnapshot,
+  lastAction?: BattleAction
+): EmbedBuilder {
+  const difficultyEmojis: Record<string, string> = {
+    easy: "🟢",
+    normal: "🟡",
+    hard: "🔴",
+    nightmare: "⚫"
+  };
+  
+  const embed = new EmbedBuilder()
+    .setTitle(`⚔️ ${username} vs ${enemyTeamName}`)
+    .setColor(0x3498DB)
+    .setDescription(
+      `${difficultyEmojis[difficulty]} **Dificuldade:** ${difficulty.toUpperCase()}\n` +
+      `📊 **Rodada ${snapshot.round}/${snapshot.maxRounds}**`
+    );
+  
+  // Seu time (mostra ultimate charge)
+  const allyLines = snapshot.allies.map((ally) => {
+    if (!ally.alive) return `💀 ~~${ally.name}~~`;
+    
+    const hpPercent = Math.round((ally.hp / ally.maxHp) * 100);
+    const hpBar = hpPercent > 75 ? "🟢" : hpPercent > 40 ? "🟡" : hpPercent > 15 ? "🟠" : "🔴";
+    
+    const ultCharge = ally.energy;
+    const ultRequired = ally.skills.ultimate.chargeRequired;
+    const ultPercent = Math.min(100, Math.round((ultCharge / ultRequired) * 100));
+    const ultReady = ultCharge >= ultRequired ? "✨ PRONTA!" : `${ultPercent}%`;
+    
+    return `${hpBar} **${ally.name}** | HP: ${ally.hp}/${ally.maxHp} | Ult: ${ultReady}`;
+  });
+  
+  embed.addFields({
+    name: `👥 Seu Time (${snapshot.allies.filter(a => a.alive).length}/${snapshot.allies.length} vivos)`,
+    value: allyLines.join("\n") || "Nenhum"
+  });
+  
+  // Time inimigo (NÃO mostra ultimate charge)
+  const enemyLines = snapshot.enemies.map((enemy) => {
+    if (!enemy.alive) return `💀 ~~${enemy.name}~~`;
+    
+    const hpPercent = Math.round((enemy.hp / enemy.maxHp) * 100);
+    const hpBar = hpPercent > 75 ? "🟢" : hpPercent > 40 ? "🟡" : hpPercent > 15 ? "🟠" : "🔴";
+    
+    return `${hpBar} **${enemy.name}** | HP: ${enemy.hp}/${enemy.maxHp}`;
+  });
+  
+  embed.addFields({
+    name: `👹 ${enemyTeamName} (${snapshot.enemies.filter(e => e.alive).length}/${snapshot.enemies.length} vivos)`,
+    value: enemyLines.join("\n") || "Nenhum"
+  });
+  
+  // Última ação
+  if (lastAction) {
+    let actionText = "";
+    
+    if (lastAction.type === "BASIC_ATTACK") {
+      const critText = lastAction.isCrit ? " **CRÍTICO!**" : "";
+      actionText = `⚔️ **${lastAction.actorName}** atacou **${lastAction.targetName}** causando **${lastAction.damage}** de dano${critText}`;
+    } else if (lastAction.type === "ULTIMATE") {
+      actionText = `✨ **${lastAction.actorName}** usou **${lastAction.skillName}**! Dano: **${lastAction.damage}**`;
+    } else if (lastAction.type === "HEAL") {
+      actionText = `💚 **${lastAction.actorName}** curou **${lastAction.targetName}** em **${lastAction.healAmount}** HP`;
+    } else if (lastAction.type === "STATUS_APPLIED") {
+      actionText = `🎯 **${lastAction.statusType?.toUpperCase()}** aplicado em **${lastAction.targetName}**`;
+    } else if (lastAction.type === "DEATH") {
+      actionText = `💀 **${lastAction.actorName}** foi derrotado!`;
+    }
+    
+    if (actionText) {
+      embed.addFields({
+        name: "📝 Última Ação",
+        value: actionText
+      });
+    }
+  }
+  
+  return embed;
+}

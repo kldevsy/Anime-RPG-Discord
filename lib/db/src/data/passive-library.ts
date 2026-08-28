@@ -659,6 +659,48 @@ export const MAHORAGA_ADAPTATION: PassiveAbility = {
 };
 
 /**
+ * PASSIVAS DE JUJUTSU KAISEN - FEITICEIROS ESPECIAIS
+ */
+
+export const INFINITY: PassiveAbility = {
+  id: "infinity",
+  name: "Infinito",
+  description: "Tem 40% de chance de evadir completamente qualquer ataque. Ao evadir, ganha 15 de carga de ultimate",
+  trigger: "on_attacked",
+  effects: [
+    { type: "evade", chance: 40, target: "self" },
+    { type: "gain_ultimate_charge", value: 15, target: "self", condition: "evaded" }
+  ],
+};
+
+/**
+ * PASSIVAS DE NARUTO - UCHIHA CLAN
+ */
+
+export const MANGEKYO_SHARINGAN: PassiveAbility = {
+  id: "mangekyo_sharingan",
+  name: "Mangekyō Sharingan",
+  description: "Aumenta chance crítica em 20%. Ao acertar crítico, aplica Amaterasu (burn intenso) com 50% de chance",
+  trigger: "on_critical_hit",
+  effects: [
+    { type: "increase_crit_chance", value: 20, target: "self" },
+    { type: "apply_status", statusType: "burn", duration: 4, value: 55, chance: 50, target: "target" }
+  ],
+};
+
+export const PERFECT_SUSANOO_PASSIVE: PassiveAbility = {
+  id: "perfect_susanoo_passive",
+  name: "Susanoo Perfeito",
+  description: "Começa a batalha com shield de 500 HP. Enquanto tiver shield, imune a debuffs e ganha +25% ATK",
+  trigger: "on_battle_start",
+  effects: [
+    { type: "shield", value: 500, target: "self" },
+    { type: "debuff_immunity", value: 100, target: "self", condition: "has_shield" },
+    { type: "increase_attack", value: 25, target: "self", condition: "has_shield" }
+  ],
+};
+
+/**
  * PASSIVAS DE BOSS E INIMIGOS ESPECIAIS
  */
 

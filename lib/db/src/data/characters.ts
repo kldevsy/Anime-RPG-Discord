@@ -33,6 +33,9 @@ import {
   ANTI_MAGIC,
   KING_OF_CURSES,
   MAHORAGA_ADAPTATION,
+  INFINITY,
+  MANGEKYO_SHARINGAN,
+  PERFECT_SUSANOO_PASSIVE,
 } from "./passive-library.ts";
 
 /**
@@ -1367,6 +1370,120 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Por cada stack de resistência (máx 4)",
             effect: "dano aumenta em 25%, penetração de defesa aumenta em 20%, e cura 15% HP máximo",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Satoru Gojo",
+      rarity: "rare",
+      role: "support",
+      baseHp: 900,
+      baseAttack: 175,
+      baseDefense: 100,
+      baseSpeed: 140,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/5a/Satoru_Gojo_%28Anime%29.png",
+      passive: "Infinito: 40% de chance de evadir completamente ataques, ganha 15 de carga ao evadir",
+      passiveAbility: INFINITY,
+      ultimate: {
+        id: "gojo_unlimited_void",
+        name: "Unlimited Void: Vazio Ilimitado",
+        description:
+          "Expande seu Domínio que paralisa todos os inimigos com informação infinita.",
+        chargeRequired: 80,
+        chargeOnBasic: 25,
+        chargeOnDamageTaken: 15,
+        chargeOnCritical: 28,
+        type: "DEBUFF",
+        targetType: "aoe_enemy",
+        multiplier: 2.0,
+        statusEffects: [
+          { type: "stun", chance: 100, duration: 2, value: 0 },
+          { type: "speed_down", chance: 100, duration: 4, value: 50 },
+          { type: "attack_down", chance: 100, duration: 3, value: 35 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Inimigos atordoados",
+            effect: "perdem 30 de carga de ultimate e não podem ganhar buffs por 3 turnos",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Naruto",
+      name: "Itachi Uchiha",
+      rarity: "epic",
+      role: "dps",
+      baseHp: 950,
+      baseAttack: 195,
+      baseDefense: 105,
+      baseSpeed: 135,
+      imageUrl:
+        "https://static.wikia.nocookie.net/naruto/images/b/bb/Itachi.png",
+      passive: "Mangekyō Sharingan: +20% chance crítica, críticos têm 50% de aplicar Amaterasu (burn intenso)",
+      passiveAbility: MANGEKYO_SHARINGAN,
+      ultimate: {
+        id: "itachi_amaterasu",
+        name: "Amaterasu: Chamas Negras Eternas",
+        description:
+          "Libera as chamas negras inextinguíveis que queimam tudo que tocam.",
+        chargeRequired: 85,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 16,
+        chargeOnCritical: 28,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 2.8,
+        statusEffects: [
+          { type: "burn", chance: 100, duration: 6, value: 80 },
+          { type: "defense_down", chance: 100, duration: 4, value: 40 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Chamas de Amaterasu não podem ser apagadas",
+            effect: "burn não pode ser removido por nenhum efeito e causa 50% mais dano",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Naruto",
+      name: "Itachi Uchiha (Susanoo)",
+      rarity: "legendary",
+      role: "support",
+      baseHp: 1150,
+      baseAttack: 215,
+      baseDefense: 140,
+      baseSpeed: 130,
+      imageUrl:
+        "https://static.wikia.nocookie.net/naruto/images/d/de/Itachi%27s_Susanoo.png",
+      passive: "Susanoo Perfeito: começa com shield 500, enquanto tiver shield é imune a debuffs e ganha +25% ATK",
+      passiveAbility: PERFECT_SUSANOO_PASSIVE,
+      ultimate: {
+        id: "itachi_totsuka_blade",
+        name: "Totsuka no Tsurugi: Espada Seladora",
+        description:
+          "A lâmina lendária de Susanoo que sela eternamente qualquer inimigo que perfura.",
+        chargeRequired: 95,
+        chargeOnBasic: 28,
+        chargeOnDamageTaken: 18,
+        chargeOnCritical: 26,
+        type: "DEBUFF",
+        targetType: "single_enemy",
+        multiplier: 4.5,
+        statusEffects: [
+          { type: "stun", chance: 100, duration: 3, value: 0 },
+          { type: "attack_down", chance: 100, duration: 999, value: 60 },
+          { type: "defense_down", chance: 100, duration: 999, value: 60 },
+          { type: "speed_down", chance: 100, duration: 999, value: 60 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Se o alvo for um boss ou elite",
+            effect: "aplicação de debuffs permanentes reduz todos os stats em 60% pelo resto da batalha (selamento)",
           },
         ],
       },
