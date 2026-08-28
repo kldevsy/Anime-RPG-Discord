@@ -659,7 +659,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 125,
       baseSpeed: 130,
       imageUrl:
-        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/6/6d/Kokushibo_anime_design.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541613929178861648/file_00000000aaf0820eafffd6c359a9ebbf.png?ex=6a91871a&is=6a90359a&hm=d0b9a98434d343705f164adaa1cfa21f669ed03978060209a03d99105fbe21c7&",
       passive: "Respiração da Lua: sangramento e reduz velocidade ao acertar",
       passiveAbility: MOON_BREATHING,
       ultimate: {
@@ -696,7 +696,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 150,
       baseSpeed: 118,
       imageUrl:
-        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/8/82/Doma_anime_design.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542727699917705287/content.png?ex=6a9248a2&is=6a90f722&hm=a58d40f3b8b087862a8b11ae3804f80027a1ba22571fb26443f32320c86c63be",
       passive: "Criotécnica de Sangue: congela atacantes ao sofrer dano",
       passiveAbility: ICE_MANIPULATION,
       ultimate: {
@@ -733,7 +733,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 115,
       baseSpeed: 135,
       imageUrl:
-        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/8/87/Akaza_anime_design.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541613928734531685/file_000000007cac820e839513ec2f6c5576.webp?ex=6a922fda&is=6a90de5a&hm=2cc3bfb18e7308993483b780862f0eda80285bc87b83c35dfd689a8346e52d84&",
       passive: "Espírito de Luta: ganha 2% ATK por cada 10% de HP perdido",
       passiveAbility: FIGHTING_SPIRIT,
       ultimate: {
@@ -770,7 +770,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 105,
       baseSpeed: 122,
       imageUrl:
-        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/3/3b/Gyutaro_anime_design.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542728769603772547/content.png?ex=6a9249a1&is=6a90f821&hm=4c3a135bcc4723c097f56f5a4bfd4c8dca92fa73f307098fc36b72bdc42e2270",
       passive: "Mestre do Veneno: envenena frequentemente, veneno causa mais dano",
       passiveAbility: POISON_MASTERY,
       ultimate: {
