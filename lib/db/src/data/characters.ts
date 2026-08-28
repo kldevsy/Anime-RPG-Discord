@@ -18,6 +18,9 @@ import {
   ICE_MANIPULATION,
   FIGHTING_SPIRIT,
   POISON_MASTERY,
+  SILK_MANIPULATION,
+  INFINITY_CASTLE,
+  DEMON_TRANSFORMATION,
 } from "./passive-library.ts";
 
 /**
@@ -793,6 +796,119 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Inimigos envenenados",
             effect: "dano aumenta em 15% por cada inimigo envenenado",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Demon Slayer",
+      name: "Daki",
+      rarity: "epic",
+      role: "support",
+      baseHp: 900,
+      baseAttack: 165,
+      baseDefense: 110,
+      baseSpeed: 125,
+      imageUrl:
+        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/2/25/Daki_anime_design.png",
+      passive: "Manipulação de Faixas: críticos reduzem velocidade de todos os inimigos",
+      passiveAbility: SILK_MANIPULATION,
+      ultimate: {
+        id: "daki_eight_layered_obi_slash",
+        name: "Corte de Obi de Oito Camadas",
+        description:
+          "Suas faixas se multiplicam e atacam todos os inimigos simultaneamente, diminuindo-os.",
+        chargeRequired: 85,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 14,
+        chargeOnCritical: 24,
+        type: "DEBUFF",
+        targetType: "aoe_enemy",
+        multiplier: 1.9,
+        statusEffects: [
+          { type: "speed_down", chance: 100, duration: 3, value: 35 },
+          { type: "attack_down", chance: 80, duration: 2, value: 25 },
+          { type: "bleed", chance: 70, duration: 3, value: 35 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Por cada inimigo afetado",
+            effect: "aliados ganham 10% de velocidade por 2 turnos",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Demon Slayer",
+      name: "Nakime",
+      rarity: "legendary",
+      role: "support",
+      baseHp: 1000,
+      baseAttack: 160,
+      baseDefense: 145,
+      baseSpeed: 105,
+      imageUrl:
+        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/f/f1/Nakime_anime_design.png",
+      passive: "Castelo Infinito: aliados ganham 15 de carga por rodada",
+      passiveAbility: INFINITY_CASTLE,
+      ultimate: {
+        id: "nakime_dimensional_shift",
+        name: "Distorção Dimensional: Castelo Infinito",
+        description:
+          "Manipula o espaço ao seu redor, desorientando inimigos e fortalecendo aliados.",
+        chargeRequired: 90,
+        chargeOnBasic: 25,
+        chargeOnDamageTaken: 16,
+        chargeOnCritical: 20,
+        type: "BUFF",
+        targetType: "aoe_ally",
+        multiplier: 0.8,
+        statusEffects: [
+          { type: "attack_up", chance: 100, duration: 3, value: 30 },
+          { type: "defense_up", chance: 100, duration: 3, value: 30 },
+          { type: "speed_up", chance: 100, duration: 3, value: 20 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Simultaneamente",
+            effect: "todos os inimigos ficam atordoados por 1 turno e perdem 20 de carga",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Demon Slayer",
+      name: "Nezuko Kamado",
+      rarity: "mythic",
+      role: "dps",
+      baseHp: 1250,
+      baseAttack: 215,
+      baseDefense: 120,
+      baseSpeed: 128,
+      imageUrl:
+        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/a/a5/Nezuko_anime_design.png",
+      passive: "Transformação Demoníaca: abaixo de 40% HP entra em modo berserker",
+      passiveAbility: DEMON_TRANSFORMATION,
+      ultimate: {
+        id: "nezuko_exploding_blood",
+        name: "Técnica Demoníaca: Sangue Explosivo",
+        description:
+          "Inflama seu sangue demoníaco causando uma explosão devastadora que queima todos os inimigos.",
+        chargeRequired: 92,
+        chargeOnBasic: 33,
+        chargeOnDamageTaken: 18,
+        chargeOnCritical: 26,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 3.0,
+        statusEffects: [
+          { type: "burn", chance: 100, duration: 4, value: 50 },
+          { type: "defense_down", chance: 90, duration: 2, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Se em modo berserker (HP < 40%)",
+            effect: "dano aumenta em 50% e queima ignora 30% da defesa",
           },
         ],
       },

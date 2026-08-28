@@ -453,6 +453,44 @@ export const POISON_MASTERY: PassiveAbility = {
 };
 
 /**
+ * PASSIVAS DE DEMON SLAYER - PERSONAGENS FEMININAS
+ */
+
+export const SILK_MANIPULATION: PassiveAbility = {
+  id: "silk_manipulation",
+  name: "Manipulação de Faixas",
+  description: "Ao acertar crítico, reduz a velocidade de todos os inimigos em 10% por 2 turnos (stackável)",
+  trigger: "on_critical_hit",
+  effects: [
+    { type: "apply_status", value: 10, duration: 2, statusType: "speed_down", chance: 100, target: "all_enemies" }
+  ],
+};
+
+export const INFINITY_CASTLE: PassiveAbility = {
+  id: "infinity_castle",
+  name: "Castelo Infinito",
+  description: "No início de cada rodada, todos os aliados ganham 15 de carga de ultimate",
+  trigger: "on_round_start",
+  effects: [
+    { type: "gain_ultimate_charge", value: 15, target: "all_allies" }
+  ],
+};
+
+export const DEMON_TRANSFORMATION: PassiveAbility = {
+  id: "demon_transformation",
+  name: "Transformação Demoníaca",
+  description: "Ao cair abaixo de 40% HP, entra em modo berserker: +40% ATK, +25% SPD, +30% chance crítica",
+  trigger: "on_damaged",
+  conditions: [{ type: "hp_below_percent", value: 40 }],
+  effects: [
+    { type: "increase_attack", value: 40, target: "self" },
+    { type: "increase_speed", value: 25, target: "self" },
+    { type: "increase_crit_chance", value: 30, target: "self" }
+  ],
+  maxActivationsPerBattle: 1,
+};
+
+/**
  * PASSIVAS DE BOSS E INIMIGOS ESPECIAIS
  */
 
