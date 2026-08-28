@@ -825,7 +825,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 110,
       baseSpeed: 125,
       imageUrl:
-        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/2/25/Daki_anime_design.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1543020993226739914/ChatGPT_Image_28_de_ago._de_2026_18_14_00.png?ex=6a9359c8&is=6a920848&hm=ef7b42e0b90003ad1b88d9453d04f666d52a52e6abc9b136c08ecaf6b6b6904d",
       passive: "Manipulação de Faixas: críticos reduzem velocidade de todos os inimigos",
       passiveAbility: SILK_MANIPULATION,
       ultimate: {
@@ -863,7 +863,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 145,
       baseSpeed: 105,
       imageUrl:
-        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/f/f1/Nakime_anime_design.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1543021438758424676/ChatGPT_Image_28_de_ago._de_2026_02_06_40.png?ex=6a935a32&is=6a9208b2&hm=7efbfd060c68dbfaee5502dddfe1b18b577d17922f79331dc5e7f542fba6ab3f",
       passive: "Castelo Infinito: aliados ganham 15 de carga por rodada",
       passiveAbility: INFINITY_CASTLE,
       ultimate: {
@@ -901,7 +901,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 120,
       baseSpeed: 128,
       imageUrl:
-        "https://static.wikia.nocookie.net/kimetsu-no-yaiba/images/a/a5/Nezuko_anime_design.png",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1543020618906079302/ChatGPT_Image_27_de_ago._de_2026_23_17_54.png?ex=6a93596f&is=6a9207ef&hm=5e7901e9d89836aeb4130784149f30f2b3416eead28fecc00179c3274b377fdc",
       passive: "Transformação Demoníaca: abaixo de 40% HP entra em modo berserker",
       passiveAbility: DEMON_TRANSFORMATION,
       ultimate: {
@@ -938,7 +938,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 115,
       baseSpeed: 135,
       imageUrl:
-        "https://static.wikia.nocookie.net/naruto/images/3/35/Madara_Uchiha.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512299628470372/file_00000000b9ec820e831e8b393ba14dbd.png?ex=6a9322b4&is=6a91d134&hm=ea5194b943f78240a86f5ece541e1736cb02fe3ffeb6a46d9bb99217159bb6d8&",
       passive: "Mangekyō Sharingan Eterno: 30% de chance de ativar Susanoo com escudo e bônus de dano",
       passiveAbility: ETERNAL_MANGEKYO,
       ultimate: {
@@ -975,7 +975,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 125,
       baseSpeed: 145,
       imageUrl:
-        "https://static.wikia.nocookie.net/onepiece/images/f/f3/Enel_Anime_Infobox.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512301604110336/file_000000007748820e8ce28b416c424733.png?ex=6a9322b4&is=6a91d134&hm=cb6fd32d740ba2eb804fd4f1f7c97efb17d079957a50628b68d3e6a1fc17c7ab&",
       passive: "Goro Goro no Mi: 45% de chance de chocar e diminuir velocidade ao acertar",
       passiveAbility: GORO_GORO_NO_MI,
       ultimate: {
@@ -1013,7 +1013,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 180,
       baseSpeed: 90,
       imageUrl:
-        "https://static.wikia.nocookie.net/nanatsu-no-taizai/images/9/98/Escanor_anime_full_appearance.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512303336230972/file_00000000cb60820e8bc3276373b0f54b.png?ex=6a9322b5&is=6a91d135&hm=3c6ef9c9a10270ddb3fd6edc1830d70369dd08d205ee18d182c434e863dcd236&",
       passive: "The One: ganha 5% ATK/DEF por rodada (máx 10x), 50%+ stacks = imune a debuffs",
       passiveAbility: THE_ONE,
       ultimate: {
@@ -1050,7 +1050,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 105,
       baseSpeed: 130,
       imageUrl:
-        "https://static.wikia.nocookie.net/nanatsu-no-taizai/images/c/c2/Meliodas_anime_full_appearance.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512304024232020/file_000000009e88820ebc8384cb5de41b59.png?ex=6a9322b5&is=6a91d135&hm=cd78f8d6b12a518d71bf76aa991bfb644c5fb1b84401ad9682aab812df4ecc0a&",
       passive: "Full Counter: 35% de chance de refletir 120% do dano recebido",
       passiveAbility: FULL_COUNTER,
       ultimate: {
@@ -1086,7 +1086,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 125,
       baseSpeed: 140,
       imageUrl:
-        "https://static.wikia.nocookie.net/nanatsu-no-taizai/images/5/52/Demon_Mark_Meliodas_Full_Appearance.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512304850378782/file_00000000ca9c820e8dc4fe15180614e6.png?ex=6a9322b5&is=6a91d135&hm=8d4926b785e84f4360efc6ad2dd490f4dc217fc05b42b6eda00e248debe41e9e&",
       passive: "Marca Demoníaca: reduz cura inimiga stackável, ganha velocidade em 30%+ stacks",
       passiveAbility: DEMON_MARK,
       ultimate: {
@@ -1123,7 +1123,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 110,
       baseSpeed: 145,
       imageUrl:
-        "https://static.wikia.nocookie.net/nanatsu-no-taizai/images/8/8c/Assault_Mode_Meliodas_Anime.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512320834871417/file_00000000fa48820e8e90b94ab58a19df.png?ex=6a9322b9&is=6a91d139&hm=03b42d3ed6c79f63c7e30e34c3bb768ac078597ca7a439d100ae7af20890f5c7",
       passive: "Assault Mode: ganha 2% ATK por 1% HP perdido, +50% crit abaixo de 30% HP",
       passiveAbility: ASSAULT_MODE,
       ultimate: {
@@ -1161,7 +1161,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 130,
       baseSpeed: 120,
       imageUrl:
-        "https://static.wikia.nocookie.net/naruto/images/e/ec/Nagato_paths.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512298966032535/file_00000000a35c820e8977409b7bc0e186.png?ex=6a9322b3&is=6a91d133&hm=76984e0354e17ebed47fd7febdf76184959f4e0ae90a3e7cd3cff6756b452149&",
       passive: "Rinnegan: ganha 10 de carga por habilidade usada, a cada 3 ataques aturda o alvo",
       passiveAbility: RINNEGAN,
       ultimate: {
@@ -1199,7 +1199,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 115,
       baseSpeed: 135,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/90/Yuta_Okkotsu_arrives_at_the_battlefield_%28Anime%29.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512300219859055/file_00000000e864820e89a46306ba4f2cc7.png?ex=6a9322b4&is=6a91d134&hm=0dfc099b5c796b1d2b89c39d1c35bd86740347b533df8dc01cb456e932f168f9&",
       passive: "Cópia de Técnicas: 40% de chance de copiar debuffs recebidos e aplicar no atacante",
       passiveAbility: COPY_TECHNIQUE,
       ultimate: {
@@ -1236,7 +1236,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 140,
       baseSpeed: 140,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/0/0f/Rika_Orimoto_full_appearance_%28Jujutsu_Kaisen_0%29.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541512300811395202/file_00000000eb34820eb837ea2991821b66.png?ex=6a9322b4&is=6a91d134&hm=1d5d1c7dfe1d550cfd04113ba129d3f9cd14ce66fe3850c65e1d3701699f3346&",
       passive: "Manifestação de Rika: abaixo de 50% HP ganha escudo 400, +30% ATK, +25% DEF, +20% SPD",
       passiveAbility: RIKA_MANIFESTATION,
       ultimate: {
@@ -1274,7 +1274,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 95,
       baseSpeed: 125,
       imageUrl:
-        "https://static.wikia.nocookie.net/blackclover/images/f/f2/Asta_post_timeskip.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541299109347074100/file_00000000702c820e8c66a8813458eb97.png?ex=6a9304e7&is=6a91b367&hm=9cbfdcf7714b7444d39409c7bda76894f0275dff113a781c9936beb3cf3cfe9c&",
       passive: "Anti-Magia: imune a debuffs, remove buffs inimigos ao atacar e ganha dano bônus",
       passiveAbility: ANTI_MAGIC,
       ultimate: {
@@ -1310,7 +1310,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 120,
       baseSpeed: 140,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/33/Sukuna_%28Anime%29.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541299111431503952/file_000000009958820e9b6732c01f173fc0.png?ex=6a9304e8&is=6a91b368&hm=b18f27a4940273184842cc85b71d8983d35d8f6de099ad11a644f4d9e88fbef3&",
       passive: "Rei das Maldições: críticos curam 8% HP e sangram alvo, +15% chance crítica base",
       passiveAbility: KING_OF_CURSES,
       ultimate: {
@@ -1347,7 +1347,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 200,
       baseSpeed: 100,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/4/4b/Mahoraga_renders.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541299112006131762/file_0000000055f4820e9cf389ce9ef7c368.png?ex=6a9304e8&is=6a91b368&hm=31fd3b6676a09b8223811b144d3e98b717b0819289f5b5af753d9d4dfcb5c873&",
       passive: "Adaptação de Mahoraga: ganha 15% resistência por tipo de dano (máx 60%), reflete 25% em 40%+",
       passiveAbility: MAHORAGA_ADAPTATION,
       ultimate: {
@@ -1384,7 +1384,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 100,
       baseSpeed: 140,
       imageUrl:
-        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/5/5a/Satoru_Gojo_%28Anime%29.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541299110982983740/file_00000000d120820eb6685b23e869d6b2.png?ex=6a9304e8&is=6a91b368&hm=a94d00f018fe4ffa1896ec262f251e87f29c652140102a16ea87fa4cdbb7b933&",
       passive: "Infinito: 40% de chance de evadir completamente ataques, ganha 15 de carga ao evadir",
       passiveAbility: INFINITY,
       ultimate: {
@@ -1422,7 +1422,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 105,
       baseSpeed: 135,
       imageUrl:
-        "https://static.wikia.nocookie.net/naruto/images/b/bb/Itachi.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541299109917364304/file_00000000cb28820e8f3c8fe972dc44d4.png?ex=6a9304e7&is=6a91b367&hm=4d12856ae53534143106b8aa355429f517bb8a14498194f0d2a48eedd2119958&",
       passive: "Mangekyō Sharingan: +20% chance crítica, críticos têm 50% de aplicar Amaterasu (burn intenso)",
       passiveAbility: MANGEKYO_SHARINGAN,
       ultimate: {
@@ -1459,7 +1459,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 140,
       baseSpeed: 130,
       imageUrl:
-        "https://static.wikia.nocookie.net/naruto/images/d/de/Itachi%27s_Susanoo.png",
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541299110424879164/file_000000006adc820e89cd8c26dad06c2b.png?ex=6a9304e7&is=6a91b367&hm=4ebf5aba6db9de85d3909cb766f3544784f4d6afdb91e99aafa20dc566387b2e&",
       passive: "Susanoo Perfeito: começa com shield 500, enquanto tiver shield é imune a debuffs e ganha +25% ATK",
       passiveAbility: PERFECT_SUSANOO_PASSIVE,
       ultimate: {
