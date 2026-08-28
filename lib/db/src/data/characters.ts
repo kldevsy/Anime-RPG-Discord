@@ -21,6 +21,9 @@ import {
   SILK_MANIPULATION,
   INFINITY_CASTLE,
   DEMON_TRANSFORMATION,
+  ETERNAL_MANGEKYO,
+  GORO_GORO_NO_MI,
+  THE_ONE,
 } from "./passive-library.ts";
 
 /**
@@ -909,6 +912,118 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Se em modo berserker (HP < 40%)",
             effect: "dano aumenta em 50% e queima ignora 30% da defesa",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Naruto",
+      name: "Madara Uchiha",
+      rarity: "legendary",
+      role: "dps",
+      baseHp: 1150,
+      baseAttack: 230,
+      baseDefense: 115,
+      baseSpeed: 135,
+      imageUrl:
+        "https://static.wikia.nocookie.net/naruto/images/3/35/Madara_Uchiha.png",
+      passive: "Mangekyō Sharingan Eterno: 30% de chance de ativar Susanoo com escudo e bônus de dano",
+      passiveAbility: ETERNAL_MANGEKYO,
+      ultimate: {
+        id: "madara_perfect_susanoo",
+        name: "Susanoo Perfeito: Majestic Destroyer Flame",
+        description:
+          "Invoca seu Susanoo Perfeito e libera uma onda de fogo devastadora que incinera tudo.",
+        chargeRequired: 95,
+        chargeOnBasic: 35,
+        chargeOnDamageTaken: 16,
+        chargeOnCritical: 28,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 3.2,
+        statusEffects: [
+          { type: "burn", chance: 100, duration: 4, value: 55 },
+          { type: "attack_down", chance: 80, duration: 3, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Se Susanoo estiver ativo (passiva)",
+            effect: "dano aumenta em 40% e penetra 40% da defesa inimiga",
+          },
+        ],
+      },
+    },
+    {
+      anime: "One Piece",
+      name: "Enel",
+      rarity: "legendary",
+      role: "support",
+      baseHp: 1050,
+      baseAttack: 195,
+      baseDefense: 125,
+      baseSpeed: 145,
+      imageUrl:
+        "https://static.wikia.nocookie.net/onepiece/images/f/f3/Enel_Anime_Infobox.png",
+      passive: "Goro Goro no Mi: 45% de chance de chocar e diminuir velocidade ao acertar",
+      passiveAbility: GORO_GORO_NO_MI,
+      ultimate: {
+        id: "enel_raigo",
+        name: "Raigo: Julgamento Divino",
+        description:
+          "Invoca uma tempestade elétrica massiva que paralisa e eletrocuta todos os inimigos.",
+        chargeRequired: 90,
+        chargeOnBasic: 28,
+        chargeOnDamageTaken: 14,
+        chargeOnCritical: 25,
+        type: "DEBUFF",
+        targetType: "aoe_enemy",
+        multiplier: 2.3,
+        statusEffects: [
+          { type: "shock", chance: 100, duration: 4, value: 50 },
+          { type: "stun", chance: 85, duration: 1, value: 0 },
+          { type: "speed_down", chance: 100, duration: 3, value: 40 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Inimigos já chocados",
+            effect: "dano aumenta em 60% e stun dura 2 turnos ao invés de 1",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Seven Deadly Sins",
+      name: "Escanor",
+      rarity: "mythic",
+      role: "tank",
+      baseHp: 1500,
+      baseAttack: 205,
+      baseDefense: 180,
+      baseSpeed: 90,
+      imageUrl:
+        "https://static.wikia.nocookie.net/nanatsu-no-taizai/images/9/98/Escanor_anime_full_appearance.png",
+      passive: "The One: ganha 5% ATK/DEF por rodada (máx 10x), 50%+ stacks = imune a debuffs",
+      passiveAbility: THE_ONE,
+      ultimate: {
+        id: "escanor_cruel_sun",
+        name: "Cruel Sun: Orgulho Supremo",
+        description:
+          "Cria um sol miniatura que incendeia todos os inimigos e fortalece Escanor com seu calor.",
+        chargeRequired: 100,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 20,
+        chargeOnCritical: 22,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 2.8,
+        statusEffects: [
+          { type: "burn", chance: 100, duration: 5, value: 60 },
+          { type: "defense_down", chance: 100, duration: 3, value: 35 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Por cada stack de The One (máx 10)",
+            effect: "dano aumenta em 8% e cura 10% do HP máximo ao lançar",
           },
         ],
       },

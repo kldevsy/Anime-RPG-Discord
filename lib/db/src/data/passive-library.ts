@@ -491,6 +491,45 @@ export const DEMON_TRANSFORMATION: PassiveAbility = {
 };
 
 /**
+ * PASSIVAS LENDÁRIAS - PERSONAGENS ICÔNICOS
+ */
+
+export const ETERNAL_MANGEKYO: PassiveAbility = {
+  id: "eternal_mangekyo",
+  name: "Mangekyō Sharingan Eterno",
+  description: "Cada ataque básico tem 30% de chance de ativar Susanoo: ganha escudo e próximo ataque causa 50% mais dano",
+  trigger: "on_basic_attack",
+  effects: [
+    { type: "shield", value: 200, chance: 30, target: "self" },
+    { type: "bonus_damage_percent", value: 50, chance: 30, target: "self" }
+  ],
+  cooldownRounds: 2,
+};
+
+export const GORO_GORO_NO_MI: PassiveAbility = {
+  id: "goro_goro_no_mi",
+  name: "Fruta Goro Goro no Mi",
+  description: "Ao acertar, tem 45% de chance de aplicar choque. Inimigos chocados ficam 20% mais lentos",
+  trigger: "on_hit",
+  effects: [
+    { type: "apply_status", value: 35, duration: 3, statusType: "shock", chance: 45, target: "target" },
+    { type: "apply_status", value: 20, duration: 2, statusType: "speed_down", chance: 45, target: "target" }
+  ],
+};
+
+export const THE_ONE: PassiveAbility = {
+  id: "the_one",
+  name: "The One",
+  description: "A cada rodada, ganha 5% de ATK e DEF permanentemente (máx 10 stacks). Ao atingir 50% de stack, se torna imune a debuffs",
+  trigger: "on_round_start",
+  effects: [
+    { type: "increase_attack", value: 5, target: "self" },
+    { type: "increase_defense", value: 5, target: "self" }
+  ],
+  maxActivationsPerBattle: 10,
+};
+
+/**
  * PASSIVAS DE BOSS E INIMIGOS ESPECIAIS
  */
 
