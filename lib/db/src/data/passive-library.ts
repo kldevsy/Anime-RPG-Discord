@@ -462,7 +462,7 @@ export const SILK_MANIPULATION: PassiveAbility = {
   description: "Ao acertar crítico, reduz a velocidade de todos os inimigos em 10% por 2 turnos (stackável)",
   trigger: "on_critical_hit",
   effects: [
-    { type: "apply_status", value: 10, duration: 2, statusType: "speed_down", chance: 100, target: "all_enemies" }
+    { type: "apply_status", value: 10, duration: 2, statusType: "speed_down", chance: 100, target: "enemies" }
   ],
 };
 
@@ -472,7 +472,7 @@ export const INFINITY_CASTLE: PassiveAbility = {
   description: "No início de cada rodada, todos os aliados ganham 15 de carga de ultimate",
   trigger: "on_round_start",
   effects: [
-    { type: "gain_ultimate_charge", value: 15, target: "all_allies" }
+    { type: "gain_ultimate_charge", value: 15, target: "allies" }
   ],
 };
 
@@ -580,7 +580,7 @@ export const RINNEGAN: PassiveAbility = {
     { type: "gain_ultimate_charge", value: 10, target: "self" },
   ],
   stackCounter: 3,
-  stackEffect: { type: "apply_status", statusType: "stun", duration: 1, chance: 100, target: "next_target" }
+  stackEffect: { type: "apply_status", value: 0, statusType: "stun", duration: 1, chance: 100, target: "target" }
 };
 
 /**
@@ -593,7 +593,7 @@ export const COPY_TECHNIQUE: PassiveAbility = {
   description: "Ao ser acertado por um debuff, tem 40% de chance de copiar e aplicar o mesmo debuff no atacante",
   trigger: "on_debuffed",
   effects: [
-    { type: "copy_debuff", chance: 40, target: "attacker" }
+    { type: "copy_debuff", value: 1, chance: 40, target: "attacker" }
   ],
 };
 
@@ -623,8 +623,8 @@ export const ANTI_MAGIC: PassiveAbility = {
   trigger: "on_hit",
   effects: [
     { type: "debuff_immunity", value: 100, target: "self" },
-    { type: "remove_buff", chance: 100, target: "target" },
-    { type: "bonus_damage_percent", value: 20, chance: 100, target: "self", condition: "target_has_buffs" }
+    { type: "remove_buff", value: 1, chance: 100, target: "target" },
+    { type: "bonus_damage_percent", value: 20, chance: 100, target: "self" }
   ],
 };
 
@@ -651,11 +651,9 @@ export const MAHORAGA_ADAPTATION: PassiveAbility = {
   trigger: "on_damaged",
   effects: [
     { type: "gain_resistance_to_damage_type", value: 15, target: "self" },
+    { type: "reflect_damage", value: 25, chance: 100, target: "attacker" }
   ],
   stackLimit: 4,
-  conditionalEffects: [
-    { type: "reflect_damage", value: 25, target: "attacker", condition: "resistance_above_40" }
-  ],
 };
 
 /**
@@ -668,8 +666,8 @@ export const INFINITY: PassiveAbility = {
   description: "Tem 40% de chance de evadir completamente qualquer ataque. Ao evadir, ganha 15 de carga de ultimate",
   trigger: "on_attacked",
   effects: [
-    { type: "evade", chance: 40, target: "self" },
-    { type: "gain_ultimate_charge", value: 15, target: "self", condition: "evaded" }
+    { type: "evade", value: 40, chance: 40, target: "self" },
+    { type: "gain_ultimate_charge", value: 15, target: "self" }
   ],
 };
 
@@ -684,7 +682,7 @@ export const MANGEKYO_SHARINGAN: PassiveAbility = {
   trigger: "on_critical_hit",
   effects: [
     { type: "increase_crit_chance", value: 20, target: "self" },
-    { type: "apply_status", statusType: "burn", duration: 4, value: 55, chance: 50, target: "target" }
+    { type: "apply_status", value: 55, statusType: "burn", duration: 4, chance: 50, target: "target" }
   ],
 };
 
@@ -695,8 +693,8 @@ export const PERFECT_SUSANOO_PASSIVE: PassiveAbility = {
   trigger: "on_battle_start",
   effects: [
     { type: "shield", value: 500, target: "self" },
-    { type: "debuff_immunity", value: 100, target: "self", condition: "has_shield" },
-    { type: "increase_attack", value: 25, target: "self", condition: "has_shield" }
+    { type: "debuff_immunity", value: 100, target: "self" },
+    { type: "increase_attack", value: 25, target: "self" }
   ],
 };
 
