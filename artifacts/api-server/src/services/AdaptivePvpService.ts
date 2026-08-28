@@ -269,23 +269,19 @@ export async function runAdaptivePvpBattle(
   console.log(`[ADAPTIVE PVP] Battle Start: Player (${playerTeam.length}) vs ${enemyTeamName} (${enemies.length}) [${difficulty.toUpperCase()}]`);
   
   // Cria engine de batalha
-  const engine = new BattleEngine({
-    allies: playerTeam,
-    enemies: enemies,
-    maxRounds: 30,
-  });
+  const engine = new BattleEngine(playerTeam, enemies);
   
   // Executa batalha
   const result = onSnapshot 
-    ? await engine.runAnimated(onSnapshot, 100, ultimateDecisionProvider)
-    : await engine.run();
+    ? await engine.runAnimated(onSnapshot, 30, ultimateDecisionProvider)
+    : engine.run(30);
   
   // Calcula recompensas
   const playerPowerLevel = calculateTeamPowerLevel(playerTeam);
-  const victory = result.victor === "ally";
+  const victory = result.phase === "PLAYER_VICTORY";
   const rewards = calculateRewards(difficulty, victory, playerPowerLevel);
   
-  console.log(`[ADAPTIVE PVP] Battle End: ${result.victor === "ally" ? "VICTORY" : result.victor === "enemy" ? "DEFEAT" : "DRAW"} | Rewards: ${rewards.gold}G, ${rewards.gems}💎, ${rewards.xp}XP`);
+  console.log(`[ADAPTIVE PVP] Battle End: ${result.phase === "PLAYER_VICTORY" ? "VICTORY" : result.phase === "ENEMY_VICTORY" ? "DEFEAT" : "DRAW"} | Rewards: ${rewards.gold}G, ${rewards.gems}💎, ${rewards.xp}XP`);
   
   // TODO: Aplicar recompensas ao jogador (integrar com EconomyService)
   

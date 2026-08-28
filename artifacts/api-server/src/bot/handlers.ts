@@ -1003,19 +1003,20 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         } = await import("./embeds");
         
         let lastAction: any = undefined;
+        let enemyTeamName = "Equipe Inimiga";
         
         const battleResult = await runAdaptivePvpBattle(
           discordId,
           difficulty,
           async (snapshot) => {
-            // Extrai última ação do log
-            if (snapshot.log.length > 0) {
-              lastAction = snapshot.log[snapshot.log.length - 1];
+            // Extrai última ação do log (se disponível)
+            if (snapshot.actions && snapshot.actions.length > 0) {
+              lastAction = snapshot.actions[snapshot.actions.length - 1];
             }
             
             const progressEmbed = createAdaptivePvpProgressEmbed(
               username,
-              battleResult?.enemyTeamName ?? "Equipe Inimiga",
+              enemyTeamName,
               difficulty,
               snapshot,
               lastAction
@@ -1027,8 +1028,11 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           discordUltimateDecisionProvider(interaction)
         );
         
+        // Atualiza o nome do time inimigo após a batalha
+        enemyTeamName = battleResult.enemyTeamName;
+        
         // Determina resultado
-        const isVictory = battleResult.result.victor === "ally";
+        const isVictory = battleResult.result.phase === "PLAYER_VICTORY";
         
         // Cria embed final
         const finalEmbed = isVictory 

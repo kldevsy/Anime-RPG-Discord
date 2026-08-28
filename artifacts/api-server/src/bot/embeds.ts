@@ -465,7 +465,7 @@ export function createAdaptivePvpDefeatEmbed(
     .setTimestamp();
   
   // Mostra inimigos sobreviventes (os que te derrotaram)
-  const enemySurvivors = result.enemies.filter(e => e.alive);
+  const enemySurvivors = result.enemyTeam.filter(e => e.alive);
   if (enemySurvivors.length > 0) {
     const enemyInfo = enemySurvivors.map(e => {
       const hpPercent = Math.round((e.hp / e.maxHp) * 100);
@@ -473,7 +473,7 @@ export function createAdaptivePvpDefeatEmbed(
     }).join("\n");
     
     embed.addFields({
-      name: `👹 Inimigos Sobreviventes (${enemySurvivors.length}/${result.enemies.length})`,
+      name: `👹 Inimigos Sobreviventes (${enemySurvivors.length}/${result.enemyTeam.length})`,
       value: enemyInfo
     });
   }
@@ -520,7 +520,7 @@ export function createAdaptivePvpProgressEmbed(
     );
   
   // Seu time (mostra ultimate charge)
-  const allyLines = snapshot.allies.map((ally) => {
+  const allyLines = snapshot.playerTeam.map((ally) => {
     if (!ally.alive) return `💀 ~~${ally.name}~~`;
     
     const hpPercent = Math.round((ally.hp / ally.maxHp) * 100);
@@ -535,12 +535,12 @@ export function createAdaptivePvpProgressEmbed(
   });
   
   embed.addFields({
-    name: `👥 Seu Time (${snapshot.allies.filter(a => a.alive).length}/${snapshot.allies.length} vivos)`,
+    name: `👥 Seu Time (${snapshot.playerTeam.filter(a => a.alive).length}/${snapshot.playerTeam.length} vivos)`,
     value: allyLines.join("\n") || "Nenhum"
   });
   
   // Time inimigo (NÃO mostra ultimate charge)
-  const enemyLines = snapshot.enemies.map((enemy) => {
+  const enemyLines = snapshot.enemyTeam.map((enemy) => {
     if (!enemy.alive) return `💀 ~~${enemy.name}~~`;
     
     const hpPercent = Math.round((enemy.hp / enemy.maxHp) * 100);
@@ -550,7 +550,7 @@ export function createAdaptivePvpProgressEmbed(
   });
   
   embed.addFields({
-    name: `👹 ${enemyTeamName} (${snapshot.enemies.filter(e => e.alive).length}/${snapshot.enemies.length} vivos)`,
+    name: `👹 ${enemyTeamName} (${snapshot.enemyTeam.filter(e => e.alive).length}/${snapshot.enemyTeam.length} vivos)`,
     value: enemyLines.join("\n") || "Nenhum"
   });
   
