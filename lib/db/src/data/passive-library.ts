@@ -530,6 +530,44 @@ export const THE_ONE: PassiveAbility = {
 };
 
 /**
+ * PASSIVAS DE MELIODAS - SEVEN DEADLY SINS
+ */
+
+export const FULL_COUNTER: PassiveAbility = {
+  id: "full_counter",
+  name: "Full Counter",
+  description: "Ao receber dano, tem 35% de chance de refletir 120% do dano recebido de volta ao atacante",
+  trigger: "on_damaged",
+  effects: [
+    { type: "reflect_damage", value: 120, chance: 35, target: "attacker" }
+  ],
+};
+
+export const DEMON_MARK: PassiveAbility = {
+  id: "demon_mark",
+  name: "Marca Demoníaca",
+  description: "Cada ataque básico reduz a cura dos inimigos em 5% (stackável até 50%). Ao atingir 30%+, ganha 20% de velocidade",
+  trigger: "on_basic_attack",
+  effects: [
+    { type: "reduce_healing", value: 5, target: "target" },
+  ],
+};
+
+export const ASSAULT_MODE: PassiveAbility = {
+  id: "assault_mode",
+  name: "Assault Mode",
+  description: "Ganha 2% de ATK por cada 1% de HP perdido (máx 100%). Ao cair abaixo de 30% HP, ganha 50% de chance crítica adicional",
+  trigger: "on_damaged",
+  effects: [
+    { type: "increase_attack_per_missing_hp", value: 2, target: "self" },
+  ],
+  conditions: [{ type: "hp_below_percent", value: 30 }],
+  conditionalEffects: [
+    { type: "increase_crit_chance", value: 50, target: "self" }
+  ],
+};
+
+/**
  * PASSIVAS DE BOSS E INIMIGOS ESPECIAIS
  */
 

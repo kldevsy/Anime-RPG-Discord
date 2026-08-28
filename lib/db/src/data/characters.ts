@@ -24,6 +24,9 @@ import {
   ETERNAL_MANGEKYO,
   GORO_GORO_NO_MI,
   THE_ONE,
+  FULL_COUNTER,
+  DEMON_MARK,
+  ASSAULT_MODE,
 } from "./passive-library.ts";
 
 /**
@@ -1024,6 +1027,117 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Por cada stack de The One (máx 10)",
             effect: "dano aumenta em 8% e cura 10% do HP máximo ao lançar",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Seven Deadly Sins",
+      name: "Meliodas",
+      rarity: "epic",
+      role: "dps",
+      baseHp: 950,
+      baseAttack: 180,
+      baseDefense: 105,
+      baseSpeed: 130,
+      imageUrl:
+        "https://static.wikia.nocookie.net/nanatsu-no-taizai/images/c/c2/Meliodas_anime_full_appearance.png",
+      passive: "Full Counter: 35% de chance de refletir 120% do dano recebido",
+      passiveAbility: FULL_COUNTER,
+      ultimate: {
+        id: "meliodas_revenge_counter",
+        name: "Revenge Counter",
+        description:
+          "Acumula o dano recebido e devolve multiplicado em um único golpe devastador.",
+        chargeRequired: 80,
+        chargeOnBasic: 28,
+        chargeOnDamageTaken: 20,
+        chargeOnCritical: 24,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 3.5,
+        statusEffects: [
+          { type: "attack_down", chance: 70, duration: 2, value: 25 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Por cada 10% de HP perdido",
+            effect: "dano aumenta em 12% (máx 60%)",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Seven Deadly Sins",
+      name: "Meliodas (Marca Demoníaca)",
+      rarity: "legendary",
+      role: "support",
+      baseHp: 1100,
+      baseAttack: 210,
+      baseDefense: 125,
+      baseSpeed: 140,
+      imageUrl:
+        "https://static.wikia.nocookie.net/nanatsu-no-taizai/images/5/52/Demon_Mark_Meliodas_Full_Appearance.png",
+      passive: "Marca Demoníaca: reduz cura inimiga stackável, ganha velocidade em 30%+ stacks",
+      passiveAbility: DEMON_MARK,
+      ultimate: {
+        id: "meliodas_hellblaze",
+        name: "Hellblaze: Chamas Negras do Inferno",
+        description:
+          "Libera chamas negras demoníacas que queimam todos os inimigos e anulam regeneração.",
+        chargeRequired: 88,
+        chargeOnBasic: 32,
+        chargeOnDamageTaken: 17,
+        chargeOnCritical: 26,
+        type: "DEBUFF",
+        targetType: "aoe_enemy",
+        multiplier: 2.4,
+        statusEffects: [
+          { type: "burn", chance: 100, duration: 5, value: 55 },
+          { type: "defense_down", chance: 90, duration: 3, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Inimigos afetados",
+            effect: "não podem ser curados por 3 turnos e perdem 15 de carga de ultimate",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Seven Deadly Sins",
+      name: "Meliodas (Assault Mode)",
+      rarity: "mythic",
+      role: "dps",
+      baseHp: 1300,
+      baseAttack: 245,
+      baseDefense: 110,
+      baseSpeed: 145,
+      imageUrl:
+        "https://static.wikia.nocookie.net/nanatsu-no-taizai/images/8/8c/Assault_Mode_Meliodas_Anime.png",
+      passive: "Assault Mode: ganha 2% ATK por 1% HP perdido, +50% crit abaixo de 30% HP",
+      passiveAbility: ASSAULT_MODE,
+      ultimate: {
+        id: "meliodas_kami_chigiri",
+        name: "Kami Chigiri: Corte Divino",
+        description:
+          "Libera todo o poder demoníaco em um ataque que dilacera a realidade, causando dano catastrófico.",
+        chargeRequired: 100,
+        chargeOnBasic: 38,
+        chargeOnDamageTaken: 22,
+        chargeOnCritical: 30,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 3.8,
+        statusEffects: [
+          { type: "bleed", chance: 100, duration: 4, value: 70 },
+          { type: "defense_down", chance: 100, duration: 3, value: 40 },
+          { type: "attack_down", chance: 85, duration: 2, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Por cada 1% de HP perdido",
+            effect: "dano aumenta em 1.5% e ignora 1% da defesa inimiga (máx 100%)",
           },
         ],
       },
