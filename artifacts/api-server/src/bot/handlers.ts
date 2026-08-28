@@ -521,8 +521,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 5.5. /meta - Análise META de personagens
     if (commandName === "meta") {
-      await interaction.deferReply();
-      
       const catalog = await listCharacters({});
       
       // Criar select menu para categorias
@@ -985,8 +983,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 5.8. /arena - Batalha PvP Adaptativa
     if (commandName === "arena") {
-      await interaction.deferReply();
-      
       const difficulty = (interaction.options.getString("dificuldade") as "easy" | "normal" | "hard" | "nightmare") ?? "normal";
       const speed = interaction.options.getString("velocidade") ?? "medium";
       
