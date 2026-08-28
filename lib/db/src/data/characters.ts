@@ -30,6 +30,9 @@ import {
   RINNEGAN,
   COPY_TECHNIQUE,
   RIKA_MANIFESTATION,
+  ANTI_MAGIC,
+  KING_OF_CURSES,
+  MAHORAGA_ADAPTATION,
 } from "./passive-library.ts";
 
 /**
@@ -1254,6 +1257,116 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Se Rika estiver manifestada (passiva ativa)",
             effect: "dano aumenta em 60%, cura 25% do HP máximo, e aplica shield de 500 em todos os aliados",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Black Clover",
+      name: "Asta",
+      rarity: "rare",
+      role: "dps",
+      baseHp: 850,
+      baseAttack: 170,
+      baseDefense: 95,
+      baseSpeed: 125,
+      imageUrl:
+        "https://static.wikia.nocookie.net/blackclover/images/f/f2/Asta_post_timeskip.png",
+      passive: "Anti-Magia: imune a debuffs, remove buffs inimigos ao atacar e ganha dano bônus",
+      passiveAbility: ANTI_MAGIC,
+      ultimate: {
+        id: "asta_black_divider",
+        name: "Black Divider: Corte Anti-Magia",
+        description:
+          "Libera um corte devastador de anti-magia que anula todas as proteções e buffs inimigos.",
+        chargeRequired: 75,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 18,
+        chargeOnCritical: 26,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 4.2,
+        statusEffects: [
+          { type: "defense_down", chance: 100, duration: 3, value: 40 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Remove TODOS os buffs e shields do alvo",
+            effect: "por cada buff/shield removido, dano aumenta em 25% (máx 100%)",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Ryomen Sukuna",
+      rarity: "legendary",
+      role: "dps",
+      baseHp: 1250,
+      baseAttack: 240,
+      baseDefense: 120,
+      baseSpeed: 140,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/3/33/Sukuna_%28Anime%29.png",
+      passive: "Rei das Maldições: críticos curam 8% HP e sangram alvo, +15% chance crítica base",
+      passiveAbility: KING_OF_CURSES,
+      ultimate: {
+        id: "sukuna_malevolent_shrine",
+        name: "Malevolent Shrine: Domínio de Sukuna",
+        description:
+          "Expande seu domínio e executa cortes infinitos que dilaceram todos os inimigos sem chance de defesa.",
+        chargeRequired: 100,
+        chargeOnBasic: 35,
+        chargeOnDamageTaken: 16,
+        chargeOnCritical: 30,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 3.6,
+        statusEffects: [
+          { type: "bleed", chance: 100, duration: 5, value: 75 },
+          { type: "defense_down", chance: 100, duration: 4, value: 50 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Ignora 50% da defesa",
+            effect: "garante crítico e cada crítico aplica 2 stacks de bleed ao invés de 1",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Sukuna (Mahoraga)",
+      rarity: "mythic",
+      role: "tank",
+      baseHp: 1600,
+      baseAttack: 220,
+      baseDefense: 200,
+      baseSpeed: 100,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/4/4b/Mahoraga_renders.png",
+      passive: "Adaptação de Mahoraga: ganha 15% resistência por tipo de dano (máx 60%), reflete 25% em 40%+",
+      passiveAbility: MAHORAGA_ADAPTATION,
+      ultimate: {
+        id: "sukuna_mahoraga_sword",
+        name: "Espada de Mahoraga: Corte de Adaptação",
+        description:
+          "Mahoraga adapta-se completamente e libera um corte que atravessa qualquer defesa.",
+        chargeRequired: 105,
+        chargeOnBasic: 28,
+        chargeOnDamageTaken: 25,
+        chargeOnCritical: 20,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 3.0,
+        statusEffects: [
+          { type: "defense_down", chance: 100, duration: 4, value: 60 },
+          { type: "attack_down", chance: 100, duration: 3, value: 40 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Por cada stack de resistência (máx 4)",
+            effect: "dano aumenta em 25%, penetração de defesa aumenta em 20%, e cura 15% HP máximo",
           },
         ],
       },

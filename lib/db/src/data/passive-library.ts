@@ -613,6 +613,52 @@ export const RIKA_MANIFESTATION: PassiveAbility = {
 };
 
 /**
+ * PASSIVAS DE BLACK CLOVER
+ */
+
+export const ANTI_MAGIC: PassiveAbility = {
+  id: "anti_magic",
+  name: "Anti-Magia",
+  description: "Imune a todos os debuffs. Ao atacar inimigos com buffs, remove 1 buff aleatório e ganha 20% de dano bônus",
+  trigger: "on_hit",
+  effects: [
+    { type: "debuff_immunity", value: 100, target: "self" },
+    { type: "remove_buff", chance: 100, target: "target" },
+    { type: "bonus_damage_percent", value: 20, chance: 100, target: "self", condition: "target_has_buffs" }
+  ],
+};
+
+/**
+ * PASSIVAS DE JUJUTSU KAISEN - REI DAS MALDIÇÕES
+ */
+
+export const KING_OF_CURSES: PassiveAbility = {
+  id: "king_of_curses",
+  name: "Rei das Maldições",
+  description: "Cada ataque crítico recupera 8% do HP máximo e aplica bleed no alvo. Chance crítica +15%",
+  trigger: "on_critical_hit",
+  effects: [
+    { type: "heal_self_percent", value: 8, target: "self" },
+    { type: "apply_status", statusType: "bleed", duration: 3, value: 40, chance: 100, target: "target" },
+    { type: "increase_crit_chance", value: 15, target: "self" }
+  ],
+};
+
+export const MAHORAGA_ADAPTATION: PassiveAbility = {
+  id: "mahoraga_adaptation",
+  name: "Adaptação de Mahoraga",
+  description: "Cada vez que recebe dano de um tipo, ganha 15% de resistência a esse tipo (stackável até 60%). Ao atingir 40%+, reflete 25% do dano",
+  trigger: "on_damaged",
+  effects: [
+    { type: "gain_resistance_to_damage_type", value: 15, target: "self" },
+  ],
+  stackLimit: 4,
+  conditionalEffects: [
+    { type: "reflect_damage", value: 25, target: "attacker", condition: "resistance_above_40" }
+  ],
+};
+
+/**
  * PASSIVAS DE BOSS E INIMIGOS ESPECIAIS
  */
 
