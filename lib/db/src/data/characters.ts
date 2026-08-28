@@ -27,6 +27,9 @@ import {
   FULL_COUNTER,
   DEMON_MARK,
   ASSAULT_MODE,
+  RINNEGAN,
+  COPY_TECHNIQUE,
+  RIKA_MANIFESTATION,
 } from "./passive-library.ts";
 
 /**
@@ -1138,6 +1141,119 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Por cada 1% de HP perdido",
             effect: "dano aumenta em 1.5% e ignora 1% da defesa inimiga (máx 100%)",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Naruto",
+      name: "Pain",
+      rarity: "legendary",
+      role: "dps",
+      baseHp: 1200,
+      baseAttack: 225,
+      baseDefense: 130,
+      baseSpeed: 120,
+      imageUrl:
+        "https://static.wikia.nocookie.net/naruto/images/e/ec/Nagato_paths.png",
+      passive: "Rinnegan: ganha 10 de carga por habilidade usada, a cada 3 ataques aturda o alvo",
+      passiveAbility: RINNEGAN,
+      ultimate: {
+        id: "pain_shinra_tensei",
+        name: "Shinra Tensei: Repulsão Divina",
+        description:
+          "Libera uma força repulsiva massiva que atinge todos os inimigos e os empurra para longe.",
+        chargeRequired: 95,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 18,
+        chargeOnCritical: 25,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 3.3,
+        statusEffects: [
+          { type: "stun", chance: 80, duration: 1, value: 0 },
+          { type: "defense_down", chance: 100, duration: 3, value: 35 },
+          { type: "speed_down", chance: 100, duration: 2, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Inimigos atordoados pela passiva",
+            effect: "dano aumenta em 50% e stun dura 2 turnos ao invés de 1",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Yuta Okkotsu",
+      rarity: "legendary",
+      role: "dps",
+      baseHp: 1100,
+      baseAttack: 220,
+      baseDefense: 115,
+      baseSpeed: 135,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/9/90/Yuta_Okkotsu_arrives_at_the_battlefield_%28Anime%29.png",
+      passive: "Cópia de Técnicas: 40% de chance de copiar debuffs recebidos e aplicar no atacante",
+      passiveAbility: COPY_TECHNIQUE,
+      ultimate: {
+        id: "yuta_cursed_speech",
+        name: "Técnica Copiada: Fala Amaldiçoada",
+        description:
+          "Copia a técnica de Inumaki e ordena os inimigos a pararem, atordoando-os.",
+        chargeRequired: 85,
+        chargeOnBasic: 32,
+        chargeOnDamageTaken: 16,
+        chargeOnCritical: 26,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 2.6,
+        statusEffects: [
+          { type: "stun", chance: 90, duration: 2, value: 0 },
+          { type: "attack_down", chance: 100, duration: 3, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Por cada debuff ativo em Yuta",
+            effect: "dano aumenta em 20% e duração do stun aumenta em 1 turno",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Yuta Okkotsu (Rika)",
+      rarity: "mythic",
+      role: "support",
+      baseHp: 1350,
+      baseAttack: 240,
+      baseDefense: 140,
+      baseSpeed: 140,
+      imageUrl:
+        "https://static.wikia.nocookie.net/jujutsu-kaisen/images/0/0f/Rika_Orimoto_full_appearance_%28Jujutsu_Kaisen_0%29.png",
+      passive: "Manifestação de Rika: abaixo de 50% HP ganha escudo 400, +30% ATK, +25% DEF, +20% SPD",
+      passiveAbility: RIKA_MANIFESTATION,
+      ultimate: {
+        id: "yuta_rika_full_release",
+        name: "Liberação Total de Rika: Amor Amaldiçoado",
+        description:
+          "Libera completamente o poder de Rika, que ataca ferozmente todos os inimigos enquanto protege Yuta.",
+        chargeRequired: 100,
+        chargeOnBasic: 35,
+        chargeOnDamageTaken: 20,
+        chargeOnCritical: 28,
+        type: "DAMAGE",
+        targetType: "aoe_enemy",
+        multiplier: 3.5,
+        statusEffects: [
+          { type: "bleed", chance: 100, duration: 4, value: 65 },
+          { type: "defense_down", chance: 100, duration: 4, value: 40 },
+          { type: "attack_down", chance: 90, duration: 3, value: 35 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Se Rika estiver manifestada (passiva ativa)",
+            effect: "dano aumenta em 60%, cura 25% do HP máximo, e aplica shield de 500 em todos os aliados",
           },
         ],
       },

@@ -568,6 +568,51 @@ export const ASSAULT_MODE: PassiveAbility = {
 };
 
 /**
+ * PASSIVAS DE NARUTO - AKATSUKI
+ */
+
+export const RINNEGAN: PassiveAbility = {
+  id: "rinnegan",
+  name: "Rinnegan",
+  description: "Cada habilidade usada (basic ou ultimate) ganha 10 de carga adicional. A cada 3 ataques, o próximo ataque atordoa o alvo",
+  trigger: "on_ability_use",
+  effects: [
+    { type: "gain_ultimate_charge", value: 10, target: "self" },
+  ],
+  stackCounter: 3,
+  stackEffect: { type: "apply_status", statusType: "stun", duration: 1, chance: 100, target: "next_target" }
+};
+
+/**
+ * PASSIVAS DE JUJUTSU KAISEN - FEITICEIROS ESPECIAIS
+ */
+
+export const COPY_TECHNIQUE: PassiveAbility = {
+  id: "copy_technique",
+  name: "Cópia de Técnicas",
+  description: "Ao ser acertado por um debuff, tem 40% de chance de copiar e aplicar o mesmo debuff no atacante",
+  trigger: "on_debuffed",
+  effects: [
+    { type: "copy_debuff", chance: 40, target: "attacker" }
+  ],
+};
+
+export const RIKA_MANIFESTATION: PassiveAbility = {
+  id: "rika_manifestation",
+  name: "Manifestação de Rika",
+  description: "Ao cair abaixo de 50% HP, Rika se manifesta: ganha escudo de 400 HP, +30% ATK, +25% DEF, +20% SPD (1x por batalha)",
+  trigger: "on_damaged",
+  conditions: [{ type: "hp_below_percent", value: 50 }],
+  effects: [
+    { type: "shield", value: 400, target: "self" },
+    { type: "increase_attack", value: 30, target: "self" },
+    { type: "increase_defense", value: 25, target: "self" },
+    { type: "increase_speed", value: 20, target: "self" }
+  ],
+  maxActivationsPerBattle: 1,
+};
+
+/**
  * PASSIVAS DE BOSS E INIMIGOS ESPECIAIS
  */
 
