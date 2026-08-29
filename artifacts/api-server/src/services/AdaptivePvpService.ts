@@ -4,27 +4,29 @@ import type { BattleSnapshot, Combatant, UltimateDecisionProvider } from "../bat
 import { getProfile, getTeam, listCharacters } from "./PhaseOneService";
 import { applyMasteryBoost } from "./MasteryService";
 import { logger } from "../lib/logger";
+import crypto from "node:crypto";
 
 export class AdaptivePvpError extends Error {}
 
 export type BattleSnapshotHandler = (snapshot: BattleSnapshot) => Promise<void> | void;
 
+interface MemoryBattleRecord {
+  id: string;
+  userId: string;
+  status: "victory" | "defeat" | "draw";
+  round: number;
+  rewards: { gold: number; xp: number; gems: number };
+  createdAt: Date;
+  completedAt: Date;
+}
+
+const memoryBattles: MemoryBattleRecord[] = [];
+
 /**
- * Calcula o power level médio do time do jogador
+ * Função auxiliar para rodar o engine (copiada de BattleService)
  */
-function calculateTeamPowerLevel(team: Combatant[]): number {
-  if (team.length === 0) return 1;
-  
-  const totalPower = team.reduce((sum, member) => {
-    const memberPower = 
-      member.maxHp * 0.4 + 
-      member.attack * 2.5 + 
-      member.defense * 1.5 + 
-      member.speed * 1.2;
-    return sum + memberPower;
-  }, 0);
-  
-  return totalPower / team.length;
+async function runEngine(engine: BattleEngine, onSnapshot?: BattleSnapshotHandler, ultimateDecisionProvider?: UltimateDecisionProvider): Promise<BattleSnapshot> {
+  return onSnapshot ? engine.runAnimated(onSnapshot, 100, ultimateDecisionProvider) : engine.run();
 }
 
 /**
@@ -47,10 +49,10 @@ function calculateAverageMastery(teamMembers: any[]): number {
 
 /**
  * Gera um time inimigo adaptativo baseado no progresso do jogador
+ * (COPIADO DE BattleService mas gera múltiplos inimigos aleatórios)
  */
 async function generateAdaptiveEnemyTeam(
   playerTeamMembers: any[],
-  playerTeam: Combatant[],
   difficulty: "easy" | "normal" | "hard" | "nightmare" = "normal"
 ): Promise<{ enemies: Combatant[], teamName: string }> {
   
@@ -63,10 +65,9 @@ async function generateAdaptiveEnemyTeam(
   // Calcula métricas do jogador
   const playerAvgLevel = calculateAverageLevel(playerTeamMembers);
   const playerAvgMastery = calculateAverageMastery(playerTeamMembers);
-  const playerPowerLevel = calculateTeamPowerLevel(playerTeam);
-  const playerTeamSize = playerTeam.length;
+  const playerTeamSize = playerTeamMembers.length;
   
-  console.log(`[ADAPTIVE PVP] Player metrics: Lv${playerAvgLevel}, Mastery${playerAvgMastery}, Power${Math.round(playerPowerLevel)}, Size${playerTeamSize}`);
+  console.log(`[ADAPTIVE PVP] Player metrics: Lv${playerAvgLevel}, Mastery${playerAvgMastery}, Size${playerTeamSize}`);
   
   // Multiplicadores de dificuldade
   const difficultyMultipliers = {
@@ -82,7 +83,7 @@ async function generateAdaptiveEnemyTeam(
   const enemyLevel = Math.max(1, Math.round(playerAvgLevel * multiplier.level));
   const enemyMastery = Math.max(1, Math.round(playerAvgMastery * multiplier.mastery));
   
-  // Determina tamanho do time inimigo (pode ser menor ou maior)
+  // Determina tamanho do time inimigo
   const enemyTeamSize = Math.min(5, Math.max(3, playerTeamSize + (difficulty === "nightmare" ? 1 : 0)));
   
   // Embaralha catálogo e seleciona personagens aleatórios
@@ -105,7 +106,7 @@ async function generateAdaptiveEnemyTeam(
   ];
   const teamName = teamNames[Math.floor(Math.random() * teamNames.length)];
   
-  // Cria combatentes inimigos
+  // Cria combatentes inimigos (EXATAMENTE COMO BattleService)
   const enemies: Combatant[] = selectedChars.map((character, index) => {
     // Aplica boost de maestria
     const boostedStats = applyMasteryBoost(
@@ -124,16 +125,17 @@ async function generateAdaptiveEnemyTeam(
       speed: Math.round(boostedStats.speed * multiplier.stats),
     };
     
-    // Calcula HP final com level
+    // Calcula HP final com level (IGUAL BattleService)
     const maxHp = finalStats.hp + enemyLevel * 40;
     
-    // Adiciona variação aleatória de ±5% para tornar cada inimigo único
+    // Adiciona variação aleatória de ±5%
     const variance = 0.95 + Math.random() * 0.1;
     
     const enemyId = `enemy_${character.id}_${index}`;
     
-    console.log(`[ADAPTIVE PVP] Enemy ${index + 1}: ${character.name} Lv${enemyLevel} M${enemyMastery} - HP${maxHp} ATK${Math.round(finalStats.attack * variance)} DEF${Math.round(finalStats.defense * variance)} SPD${finalStats.speed}`);
+    console.log(`[ADAPTIVE PVP] Enemy ${index + 1}: ${character.name} Lv${enemyLevel} M${enemyMastery} - HP${maxHp} ATK${Math.round((finalStats.attack + enemyLevel * 8) * variance)} DEF${Math.round((finalStats.defense + enemyLevel * 5) * variance)} SPD${finalStats.speed}`);
     
+    // CRIA COMBATENTE EXATAMENTE COMO BattleService
     return SkillManager.createCombatant({
       id: enemyId,
       name: character.name,
@@ -156,12 +158,11 @@ async function generateAdaptiveEnemyTeam(
 }
 
 /**
- * Calcula recompensas baseadas na dificuldade e power level
+ * Calcula recompensas (COPIADO DE BattleService)
  */
 function calculateRewards(
   difficulty: "easy" | "normal" | "hard" | "nightmare",
-  victory: boolean,
-  playerPowerLevel: number
+  victory: boolean
 ): { gold: number, gems: number, xp: number } {
   
   const baseRewards = {
@@ -173,15 +174,8 @@ function calculateRewards(
   
   const base = baseRewards[difficulty];
   
-  // Escalamento com power level
-  const powerScaling = 1 + (playerPowerLevel / 10000);
-  
   if (victory) {
-    return {
-      gold: Math.round(base.gold * powerScaling),
-      gems: Math.round(base.gems * powerScaling),
-      xp: Math.round(base.xp * powerScaling)
-    };
+    return base;
   } else {
     // Recompensa de consolação na derrota (30%)
     return {
@@ -193,7 +187,7 @@ function calculateRewards(
 }
 
 /**
- * Executa uma batalha PvP adaptativa
+ * Executa uma batalha PvP adaptativa (COPIADO DE runPlayerBattle)
  */
 export async function runAdaptivePvpBattle(
   discordId: string,
@@ -201,13 +195,13 @@ export async function runAdaptivePvpBattle(
   onSnapshot?: BattleSnapshotHandler,
   ultimateDecisionProvider?: UltimateDecisionProvider
 ): Promise<{
+  battle: MemoryBattleRecord;
   result: BattleSnapshot;
   rewards: { gold: number; gems: number; xp: number };
   enemyTeamName: string;
-  difficulty: string;
 }> {
   
-  // Busca perfil e time do jogador
+  // Busca perfil e time do jogador (IGUAL BattleService)
   const profile = await getProfile(discordId);
   if (!profile) {
     throw new AdaptivePvpError("Profile not found. Use /perfil to create your profile.");
@@ -215,7 +209,7 @@ export async function runAdaptivePvpBattle(
   
   let teamData = await getTeam(discordId);
   
-  // Auto-cria time se não existir
+  // Auto-cria time se não existir (IGUAL BattleService)
   if (!teamData?.team && profile.collection.length > 0) {
     console.log(`[ADAPTIVE PVP] Auto-creating team from first ${Math.min(5, profile.collection.length)} characters`);
     const { replaceTeam } = await import("./PhaseOneService");
@@ -227,8 +221,8 @@ export async function runAdaptivePvpBattle(
     throw new AdaptivePvpError("No characters in team. Use /equipe to build your team.");
   }
   
-  // Cria time do jogador
-  const playerTeam: Combatant[] = teamData.members.map(({ ownedId, level, character, masteryLevel }) => {
+  // Cria time do jogador (EXATAMENTE COMO BattleService)
+  const player: Combatant[] = teamData.members.map(({ ownedId, level, character, masteryLevel }) => {
     const actualMasteryLevel = masteryLevel || 1;
     
     const boostedStats = applyMasteryBoost(
@@ -259,36 +253,39 @@ export async function runAdaptivePvpBattle(
     });
   });
   
-  // Gera time inimigo adaptativo
+  // Gera time inimigo adaptativo (SUBSTITUI stage.enemy)
   const { enemies, teamName: enemyTeamName } = await generateAdaptiveEnemyTeam(
     teamData.members,
-    playerTeam,
     difficulty
   );
   
-  console.log(`[ADAPTIVE PVP] Battle Start: Player (${playerTeam.length}) vs ${enemyTeamName} (${enemies.length}) [${difficulty.toUpperCase()}]`);
+  console.log(`[ADAPTIVE PVP] Battle Start: Player (${player.length}) vs ${enemyTeamName} (${enemies.length}) [${difficulty.toUpperCase()}]`);
   
-  // Cria engine de batalha
-  const engine = new BattleEngine(playerTeam, enemies);
+  // EXECUTA BATALHA EXATAMENTE COMO BattleService
+  const result = await runEngine(new BattleEngine(player, enemies), onSnapshot, ultimateDecisionProvider);
+  const status = result.phase === "VICTORY" ? "victory" : result.phase === "DEFEAT" ? "defeat" : "draw";
+  const rewards = calculateRewards(difficulty, status === "victory");
   
-  // Executa batalha
-  const result = onSnapshot 
-    ? await engine.runAnimated(onSnapshot, 30, ultimateDecisionProvider)
-    : engine.run(30);
+  console.log(`[ADAPTIVE PVP] Battle End: ${status.toUpperCase()} | Rewards: ${rewards.gold}G, ${rewards.gems}💎, ${rewards.xp}XP`);
   
-  // Calcula recompensas
-  const playerPowerLevel = calculateTeamPowerLevel(playerTeam);
-  const victory = result.phase === "PLAYER_VICTORY";
-  const rewards = calculateRewards(difficulty, victory, playerPowerLevel);
-  
-  console.log(`[ADAPTIVE PVP] Battle End: ${result.phase === "PLAYER_VICTORY" ? "VICTORY" : result.phase === "ENEMY_VICTORY" ? "DEFEAT" : "DRAW"} | Rewards: ${rewards.gold}G, ${rewards.gems}💎, ${rewards.xp}XP`);
+  // Cria registro de batalha (IGUAL BattleService)
+  const battleRecord: MemoryBattleRecord = {
+    id: crypto.randomUUID(),
+    userId: profile.user.id,
+    status,
+    round: result.round,
+    rewards,
+    createdAt: new Date(),
+    completedAt: new Date(),
+  };
+  memoryBattles.push(battleRecord);
   
   // TODO: Aplicar recompensas ao jogador (integrar com EconomyService)
   
   return {
+    battle: battleRecord,
     result,
     rewards,
-    enemyTeamName,
-    difficulty
+    enemyTeamName
   };
 }
