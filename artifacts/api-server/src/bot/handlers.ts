@@ -987,69 +987,86 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       const speed = interaction.options.getString("velocidade") ?? "medium";
       
       const speedMap: Record<string, number> = {
-        slow: 2500,
-        medium: 1500,
-        fast: 800
+        slow: 1400,
+        medium: 800,
+        fast: 350
       };
       
       const delay = speedMap[speed];
       
       try {
         const { runAdaptivePvpBattle } = await import("../services/AdaptivePvpService");
-        const { 
-          createAdaptivePvpVictoryEmbed, 
-          createAdaptivePvpDefeatEmbed, 
-          createAdaptivePvpProgressEmbed 
-        } = await import("./embeds");
+        const { createBattleProgressEmbed, createBattleResultEmbed } = await import("./embeds");
         
-        let lastAction: any = undefined;
-        let enemyTeamName = "Equipe Inimiga";
+        let enemyTeamName = "Arena PvP";
+        let lastUpdate = 0;
         
         const battleResult = await runAdaptivePvpBattle(
           discordId,
           difficulty,
           async (snapshot) => {
-            // Extrai última ação do log (se disponível)
-            if (snapshot.actions && snapshot.actions.length > 0) {
-              lastAction = snapshot.actions[snapshot.actions.length - 1];
+            const now = Date.now();
+            if (snapshot.actions.length > 0 && now - lastUpdate < delay) {
+              await new Promise((resolve) => setTimeout(resolve, delay - (now - lastUpdate)));
             }
             
-            const progressEmbed = createAdaptivePvpProgressEmbed(
-              username,
-              enemyTeamName,
-              difficulty,
-              snapshot,
-              lastAction
-            );
-            
-            await interaction.editReply({ embeds: [progressEmbed] });
-            await new Promise(resolve => setTimeout(resolve, delay));
+            // Usa o mesmo embed da batalha normal
+            await interaction.editReply({ 
+              embeds: [createBattleProgressEmbed(username, enemyTeamName, snapshot)] 
+            });
+            lastUpdate = Date.now();
           },
           discordUltimateDecisionProvider(interaction)
         );
         
         // Atualiza o nome do time inimigo após a batalha
-        enemyTeamName = battleResult.enemyTeamName;
+        enemyTeamName = `Arena: ${battleResult.enemyTeamName}`;
         
-        // Determina resultado
+        // Determina resultado baseado na fase
         const isVictory = battleResult.result.phase === "PLAYER_VICTORY";
         
-        // Cria embed final
-        const finalEmbed = isVictory 
-          ? createAdaptivePvpVictoryEmbed(
-              username,
-              battleResult.enemyTeamName,
-              difficulty,
-              battleResult.rewards,
-              battleResult.result
-            )
-          : createAdaptivePvpDefeatEmbed(
-              username,
-              battleResult.enemyTeamName,
-              difficulty,
-              battleResult.rewards,
-              battleResult.result
-            );
+        // Cria embed final usando o embed padrão de batalha
+        const finalEmbed = createBattleResultEmbed(
+          username,
+          enemyTeamName,
+          battleResult.result,
+          {
+            gold: battleResult.rewards.gold,
+            xp: battleResult.rewards.xp,
+          },
+          [] // Sem drops na arena
+        );
+        
+        // Adiciona informações de recompensas de arena
+        const difficultyEmojis: Record<string, string> = {
+          easy: "🟢",
+          normal: "🟡",
+          hard: "🔴",
+          nightmare: "⚫"
+        };
+        
+        const difficultyNames: Record<string, string> = {
+          easy: "Fácil",
+          normal: "Normal",
+          hard: "Difícil",
+          nightmare: "Pesadelo"
+        };
+        
+        finalEmbed.setTitle(
+          isVictory ? "🏆 VITÓRIA NA ARENA!" : "💀 DERROTA NA ARENA"
+        );
+        
+        finalEmbed.setDescription(
+          `${difficultyEmojis[difficulty]} **Dificuldade:** ${difficultyNames[difficulty]}\n` +
+          `⚔️ **Oponente:** ${battleResult.enemyTeamName}\n\n` +
+          (finalEmbed.data.description || "")
+        );
+        
+        // Adiciona campo de recompensas de gemas (exclusivo da arena)
+        finalEmbed.addFields({
+          name: "💎 Recompensas Extras da Arena",
+          value: `• **Gemas:** +${battleResult.rewards.gems}\n${isVictory ? "🎉 **Bônus de vitória aplicado!**" : "💰 **Recompensa de consolação (30%)**"}`
+        });
         
         await interaction.editReply({ embeds: [finalEmbed] });
         
