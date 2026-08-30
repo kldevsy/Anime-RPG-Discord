@@ -1,0 +1,202 @@
+// ADICIONAR ESTES HANDLERS NO handlers.ts APÓS O HANDLER DE /equipamento
+
+    // 5.10. /loja - Loja de Loot Boxes
+    if (commandName === "loja") {
+      try {
+        const { lootBoxService } = await import("../services/LootBoxService");
+        const { createLootBoxShopEmbed } = await import("./embeds");
+        const { getProfile } = await import("../services/PhaseOneService");
+        
+        const profile = await getProfile(discordId);
+        if (!profile) {
+          await interaction.editReply("❌ Perfil não encontrado. Use `/perfil` primeiro!");
+          return;
+        }
+        
+        // Buscar contadores de pity
+        const pityCounters: Record<string, number> = {};
+        const boxTypes: Array<"basic" | "advanced" | "epic" | "legendary" | "mythic"> = 
+          ["basic", "advanced", "epic", "legendary", "mythic"];
+        
+        for (const boxType of boxTypes) {
+          const pity = await lootBoxService.getPity(profile.user.id, boxType);
+          pityCounters[boxType] = pity.counter;
+        }
+        
+        // Verificar caixa grátis diária
+        const canClaimDaily = await lootBoxService.canClaimDailyFreeBox(profile.user.id);
+        
+        const embed = createLootBoxShopEmbed(profile.user.gems, pityCounters, canClaimDaily);
+        await interaction.editReply({ embeds: [embed] });
+        
+      } catch (error: any) {
+        console.error("❌ [LOJA ERROR]", error);
+        await interaction.editReply(`❌ Erro: ${error.message}`).catch(() => {});
+      }
+      
+      return;
+    }
+
+    // 5.11. /lootbox - Gerenciar loot boxes
+    if (commandName === "lootbox") {
+      const subcommand = interaction.options.getSubcommand();
+      
+      try {
+        const { lootBoxService } = await import("../services/LootBoxService");
+        const { 
+          createLootBoxOpeningEmbed,
+          createLootBoxHistoryEmbed,
+          createDailyFreeBoxEmbed
+        } = await import("./embeds");
+        const { getProfile, getTeam } = await import("../services/PhaseOneService");
+        
+        const profile = await getProfile(discordId);
+        if (!profile) {
+          await interaction.editReply("❌ Perfil não encontrado. Use `/perfil` primeiro!");
+          return;
+        }
+        
+        // SUBCOMANDO: abrir
+        if (subcommand === "abrir") {
+          const boxType = interaction.options.getString("tipo", true) as "basic" | "advanced" | "epic" | "legendary" | "mythic";
+          const quantity = interaction.options.getInteger("quantidade") || 1;
+          
+          // Confirmar compra se quantidade > 1
+          if (quantity > 1) {
+            const prices = {
+              basic: 50,
+              advanced: 150,
+              epic: 400,
+              legendary: 1000,
+              mythic: 2500
+            };
+            
+            const totalCost = prices[boxType] * quantity;
+            
+            await interaction.editReply(
+              `💎 Você está prestes a comprar **${quantity}x ${boxType}** por **${totalCost} Gemas**.\n` +
+              `Seu saldo: ${profile.user.gems} 💎\n\n` +
+              "Abrindo caixas..."
+            );
+          }
+          
+          // Abrir múltiplas caixas
+          const results = [];
+          
+          for (let i = 0; i < quantity; i++) {
+            try {
+              const result = await lootBoxService.openLootBox(profile.user.id, boxType);
+              results.push(result);
+              
+              // Delay entre aberturas para não sobrecarregar
+              if (i < quantity - 1) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+            } catch (error: any) {
+              await interaction.editReply(`❌ Erro na caixa ${i + 1}: ${error.message}`);
+              return;
+            }
+          }
+          
+          // Mostra resultados
+          if (results.length === 1) {
+            // Uma caixa: Mostra embed detalhado
+            const embed = createLootBoxOpeningEmbed(
+              boxType,
+              results[0].rewards,
+              results[0].jackpot,
+              results[0].pityTriggered
+            );
+            await interaction.editReply({ embeds: [embed] });
+          } else {
+            // Múltiplas caixas: Resume todas
+            const allRewards: any[] = [];
+            let jackpotCount = 0;
+            
+            for (const result of results) {
+              allRewards.push(...result.rewards);
+              if (result.jackpot) jackpotCount++;
+            }
+            
+            const embed = createLootBoxOpeningEmbed(boxType, allRewards, jackpotCount > 0, false);
+            
+            if (jackpotCount > 0) {
+              embed.setDescription(
+                `🎰 **${jackpotCount}x JACKPOT!** 🎰\n` +
+                `Você abriu **${quantity} caixas** e teve sorte!\n\n` +
+                (embed.data.description || "")
+              );
+            } else {
+              embed.setDescription(
+                `📦 Você abriu **${quantity} caixas**!\n\n` +
+                (embed.data.description || "")
+              );
+            }
+            
+            await interaction.editReply({ embeds: [embed] });
+          }
+          
+          return;
+        }
+        
+        // SUBCOMANDO: historico
+        if (subcommand === "historico") {
+          const history = await lootBoxService.getHistory(profile.user.id, 20);
+          const stats = await lootBoxService.getStats(profile.user.id);
+          
+          const embed = createLootBoxHistoryEmbed(history, stats);
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+        
+        // SUBCOMANDO: diaria
+        if (subcommand === "diaria") {
+          const canClaim = await lootBoxService.canClaimDailyFreeBox(profile.user.id);
+          
+          if (!canClaim) {
+            await interaction.editReply("❌ Você já reivindicou sua caixa grátis hoje! Volte em 24h.");
+            return;
+          }
+          
+          const freeEmbed = createDailyFreeBoxEmbed();
+          await interaction.editReply({ embeds: [freeEmbed] });
+          
+          // Delay para criar suspense
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Reivindica e abre
+          const result = await lootBoxService.claimDailyFreeBox(profile.user.id);
+          
+          const embed = createLootBoxOpeningEmbed("basic", result.rewards, false, false);
+          embed.setTitle("🎁 Caixa Grátis Diária");
+          embed.setDescription("✅ Sua recompensa diária:\n\n" + (embed.data.description || ""));
+          
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+        
+        // SUBCOMANDO: aplicar-xp
+        if (subcommand === "aplicar-xp") {
+          const characterInput = interaction.options.getString("personagem", true);
+          
+          // TODO: Implementar sistema de XP acumulado
+          // Por enquanto, apenas mensagem
+          await interaction.editReply(
+            "⚠️ Sistema de XP de Maestria acumulado ainda não está implementado!\n\n" +
+            "Em breve você poderá:\n" +
+            "• Acumular XP de Maestria de loot boxes\n" +
+            "• Aplicar em personagens da sua equipe\n" +
+            "• Subir múltiplos níveis de maestria de uma vez"
+          );
+          return;
+        }
+        
+      } catch (error: any) {
+        console.error("❌ [LOOTBOX ERROR]", error);
+        await interaction.editReply(`❌ Erro: ${error.message}`).catch(() => {});
+      }
+      
+      return;
+    }
+
+// FIM DOS HANDLERS DE LOOTBOX
