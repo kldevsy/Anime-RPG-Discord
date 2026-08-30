@@ -33,6 +33,7 @@ import {
   adminGiveResources,
   adminRemoveResources,
 } from "../services/AdminService";
+import { lootBoxService } from "../services/LootBoxService";
 import {
   applyEmbedImage,
   createBannersEmbed,
@@ -45,6 +46,10 @@ import {
   createSummonResultEmbeds,
   createTeamEmbed,
   formatUltimateSummary,
+  createLootBoxShopEmbed,
+  createLootBoxOpeningEmbed,
+  createLootBoxHistoryEmbed,
+  createDailyFreeBoxEmbed,
 } from "./embeds";
 import type { UltimateDecisionProvider } from "../battle/BattleState";
 import { logger } from "../lib/logger";
@@ -1317,10 +1322,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     // 5.10. /loja - Loja de Loot Boxes
     if (commandName === "loja") {
       try {
-        const { lootBoxService } = await import("../services/LootBoxService");
-        const { createLootBoxShopEmbed } = await import("./embeds");
-        const { getProfile } = await import("../services/PhaseOneService");
-        
         const profile = await getProfile(discordId);
         if (!profile) {
           await interaction.editReply("❌ Perfil não encontrado. Use `/perfil` primeiro!");
@@ -1356,14 +1357,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       const subcommand = interaction.options.getSubcommand();
       
       try {
-        const { lootBoxService } = await import("../services/LootBoxService");
-        const { 
-          createLootBoxOpeningEmbed,
-          createLootBoxHistoryEmbed,
-          createDailyFreeBoxEmbed
-        } = await import("./embeds");
-        const { getProfile, getTeam } = await import("../services/PhaseOneService");
-        
         const profile = await getProfile(discordId);
         if (!profile) {
           await interaction.editReply("❌ Perfil não encontrado. Use `/perfil` primeiro!");
