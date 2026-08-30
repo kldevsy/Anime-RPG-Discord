@@ -811,3 +811,323 @@ export function createEquipmentUnequippedEmbed(characterName: string, equipName:
     .setColor(0x95a5a6)
     .setDescription(`**${equipName}** foi removido de **${characterName}**.`);
 }
+
+// ==========================================
+// 🎁 LOOT BOX EMBEDS
+// ==========================================
+
+import type { LootBoxReward } from "../services/LootBoxService";
+
+/**
+ * Embed da loja de loot boxes
+ */
+export function createLootBoxShopEmbed(
+  userGems: number,
+  pityCounters: Record<string, number>,
+  canClaimDaily: boolean
+): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle("🎁 Loja de Loot Boxes")
+    .setColor(0xFF6B9D)
+    .setDescription(
+      "**Compre Loot Boxes e ganhe recompensas incríveis!**\n\n" +
+      `💎 **Suas Gemas:** ${userGems}\n\n` +
+      "📦 **Tipos de Caixas Disponíveis:**"
+    );
+
+  // Caixa Básica
+  embed.addFields({
+    name: "💚 Caixa Básica - 50 💎",
+    value: 
+      "• 3 recompensas garantidas\n" +
+      "• Gold, Tickets, Equipamentos Common/Uncommon\n" +
+      "• XP de Maestria (raro)\n" +
+      `📊 Pity: ${pityCounters.basic || 0}/10`,
+    inline: true
+  });
+
+  // Caixa Avançada
+  embed.addFields({
+    name: "💙 Caixa Avançada - 150 💎",
+    value: 
+      "• 5 recompensas garantidas\n" +
+      "• Gold, Tickets, Equipamentos Uncommon/Rare\n" +
+      "• XP de Maestria, Gemas Bônus\n" +
+      `📊 Pity: ${pityCounters.advanced || 0}/10`,
+    inline: true
+  });
+
+  // Caixa Épica
+  embed.addFields({
+    name: "💜 Caixa Épica - 400 💎",
+    value: 
+      "• 7 recompensas garantidas\n" +
+      "• Gold, Tickets, Equipamentos Rare/Epic\n" +
+      "• XP de Maestria, Gemas, Personagens\n" +
+      `📊 Pity: ${pityCounters.epic || 0}/10`,
+    inline: true
+  });
+
+  // Caixa Lendária
+  embed.addFields({
+    name: "🟡 Caixa Lendária - 1000 💎",
+    value: 
+      "• 10 recompensas garantidas\n" +
+      "• Gold, Equipamentos Epic/Legendary\n" +
+      "• XP de Maestria, Personagens Epic+\n" +
+      `📊 Pity: ${pityCounters.legendary || 0}/10`,
+    inline: true
+  });
+
+  // Caixa Mítica
+  embed.addFields({
+    name: "🔴 Caixa Mítica - 2500 💎",
+    value: 
+      "• 15 recompensas garantidas\n" +
+      "• Gold Alto, Equipamentos Legendary/Mythic\n" +
+      "• XP de Maestria Alto, Personagens Legendários\n" +
+      `📊 Pity: ${pityCounters.mythic || 0}/10`,
+    inline: true
+  });
+
+  // Daily Free Box
+  if (canClaimDaily) {
+    embed.addFields({
+      name: "🎁 Caixa Grátis Diária - DISPONÍVEL!",
+      value: "• Use `/lootbox diaria` para reivindicar\n• 1 Caixa Básica grátis por dia",
+      inline: true
+    });
+  } else {
+    embed.addFields({
+      name: "🎁 Caixa Grátis Diária",
+      value: "• Já reivindicada hoje\n• Disponível em 24h",
+      inline: true
+    });
+  }
+
+  embed.setFooter({ 
+    text: "🎲 Sistema de Pity: A cada 10 caixas sem item raro, próxima é garantida! • 0.1% chance de JACKPOT" 
+  });
+
+  return embed;
+}
+
+/**
+ * Embed de resultado de abertura de loot box
+ */
+export function createLootBoxOpeningEmbed(
+  boxType: string,
+  rewards: LootBoxReward[],
+  jackpot: boolean,
+  pityTriggered: boolean
+): EmbedBuilder {
+  const boxNames: Record<string, string> = {
+    basic: "💚 Caixa Básica",
+    advanced: "💙 Caixa Avançada",
+    epic: "💜 Caixa Épica",
+    legendary: "🟡 Caixa Lendária",
+    mythic: "🔴 Caixa Mítica",
+  };
+
+  const embed = new EmbedBuilder()
+    .setTitle(`${jackpot ? "🎰 JACKPOT! " : ""}${boxNames[boxType] || "Loot Box"}`)
+    .setColor(jackpot ? 0xFFD700 : 0xFF6B9D);
+
+  if (jackpot) {
+    embed.setDescription(
+      "✨ **JACKPOT ATIVADO!** ✨\n" +
+      "Todas as recompensas foram DOBRADAS!\n\n" +
+      "🎁 **Suas Recompensas:**"
+    );
+  } else if (pityTriggered) {
+    embed.setDescription(
+      "🎯 **Sistema de Pity Ativado!**\n" +
+      "Recompensa rara garantida!\n\n" +
+      "🎁 **Suas Recompensas:**"
+    );
+  } else {
+    embed.setDescription("🎁 **Suas Recompensas:**");
+  }
+
+  // Agrupa recompensas por tipo
+  const grouped: Record<string, LootBoxReward[]> = {};
+  for (const reward of rewards) {
+    if (!grouped[reward.type]) grouped[reward.type] = [];
+    grouped[reward.type].push(reward);
+  }
+
+  // Formata recompensas
+  let description = embed.data.description + "\n\n";
+
+  // Gold
+  if (grouped.gold) {
+    const total = grouped.gold.reduce((sum, r) => sum + (r.amount || 0), 0);
+    description += `💰 **${total.toLocaleString()} Gold**\n`;
+  }
+
+  // Tickets
+  if (grouped.tickets) {
+    const total = grouped.tickets.reduce((sum, r) => sum + (r.amount || 0), 0);
+    description += `🎟️ **${total} Tickets**\n`;
+  }
+
+  // Gems
+  if (grouped.gems) {
+    const total = grouped.gems.reduce((sum, r) => sum + (r.amount || 0), 0);
+    description += `💎 **${total} Gemas Bônus**\n`;
+  }
+
+  // Equipamentos
+  if (grouped.equipment) {
+    description += `\n⚔️ **Equipamentos:**\n`;
+    for (const equip of grouped.equipment) {
+      const rarityEmoji: Record<string, string> = {
+        common: "⚪",
+        uncommon: "🟢",
+        rare: "🔵",
+        epic: "🟣",
+        legendary: "🟡",
+        mythic: "🔴"
+      };
+      const emoji = rarityEmoji[equip.equipmentRarity || "common"] || "⚪";
+      description += `${emoji} **${equip.equipmentName}** [${equip.equipmentRarity}]\n`;
+    }
+  }
+
+  // XP de Maestria
+  if (grouped.mastery_xp) {
+    const total = grouped.mastery_xp.reduce((sum, r) => sum + (r.amount || 0), 0);
+    description += `\n✨ **${total} XP de Maestria**\n`;
+    description += `└─ Use \`/lootbox aplicar-xp\` para aplicar em um personagem\n`;
+  }
+
+  // Personagens
+  if (grouped.character) {
+    description += `\n🎴 **Personagens:**\n`;
+    for (const char of grouped.character) {
+      description += `⭐ **${char.characterName}**\n`;
+    }
+  }
+
+  // Itens Especiais
+  if (grouped.special) {
+    description += `\n🌟 **Itens Especiais:**\n`;
+    for (const special of grouped.special) {
+      const specialNames: Record<string, string> = {
+        character_fragment: "Fragmento de Personagem",
+        xp_potion: "Poção de Experiência",
+        luck_talisman: "Talismã de Sorte",
+        golden_key: "Chave Dourada"
+      };
+      const name = specialNames[special.specialItem || ""] || special.specialItem;
+      description += `✨ **${name}**\n`;
+    }
+  }
+
+  embed.setDescription(description);
+  
+  if (jackpot) {
+    embed.setFooter({ text: "🎰 Você teve SORTE MÁXIMA! Parabéns!" });
+  } else {
+    embed.setFooter({ text: "Use /lootbox historico para ver suas últimas aberturas" });
+  }
+
+  return embed;
+}
+
+/**
+ * Embed de histórico de loot boxes
+ */
+export function createLootBoxHistoryEmbed(
+  openings: any[],
+  stats: { totalOpened: number; totalGemsSpent: number; jackpotCount: number }
+): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle("📊 Histórico de Loot Boxes")
+    .setColor(0xFF6B9D)
+    .setDescription(
+      `**Estatísticas Gerais:**\n` +
+      `📦 Total Aberto: ${stats.totalOpened} caixas\n` +
+      `💎 Gemas Gastas: ${stats.totalGemsSpent.toLocaleString()}\n` +
+      `🎰 Jackpots: ${stats.jackpotCount}x\n\n` +
+      `**Últimas Aberturas:**`
+    );
+
+  if (openings.length === 0) {
+    embed.setDescription(embed.data.description + "\n\n*Você ainda não abriu nenhuma loot box!*");
+    return embed;
+  }
+
+  const boxNames: Record<string, string> = {
+    basic: "💚 Básica",
+    advanced: "💙 Avançada",
+    epic: "💜 Épica",
+    legendary: "🟡 Lendária",
+    mythic: "🔴 Mítica",
+  };
+
+  for (const opening of openings.slice(0, 10)) {
+    const boxName = boxNames[opening.boxType] || opening.boxType;
+    const rewards = opening.rewards as LootBoxReward[];
+    
+    // Pega os melhores items
+    const bestItems: string[] = [];
+    
+    for (const reward of rewards) {
+      if (reward.type === "equipment" && 
+          (reward.equipmentRarity === "epic" || 
+           reward.equipmentRarity === "legendary" || 
+           reward.equipmentRarity === "mythic")) {
+        bestItems.push(`⚔️ ${reward.equipmentName}`);
+      } else if (reward.type === "mastery_xp" && (reward.amount || 0) >= 500) {
+        bestItems.push(`✨ ${reward.amount} XP`);
+      } else if (reward.type === "character") {
+        bestItems.push(`🎴 ${reward.characterName}`);
+      }
+    }
+    
+    const timeAgo = formatTimeAgo(opening.openedAt);
+    const bestItemsText = bestItems.length > 0 ? bestItems.join(", ") : "Recompensas comuns";
+    const jackpotText = opening.jackpot ? " 🎰 JACKPOT!" : "";
+    
+    embed.addFields({
+      name: `${boxName} - ${timeAgo}${jackpotText}`,
+      value: `└─ ${bestItemsText}`,
+      inline: false
+    });
+  }
+
+  embed.setFooter({ text: "Mostrando últimas 10 aberturas" });
+
+  return embed;
+}
+
+/**
+ * Formata tempo decorrido
+ */
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - new Date(date).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffDays > 0) return `${diffDays}d atrás`;
+  if (diffHours > 0) return `${diffHours}h atrás`;
+  if (diffMins > 0) return `${diffMins}min atrás`;
+  return "Agora mesmo";
+}
+
+/**
+ * Embed de caixa grátis diária
+ */
+export function createDailyFreeBoxEmbed(): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle("🎁 Caixa Grátis Diária Reivindicada!")
+    .setColor(0x2ECC71)
+    .setDescription(
+      "✅ Você reivindicou sua **Caixa Básica Grátis** de hoje!\n\n" +
+      "Abrindo sua caixa..."
+    )
+    .setFooter({ text: "Volte amanhã para outra caixa grátis!" });
+}

@@ -347,7 +347,65 @@ export const commandDefinitions = [
         )
     ),
 
-  // 16. /admin
+  // 16. /loja
+  new SlashCommandBuilder()
+    .setName("loja")
+    .setDescription("Loja de Loot Boxes - Compre caixas com gemas e ganhe recompensas!"),
+
+  // 17. /lootbox
+  new SlashCommandBuilder()
+    .setName("lootbox")
+    .setDescription("Gerencia suas loot boxes e aberturas")
+    .addSubcommand((sub) =>
+      sub
+        .setName("abrir")
+        .setDescription("Abre uma loot box")
+        .addStringOption((opt) =>
+          opt
+            .setName("tipo")
+            .setDescription("Tipo de loot box")
+            .setRequired(true)
+            .addChoices(
+              { name: "💚 Básica - 50 Gemas", value: "basic" },
+              { name: "💙 Avançada - 150 Gemas", value: "advanced" },
+              { name: "💜 Épica - 400 Gemas", value: "epic" },
+              { name: "🟡 Lendária - 1000 Gemas", value: "legendary" },
+              { name: "🔴 Mítica - 2500 Gemas", value: "mythic" }
+            )
+        )
+        .addIntegerOption((opt) =>
+          opt
+            .setName("quantidade")
+            .setDescription("Quantidade de caixas (1-10)")
+            .setRequired(false)
+            .setMinValue(1)
+            .setMaxValue(10)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("historico")
+        .setDescription("Ver histórico de aberturas e estatísticas")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("diaria")
+        .setDescription("Reivindica sua Caixa Básica grátis diária")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("aplicar-xp")
+        .setDescription("Aplica XP de Maestria acumulado em um personagem")
+        .addStringOption((opt) =>
+          opt
+            .setName("personagem")
+            .setDescription("Personagem da sua equipe")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+    ),
+
+  // 17. /admin
   new SlashCommandBuilder()
     .setName("admin")
     .setDescription("Comandos administrativos para gerenciamento do RPG.")

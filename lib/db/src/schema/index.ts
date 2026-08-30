@@ -37,6 +37,7 @@ export const battleStatusEnum = pgEnum("battle_status", ["running", "victory", "
 export const pveTypeEnum = pgEnum("pve_type", ["story", "dungeon", "boss", "tower", "event", "raid"]);
 export const questCategoryEnum = pgEnum("quest_category", ["daily", "weekly", "monthly", "story", "event"]);
 export const equipableTypeEnum = pgEnum("equipable_type", ["character", "role", "universal"]);
+export const lootBoxTypeEnum = pgEnum("loot_box_type", ["basic", "advanced", "epic", "legendary", "mythic"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -382,6 +383,46 @@ export const characterEquipped = pgTable("character_equipped", {
   userEquipmentId: uuid("user_equipment_id").unique().references(() => userEquipment.id, { onDelete: "set null" }),
 });
 
+// Loot Box tables
+export const lootBoxOpenings = pgTable("loot_box_openings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  boxType: lootBoxTypeEnum("box_type").notNull(),
+  gemsSpent: integer("gems_spent").notNull(),
+  rewards: jsonb("rewards").$type<Array<{
+    type: "gold" | "tickets" | "gems" | "equipment" | "mastery_xp" | "character" | "special";
+    amount?: number;
+    equipmentId?: string;
+    equipmentName?: string;
+    characterId?: string;
+    characterName?: string;
+    specialItem?: string;
+  }>>().notNull(),
+  jackpot: boolean("jackpot").notNull().default(false),
+  openedAt: timestamp("opened_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const lootBoxPity = pgTable("loot_box_pity", {
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  boxType: lootBoxTypeEnum("box_type").notNull(),
+  counter: integer("counter").notNull().default(0),
+  lastRareAt: timestamp("last_rare_at", { withTimezone: true }),
+}, (table) => [
+  primaryKey({ columns: [table.userId, table.boxType] }),
+]);
+
+export const dailyFreeBox = pgTable("daily_free_box", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  lastClaimedAt: timestamp("last_claimed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const masteryXpInventory = pgTable("mastery_xp_inventory", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  accumulatedXp: integer("accumulated_xp").notNull().default(0),
+});
+
 export type User = typeof users.$inferSelect;
 export type Character = typeof characters.$inferSelect;
 export type UserCharacter = typeof userCharacters.$inferSelect;
@@ -400,3 +441,7 @@ export type TowerProgress = typeof towerProgress.$inferSelect;
 export type Equipment = typeof equipment.$inferSelect;
 export type UserEquipment = typeof userEquipment.$inferSelect;
 export type CharacterEquipped = typeof characterEquipped.$inferSelect;
+export type LootBoxOpening = typeof lootBoxOpenings.$inferSelect;
+export type LootBoxPity = typeof lootBoxPity.$inferSelect;
+export type DailyFreeBox = typeof dailyFreeBox.$inferSelect;
+export type MasteryXpInventory = typeof masteryXpInventory.$inferSelect;
