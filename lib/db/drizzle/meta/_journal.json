@@ -22,6 +22,13 @@
       "when": 1788118515939,
       "tag": "0002_colossal_nemesis",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788128952964,
+      "tag": "0003_youthful_red_hulk",
+      "breakpoints": true
     }
   ]
 }
