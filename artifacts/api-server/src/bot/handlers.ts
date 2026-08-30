@@ -155,6 +155,61 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
       return;
     }
 
+    // Autocomplete para /equipamento
+    if (interaction.commandName === "equipamento") {
+      const focused = interaction.options.getFocused(true);
+      const subcommand = interaction.options.getSubcommand();
+      
+      try {
+        const { equipmentService } = await import("../services/EquipmentService");
+        const { getProfile } = await import("../services/PhaseOneService");
+        
+        const profile = await getProfile(discordId);
+        if (!profile) {
+          await respondToAutocomplete(interaction, []);
+          return;
+        }
+        
+        // Autocomplete de personagem
+        if (focused.name === "personagem") {
+          const choices = profile.collection.map((item) => ({
+            name: `${item.character.name} (${item.character.anime}) Nv.${item.level}`,
+            value: item.ownedId
+          }));
+          await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
+          return;
+        }
+        
+        // Autocomplete de equipamento do inventário
+        if (focused.name === "equipamento") {
+          const userEquipments = await equipmentService.listUserEquipment(profile.user.id);
+          const choices = userEquipments.map((item) => ({
+            name: `${item.equipment.name} [${item.equipment.rarity}]`,
+            value: item.id
+          }));
+          await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
+          return;
+        }
+        
+        // Autocomplete de equipamento do catálogo
+        if (focused.name === "nome") {
+          const catalog = await equipmentService.listCatalog();
+          const choices = catalog.map((equip) => ({
+            name: `${equip.name} [${equip.rarity}]`,
+            value: equip.name
+          }));
+          await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
+          return;
+        }
+        
+      } catch (error) {
+        console.error("[EQUIPMENT AUTOCOMPLETE ERROR]", error);
+      }
+      
+      await respondToAutocomplete(interaction, []);
+      return;
+    }
+
     if (interaction.commandName !== "equipe") {
       await respondToAutocomplete(interaction, []);
       return;
@@ -221,7 +276,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
   try {
     // Defer IMEDIATAMENTE para evitar timeout de 3 segundos
     // Alguns comandos podem sobrescrever com seu próprio defer
-    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha", "meta", "arena"];
+    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha", "meta", "arena", "equipamento"];
     
     if (shouldDeferEarly.includes(commandName)) {
       try {
@@ -497,6 +552,39 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         // Adicionar maestria se possuir
         if (masteryInfo) {
           embed.addFields({ name: "✨ Maestria", value: masteryInfo, inline: false });
+        }
+        
+        // Adicionar equipamento se possuir
+        if (ownedChar) {
+          try {
+            const { equipmentService } = await import("../services/EquipmentService");
+            const equipped = await equipmentService.getEquippedItem(ownedChar.ownedId);
+            
+            if (equipped) {
+              const equip = equipped.equipment;
+              const bonuses = [];
+              if (equip.bonusHp > 0) bonuses.push(`+${equip.bonusHp} HP`);
+              if (equip.bonusAttack > 0) bonuses.push(`+${equip.bonusAttack} ATK`);
+              if (equip.bonusDefense > 0) bonuses.push(`+${equip.bonusDefense} DEF`);
+              if (equip.bonusSpeed > 0) bonuses.push(`+${equip.bonusSpeed} SPD`);
+              if (equip.bonusCritChance > 0) bonuses.push(`+${equip.bonusCritChance}% CRIT`);
+              if (equip.bonusCritDamage > 0) bonuses.push(`+${equip.bonusCritDamage}% CRIT DMG`);
+              
+              let equipText = `**${equip.name}** [${equip.rarity}]\n`;
+              equipText += `└─ ${bonuses.join(", ")}\n`;
+              
+              if (equip.passiveAbility) {
+                const passive = equip.passiveAbility as any;
+                equipText += `└─ 🔮 Passiva: ${passive.name || "Sem nome"}`;
+              }
+              
+              embed.addFields({ name: "⚔️ Equipamento", value: equipText, inline: false });
+            } else {
+              embed.addFields({ name: "⚔️ Equipamento", value: "*Nenhum equipamento equipado*\n(Use `/equipamento equipar` para equipar)", inline: false });
+            }
+          } catch (error) {
+            console.error("Error fetching equipment:", error);
+          }
         }
         
         // Stats
@@ -1076,6 +1164,151 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       } catch (error: any) {
         console.error("❌ [ARENA ERROR]", error);
         await interaction.editReply(`❌ Erro na arena: ${error.message}`).catch(() => {});
+      }
+      
+      return;
+    }
+
+    // 5.9. /equipamento - Gerenciar equipamentos
+    if (commandName === "equipamento") {
+      const subcommand = interaction.options.getSubcommand();
+      
+      try {
+        const { equipmentService } = await import("../services/EquipmentService");
+        const { getProfile, getTeam } = await import("../services/PhaseOneService");
+        const { 
+          createEquipmentDetailsEmbed,
+          createEquipmentInventoryEmbed,
+          createEquipmentCatalogEmbed,
+          createEquipmentEquippedEmbed,
+          createEquipmentUnequippedEmbed
+        } = await import("./embeds");
+        
+        const profile = await getProfile(discordId);
+        if (!profile) {
+          await interaction.editReply("❌ Perfil não encontrado. Use `/perfil` primeiro!");
+          return;
+        }
+        
+        // SUBCOMANDO: equipar
+        if (subcommand === "equipar") {
+          const characterInput = interaction.options.getString("personagem", true);
+          const equipmentInput = interaction.options.getString("equipamento", true);
+          
+          // Buscar personagem do usuário
+          const userChar = profile.collection.find(
+            c => c.ownedId === characterInput || 
+                 c.character.name.toLowerCase() === characterInput.toLowerCase()
+          );
+          
+          if (!userChar) {
+            await interaction.editReply("❌ Personagem não encontrado na sua coleção!");
+            return;
+          }
+          
+          // Buscar equipamento do usuário
+          const userEquipments = await equipmentService.listUserEquipment(profile.user.id);
+          const userEquip = userEquipments.find(
+            e => e.id === equipmentInput ||
+                 e.equipment.name.toLowerCase() === equipmentInput.toLowerCase()
+          );
+          
+          if (!userEquip) {
+            await interaction.editReply("❌ Equipamento não encontrado no seu inventário!");
+            return;
+          }
+          
+          // Tentar equipar
+          await equipmentService.equipItem(userChar.ownedId, userEquip.id);
+          
+          const embed = createEquipmentEquippedEmbed(userChar.character.name, userEquip.equipment);
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+        
+        // SUBCOMANDO: remover
+        if (subcommand === "remover") {
+          const characterInput = interaction.options.getString("personagem", true);
+          
+          // Buscar personagem do usuário
+          const userChar = profile.collection.find(
+            c => c.ownedId === characterInput || 
+                 c.character.name.toLowerCase() === characterInput.toLowerCase()
+          );
+          
+          if (!userChar) {
+            await interaction.editReply("❌ Personagem não encontrado na sua coleção!");
+            return;
+          }
+          
+          // Buscar equipamento equipado
+          const equipped = await equipmentService.getEquippedItem(userChar.ownedId);
+          
+          if (!equipped) {
+            await interaction.editReply(`❌ **${userChar.character.name}** não tem nenhum equipamento equipado!`);
+            return;
+          }
+          
+          // Remover equipamento
+          await equipmentService.unequipItem(userChar.ownedId);
+          
+          const embed = createEquipmentUnequippedEmbed(userChar.character.name, equipped.equipment.name);
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+        
+        // SUBCOMANDO: inventario
+        if (subcommand === "inventario") {
+          const filter = (interaction.options.getString("filtro") as "all" | "equipped" | "available") ?? "all";
+          
+          const userEquipments = await equipmentService.listUserEquipment(profile.user.id);
+          
+          const embed = createEquipmentInventoryEmbed(userEquipments, filter);
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+        
+        // SUBCOMANDO: catalogo
+        if (subcommand === "catalogo") {
+          const type = interaction.options.getString("tipo") ?? "all";
+          const rarity = interaction.options.getString("raridade");
+          
+          let equipments = await equipmentService.listCatalog();
+          
+          // Filtrar por tipo
+          if (type !== "all") {
+            equipments = equipments.filter(e => e.equipableType === type);
+          }
+          
+          // Filtrar por raridade
+          if (rarity) {
+            equipments = equipments.filter(e => e.rarity === rarity);
+          }
+          
+          const embed = createEquipmentCatalogEmbed(equipments, 1, 10);
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+        
+        // SUBCOMANDO: info
+        if (subcommand === "info") {
+          const name = interaction.options.getString("nome", true);
+          
+          const equip = await equipmentService.findEquipmentByName(name);
+          
+          if (!equip) {
+            await interaction.editReply(`❌ Equipamento **${name}** não encontrado!`);
+            return;
+          }
+          
+          const embed = createEquipmentDetailsEmbed(equip);
+          await interaction.editReply({ embeds: [embed] });
+          return;
+        }
+        
+      } catch (error: any) {
+        console.error("❌ [EQUIPMENT ERROR]", error);
+        await interaction.editReply(`❌ Erro: ${error.message}`).catch(() => {});
       }
       
       return;

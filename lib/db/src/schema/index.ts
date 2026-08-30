@@ -36,6 +36,7 @@ export const currencyEnum = pgEnum("currency", ["gold", "gems", "tickets"]);
 export const battleStatusEnum = pgEnum("battle_status", ["running", "victory", "defeat", "draw"]);
 export const pveTypeEnum = pgEnum("pve_type", ["story", "dungeon", "boss", "tower", "event", "raid"]);
 export const questCategoryEnum = pgEnum("quest_category", ["daily", "weekly", "monthly", "story", "event"]);
+export const equipableTypeEnum = pgEnum("equipable_type", ["character", "role", "universal"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -347,6 +348,40 @@ export const towerProgress = pgTable("tower_progress", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Equipment tables
+export const equipment = pgTable("equipment", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  rarity: rarityEnum("rarity").notNull(),
+  description: text("description").notNull(),
+  equipableType: equipableTypeEnum("equipable_type").notNull(),
+  equipableTarget: text("equipable_target"), // character name or role
+  bonusHp: integer("bonus_hp").notNull().default(0),
+  bonusAttack: integer("bonus_attack").notNull().default(0),
+  bonusDefense: integer("bonus_defense").notNull().default(0),
+  bonusSpeed: integer("bonus_speed").notNull().default(0),
+  bonusCritChance: integer("bonus_crit_chance").notNull().default(0),
+  bonusCritDamage: integer("bonus_crit_damage").notNull().default(0),
+  passiveAbility: jsonb("passive_ability").$type<Record<string, unknown> | null>(),
+  imageUrl: text("image_url"),
+  catalogManaged: boolean("catalog_managed").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("equipment_name_unique").on(table.name),
+]);
+
+export const userEquipment = pgTable("user_equipment", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  equipmentId: uuid("equipment_id").notNull().references(() => equipment.id, { onDelete: "restrict" }),
+  acquiredAt: timestamp("acquired_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const characterEquipped = pgTable("character_equipped", {
+  userCharacterId: uuid("user_character_id").primaryKey().references(() => userCharacters.id, { onDelete: "cascade" }),
+  userEquipmentId: uuid("user_equipment_id").unique().references(() => userEquipment.id, { onDelete: "set null" }),
+});
+
 export type User = typeof users.$inferSelect;
 export type Character = typeof characters.$inferSelect;
 export type UserCharacter = typeof userCharacters.$inferSelect;
@@ -362,3 +397,6 @@ export type RaidParticipant = typeof raidParticipants.$inferSelect;
 export type PvpProfile = typeof pvpProfiles.$inferSelect;
 export type PvpMatch = typeof pvpMatches.$inferSelect;
 export type TowerProgress = typeof towerProgress.$inferSelect;
+export type Equipment = typeof equipment.$inferSelect;
+export type UserEquipment = typeof userEquipment.$inferSelect;
+export type CharacterEquipped = typeof characterEquipped.$inferSelect;

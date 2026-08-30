@@ -252,7 +252,102 @@ export const commandDefinitions = [
         )
     ),
 
-  // 15. /admin
+  // 15. /equipamento
+  new SlashCommandBuilder()
+    .setName("equipamento")
+    .setDescription("Gerencia equipamentos dos seus personagens (stats e passiva adicional).")
+    .addSubcommand((sub) =>
+      sub
+        .setName("equipar")
+        .setDescription("Equipa um item em um personagem da sua coleção")
+        .addStringOption((opt) =>
+          opt
+            .setName("personagem")
+            .setDescription("Selecione o personagem")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+        .addStringOption((opt) =>
+          opt
+            .setName("equipamento")
+            .setDescription("Selecione o equipamento do seu inventário")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("remover")
+        .setDescription("Remove o equipamento de um personagem")
+        .addStringOption((opt) =>
+          opt
+            .setName("personagem")
+            .setDescription("Selecione o personagem")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("inventario")
+        .setDescription("Lista todos os equipamentos do seu inventário")
+        .addStringOption((opt) =>
+          opt
+            .setName("filtro")
+            .setDescription("Filtrar equipamentos")
+            .setRequired(false)
+            .addChoices(
+              { name: "Todos", value: "all" },
+              { name: "Equipados", value: "equipped" },
+              { name: "Disponíveis", value: "available" }
+            )
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("catalogo")
+        .setDescription("Ver catálogo completo de equipamentos do jogo")
+        .addStringOption((opt) =>
+          opt
+            .setName("tipo")
+            .setDescription("Filtrar por tipo equipável")
+            .setRequired(false)
+            .addChoices(
+              { name: "Todos", value: "all" },
+              { name: "Personagem Específico", value: "character" },
+              { name: "Classe (DPS/Tank/etc)", value: "role" },
+              { name: "Universal", value: "universal" }
+            )
+        )
+        .addStringOption((opt) =>
+          opt
+            .setName("raridade")
+            .setDescription("Filtrar por raridade")
+            .setRequired(false)
+            .addChoices(
+              { name: "Comum", value: "common" },
+              { name: "Incomum", value: "uncommon" },
+              { name: "Raro", value: "rare" },
+              { name: "Épico", value: "epic" },
+              { name: "Lendário", value: "legendary" },
+              { name: "Mítico", value: "mythic" }
+            )
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("info")
+        .setDescription("Ver detalhes completos de um equipamento")
+        .addStringOption((opt) =>
+          opt
+            .setName("nome")
+            .setDescription("Nome do equipamento")
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+    ),
+
+  // 16. /admin
   new SlashCommandBuilder()
     .setName("admin")
     .setDescription("Comandos administrativos para gerenciamento do RPG.")

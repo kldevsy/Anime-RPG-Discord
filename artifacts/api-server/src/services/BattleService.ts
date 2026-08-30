@@ -7,6 +7,7 @@ import type { BattleSnapshot, Combatant, UltimateDecisionProvider } from "../bat
 import { getPveStageById, listPveStages, recordPveProgress, type PveStageDrop } from "./PveService";
 import { getProfile, getTeam } from "./PhaseOneService";
 import { applyMasteryBoost } from "./MasteryService";
+import { applyTeamEquipment } from "./EquipmentBattleIntegration";
 
 export class BattleServiceError extends Error {}
 
@@ -54,6 +55,7 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
       console.log(`[BATTLE]   ${i + 1}. ${m.character.name} (${m.ownedId})`);
     });
 
+    // Cria combatentes do jogador
     const player: Combatant[] = teamData.members.map(({ ownedId, level, character, masteryLevel, masteryXp }) => {
       const actualMasteryLevel = masteryLevel || 1;
       
@@ -89,6 +91,11 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
       });
     });
 
+    // ⚔️ APLICA EQUIPAMENTOS AO TIME DO JOGADOR
+    const userCharacterIds = teamData.members.map(m => m.ownedId);
+    const playerWithEquipment = await applyTeamEquipment(player, userCharacterIds);
+    console.log(`[BATTLE] Equipment applied to player team`);
+
     let stage = stageId ? await getPveStageById(stageId) : null;
     if (!stage) {
       const stages = await listPveStages();
@@ -120,7 +127,7 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
       }),
     ];
 
-    const result = await runEngine(new BattleEngine(player, enemy), onSnapshot, ultimateDecisionProvider);
+    const result = await runEngine(new BattleEngine(playerWithEquipment, enemy), onSnapshot, ultimateDecisionProvider);
     const status = result.phase === "VICTORY" ? "victory" : result.phase === "DEFEAT" ? "defeat" : "draw";
     const rewards = status === "victory" ? { gold: stage.rewardGold, xp: stage.rewardXp } : { gold: 0, xp: 0 };
 

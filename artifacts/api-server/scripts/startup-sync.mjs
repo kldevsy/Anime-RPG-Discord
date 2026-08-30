@@ -94,3 +94,27 @@ if (seed.code !== 0) {
 }
 
 process.stdout.write("[startup-sync] Database and catalog synchronization complete.\n");
+
+// Sincronizar catálogo de equipamentos
+process.stdout.write("[startup-sync] Synchronizing the equipment catalog...\n");
+
+let seedEquipment;
+try {
+  seedEquipment = await runCommand(
+    "pnpm",
+    ["--filter", "@workspace/db", "run", "seed:equipment"],
+  );
+} catch (error) {
+  process.stderr.write(`[startup-sync] Equipment catalog sync process failed: ${error.message}\n`);
+  process.exit(1);
+}
+
+if (seedEquipment.code !== 0) {
+  printCommandOutput("Equipment catalog sync", `${seedEquipment.stdout}${seedEquipment.stderr}`);
+  process.stderr.write(
+    `[startup-sync] Equipment catalog sync failed${seedEquipment.signal ? ` (${seedEquipment.signal})` : ""} with exit code ${seedEquipment.code ?? "unknown"}.\n`,
+  );
+  process.exit(seedEquipment.code ?? 1);
+}
+
+process.stdout.write("[startup-sync] Equipment catalog synchronized successfully.\n");

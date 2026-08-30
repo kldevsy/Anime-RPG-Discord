@@ -581,3 +581,233 @@ export function createAdaptivePvpProgressEmbed(
   
   return embed;
 }
+
+// ==========================================
+// 🎯 EQUIPMENT EMBEDS
+// ==========================================
+
+import type { Equipment, UserEquipment } from "@workspace/db/schema";
+
+/**
+ * Formata bonus de stats de equipamento
+ */
+export function formatEquipmentBonuses(equip: Equipment): string {
+  const bonuses: string[] = [];
+  
+  if (equip.bonusHp > 0) bonuses.push(`+${equip.bonusHp} HP`);
+  if (equip.bonusAttack > 0) bonuses.push(`+${equip.bonusAttack} ATK`);
+  if (equip.bonusDefense > 0) bonuses.push(`+${equip.bonusDefense} DEF`);
+  if (equip.bonusSpeed > 0) bonuses.push(`+${equip.bonusSpeed} SPD`);
+  if (equip.bonusCritChance > 0) bonuses.push(`+${equip.bonusCritChance}% CRIT`);
+  if (equip.bonusCritDamage > 0) bonuses.push(`+${equip.bonusCritDamage}% CRIT DMG`);
+  
+  return bonuses.length > 0 ? bonuses.join(", ") : "Nenhum bonus";
+}
+
+/**
+ * Retorna texto de equipável
+ */
+export function getEquipableText(equip: Equipment): string {
+  switch (equip.equipableType) {
+    case "character":
+      return `⭐ ${equip.equipableTarget}`;
+    case "role":
+      return `🎯 ${equip.equipableTarget?.toUpperCase()}`;
+    case "universal":
+      return "🌟 Universal (Todos)";
+    default:
+      return "❓ Desconhecido";
+  }
+}
+
+/**
+ * Embed de detalhes de equipamento
+ */
+export function createEquipmentDetailsEmbed(equip: Equipment): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle(`⚔️ ${equip.name}`)
+    .setColor(RARITY_COLORS[equip.rarity] || 0x95a5a6)
+    .setDescription(equip.description || "Sem descrição");
+
+  // Raridade e Equipável
+  embed.addFields(
+    {
+      name: "📊 Informações",
+      value: `**Raridade:** ${RARITY_NAMES[equip.rarity] || equip.rarity}\n**Equipável:** ${getEquipableText(equip)}`,
+      inline: true
+    },
+    {
+      name: "⚡ Bonus de Stats",
+      value: formatEquipmentBonuses(equip),
+      inline: false
+    }
+  );
+
+  // Passiva (se tiver)
+  if (equip.passiveAbility) {
+    const passive = equip.passiveAbility as any;
+    embed.addFields({
+      name: `🔮 Passiva: ${passive.name || "Sem nome"}`,
+      value: passive.description || "Sem descrição",
+      inline: false
+    });
+  } else {
+    embed.addFields({
+      name: "🔮 Passiva",
+      value: "*Este equipamento não possui passiva*",
+      inline: false
+    });
+  }
+
+  if (equip.imageUrl) {
+    applyEmbedImage(embed, equip.imageUrl);
+  }
+
+  return embed;
+}
+
+/**
+ * Embed de inventário de equipamentos
+ */
+export function createEquipmentInventoryEmbed(
+  userEquipments: Array<UserEquipment & { equipment: Equipment }>,
+  filter: "all" | "equipped" | "available" = "all"
+): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle("🎒 Inventário de Equipamentos")
+    .setColor(0x3498db);
+
+  if (userEquipments.length === 0) {
+    embed.setDescription("❌ Você não possui nenhum equipamento ainda!");
+    return embed;
+  }
+
+  // Agrupa por raridade
+  const grouped: Record<string, typeof userEquipments> = {};
+  
+  for (const item of userEquipments) {
+    const rarity = item.equipment.rarity;
+    if (!grouped[rarity]) grouped[rarity] = [];
+    grouped[rarity].push(item);
+  }
+
+  // Ordena por raridade (mítico -> comum)
+  const sortedRarities = Object.keys(grouped).sort((a, b) => {
+    return (RARITY_PRIORITY[b] || 0) - (RARITY_PRIORITY[a] || 0);
+  });
+
+  let description = `**Total:** ${userEquipments.length} equipamento(s)\n\n`;
+
+  for (const rarity of sortedRarities) {
+    const items = grouped[rarity];
+    description += `**${RARITY_NAMES[rarity] || rarity}** (${items.length}):\n`;
+    
+    for (const item of items.slice(0, 5)) { // Max 5 por raridade
+      const equip = item.equipment;
+      const bonuses = formatEquipmentBonuses(equip);
+      description += `• **${equip.name}** - ${bonuses}\n`;
+      description += `  └─ Equipável: ${getEquipableText(equip)}\n`;
+    }
+    
+    if (items.length > 5) {
+      description += `  *...e mais ${items.length - 5} equipamento(s)*\n`;
+    }
+    
+    description += "\n";
+  }
+
+  embed.setDescription(description);
+  embed.setFooter({ text: "Use /equipamento equipar para equipar um item" });
+
+  return embed;
+}
+
+/**
+ * Embed de catálogo de equipamentos
+ */
+export function createEquipmentCatalogEmbed(
+  equipments: Equipment[],
+  page: number = 1,
+  pageSize: number = 10
+): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle("📚 Catálogo de Equipamentos")
+    .setColor(0xe67e22);
+
+  if (equipments.length === 0) {
+    embed.setDescription("❌ Nenhum equipamento encontrado com esses filtros!");
+    return embed;
+  }
+
+  const totalPages = Math.ceil(equipments.length / pageSize);
+  const startIdx = (page - 1) * pageSize;
+  const endIdx = startIdx + pageSize;
+  const pageItems = equipments.slice(startIdx, endIdx);
+
+  let description = `**Total:** ${equipments.length} equipamento(s)\n`;
+  description += `**Página:** ${page}/${totalPages}\n\n`;
+
+  for (const equip of pageItems) {
+    const rarityName = RARITY_NAMES[equip.rarity] || equip.rarity;
+    const bonuses = formatEquipmentBonuses(equip);
+    const equipable = getEquipableText(equip);
+    const hasPassive = equip.passiveAbility ? "✨" : "";
+    
+    description += `**[${rarityName}] ${equip.name}** ${hasPassive}\n`;
+    description += `└─ ${bonuses}\n`;
+    description += `└─ ${equipable}\n\n`;
+  }
+
+  embed.setDescription(description);
+  embed.setFooter({ text: "Use /equipamento info <nome> para ver detalhes completos" });
+
+  return embed;
+}
+
+/**
+ * Embed de equipamento equipado com sucesso
+ */
+export function createEquipmentEquippedEmbed(
+  characterName: string,
+  equip: Equipment
+): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle("✅ Equipamento Equipado!")
+    .setColor(0x2ecc71)
+    .setDescription(
+      `**${equip.name}** foi equipado em **${characterName}**!`
+    );
+
+  embed.addFields(
+    {
+      name: "⚡ Bonus de Stats",
+      value: formatEquipmentBonuses(equip),
+      inline: false
+    }
+  );
+
+  if (equip.passiveAbility) {
+    const passive = equip.passiveAbility as any;
+    embed.addFields({
+      name: `🔮 Passiva Adicionada`,
+      value: `**${passive.name || "Sem nome"}**\n${passive.description || "Sem descrição"}`,
+      inline: false
+    });
+  }
+
+  if (equip.imageUrl) {
+    applyEmbedImage(embed, equip.imageUrl);
+  }
+
+  return embed;
+}
+
+/**
+ * Embed de equipamento removido
+ */
+export function createEquipmentUnequippedEmbed(characterName: string, equipName: string): EmbedBuilder {
+  return new EmbedBuilder()
+    .setTitle("🔓 Equipamento Removido")
+    .setColor(0x95a5a6)
+    .setDescription(`**${equipName}** foi removido de **${characterName}**.`);
+}
