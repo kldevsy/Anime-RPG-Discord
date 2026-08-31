@@ -1,376 +1,951 @@
-import { and, desc, eq } from "drizzle-orm";
-import { db, economyTransactions, raidParticipants, raids, users } from "@workspace/db";
-import { BattleEngine } from "../battle/BattleEngine";
-import { SkillManager } from "../battle/SkillManager";
-import type { Combatant } from "../battle/BattleState";
-import { getOrCreateUser, getProfile, getTeam } from "./PhaseOneService";
+import { db } from "@workspace/db";
+import {
+  raidInstances,
+  raidInstanceParticipants,
+  raidTeamMembers,
+  raidCompletions,
+  raidLeaderboard,
+  raidFirstClears,
+  users,
+  userCharacters,
+  characters,
+  characterEquipped,
+  equipment,
+  userEquipment,
+} from "@workspace/db/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { RAID_CATALOG, getRaidById, type RaidMap } from "@workspace/db/data/raid-catalog";
+import { logger } from "../lib/logger";
+import { RaidBattleEngine, createRaidFighterFromCharacter } from "./RaidBattleEngine";
 
-export class RaidServiceError extends Error {}
+type RaidDifficulty = "normal" | "hard" | "nightmare";
+type RaidStatus = "waiting" | "in_progress" | "completed" | "failed" | "expired";
 
-export interface RaidItem {
-  id: string;
-  name: string;
-  description: string;
-  bossName: string;
-  currentHp: number;
-  maxHp: number;
-  bossAttack: number;
-  bossDefense: number;
-  bossSpeed: number;
-  bossPhases: number;
-  enrageRound: number;
-  rewardGold: number;
-  rewardGems: number;
-  active: number;
-  status: string;
+interface CreateRaidOptions {
+  leaderId: string;
+  raidMapId: string;
+  difficulty: RaidDifficulty;
 }
 
-export interface RaidLeaderboardEntry {
-  rank: number;
-  discordId: string;
-  username: string;
-  damageDealt: number;
-  attempts: number;
-}
-
-export const MEMORY_RAIDS: RaidItem[] = [
-  {
-    id: "r1000000-0000-4000-8000-000000000001",
-    name: "Raid Global: Kaido das Cem Feras",
-    description: "Derrote a criatura mais forte do mundo antes que ele destrua a terra sagrada.",
-    bossName: "Kaido Forma Dragão",
-    currentHp: 100000,
-    maxHp: 100000,
-    bossAttack: 350,
-    bossDefense: 180,
-    bossSpeed: 120,
-    bossPhases: 3,
-    enrageRound: 6,
-    rewardGold: 2000,
-    rewardGems: 500,
-    active: 1,
-    status: "active",
-  },
-  {
-    id: "r1000000-0000-4000-8000-000000000002",
-    name: "Raid de Guilda: Madara Uchiha",
-    description: "O lendário shinobi despertou com o Susanoo Perfeito.",
-    bossName: "Madara Susanoo",
-    currentHp: 150000,
-    maxHp: 150000,
-    bossAttack: 400,
-    bossDefense: 200,
-    bossSpeed: 125,
-    bossPhases: 3,
-    enrageRound: 5,
-    rewardGold: 3000,
-    rewardGems: 800,
-    active: 1,
-    status: "active",
-  },
-];
-
-const memoryRaidParticipants: Array<{
-  id: string;
-  raidId: string;
+interface JoinRaidOptions {
   userId: string;
-  discordId: string;
-  username: string;
-  damageDealt: number;
-  attempts: number;
-  lastAttemptAt: Date;
-}> = [];
-
-export async function listRaids(): Promise<RaidItem[]> {
-  if (!db) {
-    return MEMORY_RAIDS.filter((r) => r.active === 1);
-  }
-  return db.select().from(raids).where(eq(raids.active, 1)) as unknown as RaidItem[];
+  roomCode: string;
 }
 
-export async function getRaidById(raidId: string): Promise<RaidItem | null> {
-  if (!db) {
-    return MEMORY_RAIDS.find((r) => r.id === raidId && r.active === 1) ?? null;
-  }
-  const raidRecord = await db.query.raids.findFirst({
-    where: and(eq(raids.id, raidId), eq(raids.active, 1)),
-  });
-  return (raidRecord as unknown as RaidItem) ?? null;
+interface AddCharacterOptions {
+  raidInstanceId: string;
+  userId: string;
+  userCharacterId: string;
 }
 
-export async function challengeRaid(discordId: string, raidId: string) {
-  const raidItem = await getRaidById(raidId);
-  if (!raidItem) throw new RaidServiceError("Raid boss not found or inactive.");
-  if (raidItem.currentHp <= 0 || raidItem.status !== "active") {
-    throw new RaidServiceError("Raid boss is already defeated!");
+interface RaidRewards {
+  gold: number;
+  gems: number;
+  masteryXp: number;
+  tickets: number;
+  equipment: Array<{ id: string; name: string; rarity: string }>;
+  lootBoxes: Array<{ type: string }>;
+}
+
+/**
+ * ========================================
+ * RAID SERVICE
+ * ========================================
+ * 
+ * Gerencia sistema cooperativo de raids:
+ * - Criar e entrar em salas
+ * - Adicionar personagens
+ * - Executar batalhas
+ * - Distribuir recompensas
+ * - Leaderboard
+ */
+class RaidService {
+  
+  /**
+   * Gera código único de sala (RAID-XXXX)
+   */
+  private generateRoomCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem I, O, 0, 1
+    let code = "RAID-";
+    for (let i = 0; i < 4; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
   }
 
-  if (!db) {
-    let profile = await getProfile(discordId);
-    if (!profile) {
-      await getOrCreateUser(discordId, discordId);
-      profile = await getProfile(discordId);
-    }
-    if (!profile) throw new RaidServiceError("Profile not found.");
+  /**
+   * Calcula tempo de expiração (15 minutos)
+   */
+  private getExpirationTime(): Date {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 15);
+    return now;
+  }
 
-    let teamData = await getTeam(discordId);
-    if (!teamData || !teamData.members.length) {
-      if (profile.collection.length > 0) {
-        const { replaceTeam } = await import("./PhaseOneService");
-        await replaceTeam(discordId, "Equipe Principal", profile.collection.slice(0, 5).map((c) => c.ownedId));
-        teamData = await getTeam(discordId);
-      }
+  /**
+   * Verifica se raid map existe e dificuldade é válida
+   */
+  private validateRaidMap(mapId: string, difficulty: RaidDifficulty): RaidMap {
+    const raidMap = getRaidById(mapId);
+    
+    if (!raidMap) {
+      throw new Error(`Raid map '${mapId}' não encontrado!`);
     }
-    if (!teamData || !teamData.members.length) throw new RaidServiceError("Create a team before challenging raid bosses.");
+    
+    if (!raidMap.availableDifficulties.includes(difficulty)) {
+      throw new Error(
+        `Dificuldade '${difficulty}' não disponível para ${raidMap.name}. ` +
+        `Disponíveis: ${raidMap.availableDifficulties.join(", ")}`
+      );
+    }
+    
+    return raidMap;
+  }
 
-    const player: Combatant[] = teamData.members.map(({ ownedId, level, character }) => {
-      const maxHp = character.baseHp + level * 40;
-      return SkillManager.createCombatant({
-        id: ownedId,
-        name: character.name,
-        role: character.role,
-        maxHp,
-        hp: maxHp,
-        attack: character.baseAttack + level * 8,
-        defense: character.baseDefense + level * 5,
-        speed: character.baseSpeed,
-        critChance: 15,
-        critDamage: 1.5,
-        energy: 0,
-        alive: true,
-        passive: character.passive ?? undefined,
-      });
+  /**
+   * ========================================
+   * CRIAR RAID
+   * ========================================
+   */
+  async createRaid(options: CreateRaidOptions) {
+    const { leaderId, raidMapId, difficulty } = options;
+    
+    // Validar raid map
+    const raidMap = this.validateRaidMap(raidMapId, difficulty);
+    
+    // Verificar se usuário existe
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.discordId, leaderId))
+      .limit(1);
+    
+    if (!user) {
+      throw new Error("Usuário não encontrado!");
+    }
+    
+    // Verificar se já tem raid ativa
+    const [existingRaid] = await db
+      .select()
+      .from(raidInstances)
+      .innerJoin(
+        raidInstanceParticipants,
+        eq(raidInstances.id, raidInstanceParticipants.raidInstanceId)
+      )
+      .where(
+        and(
+          eq(raidInstanceParticipants.userId, user.id),
+          sql`${raidInstances.status} IN ('waiting', 'in_progress')`
+        )
+      )
+      .limit(1);
+    
+    if (existingRaid) {
+      throw new Error(
+        "Você já está em uma raid ativa! " +
+        `Use \`/raid sair\` ou aguarde ela expirar.`
+      );
+    }
+    
+    // Gerar código único
+    let roomCode = this.generateRoomCode();
+    let attempts = 0;
+    
+    while (attempts < 10) {
+      const [existing] = await db
+        .select()
+        .from(raidInstances)
+        .where(eq(raidInstances.roomCode, roomCode))
+        .limit(1);
+      
+      if (!existing) break;
+      
+      roomCode = this.generateRoomCode();
+      attempts++;
+    }
+    
+    if (attempts >= 10) {
+      throw new Error("Erro ao gerar código único. Tente novamente.");
+    }
+    
+    // Criar instância da raid
+    const [raidInstance] = await db
+      .insert(raidInstances)
+      .values({
+        leaderId: user.id,
+        raidMapId,
+        difficulty,
+        roomCode,
+        status: "waiting",
+        maxPlayers: 4,
+        currentWave: 0,
+        revivesUsed: 0,
+        expiresAt: this.getExpirationTime(),
+      })
+      .returning();
+    
+    // Adicionar líder como participante
+    await db.insert(raidInstanceParticipants).values({
+      raidInstanceId: raidInstance.id,
+      userId: user.id,
+      isReady: false,
+      contribution: 0,
     });
-
-    const enemy: Combatant[] = [
-      SkillManager.createCombatant({
-        id: raidItem.id,
-        name: raidItem.bossName,
-        role: "tank",
-        maxHp: raidItem.maxHp,
-        hp: raidItem.currentHp,
-        attack: raidItem.bossAttack,
-        defense: raidItem.bossDefense,
-        speed: raidItem.bossSpeed,
-        critChance: 10,
-        critDamage: 1.5,
-        energy: 0,
-        alive: true,
-        isBoss: true,
-        currentPhase: 1,
-        maxPhases: raidItem.bossPhases,
-        enrageRound: raidItem.enrageRound,
-      }),
-    ];
-
-    const result = new BattleEngine(player, enemy).run();
-
-    let damageDealt = 0;
-    for (const action of result.actions) {
-      if (player.some((p) => p.id === action.actorId) && action.amount) {
-        damageDealt += action.amount;
-      }
-    }
-    if (damageDealt === 0 && result.phase === "VICTORY") {
-      damageDealt = Math.min(raidItem.currentHp, 5000);
-    }
-
-    raidItem.currentHp = Math.max(0, raidItem.currentHp - damageDealt);
-    if (raidItem.currentHp === 0) {
-      raidItem.status = "defeated";
-    }
-
-    const goldEarned = Math.floor(raidItem.rewardGold + damageDealt * 0.1);
-    const gemsEarned = damageDealt >= 1000 ? Math.floor(raidItem.rewardGems * 0.5) : 10;
-
-    profile.user.gold += goldEarned;
-    profile.user.gems += gemsEarned;
-
-    let participant = memoryRaidParticipants.find((p) => p.raidId === raidId && p.userId === profile.user.id);
-    if (!participant) {
-      participant = {
-        id: crypto.randomUUID(),
-        raidId,
-        userId: profile.user.id,
-        discordId: profile.user.discordId,
-        username: profile.user.username,
-        damageDealt,
-        attempts: 1,
-        lastAttemptAt: new Date(),
-      };
-      memoryRaidParticipants.push(participant);
-    } else {
-      participant.damageDealt += damageDealt;
-      participant.attempts += 1;
-      participant.lastAttemptAt = new Date();
-    }
-
+    
+    logger.info(`[RAID] Created raid ${roomCode} - Map: ${raidMap.name}, Difficulty: ${difficulty}`);
+    
     return {
-      result,
-      damageDealt,
-      raidStatus: { currentHp: raidItem.currentHp, maxHp: raidItem.maxHp, status: raidItem.status },
-      rewards: { gold: goldEarned, gems: gemsEarned },
+      raidInstance,
+      raidMap,
+      roomCode,
     };
   }
 
-  const database = db;
-  let user = await database.query.users.findFirst({ where: eq(users.discordId, discordId) });
-  if (!user) {
-    await getOrCreateUser(discordId, discordId);
-    user = await database.query.users.findFirst({ where: eq(users.discordId, discordId) });
-  }
-  if (!user) throw new RaidServiceError("Profile not found.");
-
-  let teamData = await getTeam(discordId);
-  if (!teamData || !teamData.members.length) {
-    const profile = await getProfile(discordId);
-    if (profile && profile.collection.length > 0) {
-      const { replaceTeam } = await import("./PhaseOneService");
-      await replaceTeam(discordId, "Equipe Principal", profile.collection.slice(0, 5).map((c) => c.ownedId));
-      teamData = await getTeam(discordId);
+  /**
+   * ========================================
+   * ENTRAR NA RAID
+   * ========================================
+   */
+  async joinRaid(options: JoinRaidOptions) {
+    const { userId, roomCode } = options;
+    
+    // Buscar raid
+    const [raidInstance] = await db
+      .select()
+      .from(raidInstances)
+      .where(
+        and(
+          eq(raidInstances.roomCode, roomCode.toUpperCase()),
+          eq(raidInstances.status, "waiting")
+        )
+      )
+      .limit(1);
+    
+    if (!raidInstance) {
+      throw new Error(
+        `Raid com código \`${roomCode}\` não encontrada ou já iniciada!`
+      );
     }
-  }
-  if (!teamData || !teamData.members.length) throw new RaidServiceError("Create a team before challenging raid bosses.");
-
-  const player: Combatant[] = teamData.members.map(({ ownedId, level, character }) => {
-    const maxHp = character.baseHp + level * 40;
-    return SkillManager.createCombatant({
-      id: ownedId,
-      name: character.name,
-      role: character.role,
-      maxHp,
-      hp: maxHp,
-      attack: character.baseAttack + level * 8,
-      defense: character.baseDefense + level * 5,
-      speed: character.baseSpeed,
-      critChance: 15,
-      critDamage: 1.5,
-      energy: 0,
-      alive: true,
-      passive: character.passive ?? undefined,
-    });
-  });
-
-  const enemy: Combatant[] = [
-    SkillManager.createCombatant({
-      id: raidItem.id,
-      name: raidItem.bossName,
-      role: "tank",
-      maxHp: raidItem.maxHp,
-      hp: raidItem.currentHp,
-      attack: raidItem.bossAttack,
-      defense: raidItem.bossDefense,
-      speed: raidItem.bossSpeed,
-      critChance: 10,
-      critDamage: 1.5,
-      energy: 0,
-      alive: true,
-      isBoss: true,
-      currentPhase: 1,
-      maxPhases: raidItem.bossPhases,
-      enrageRound: raidItem.enrageRound,
-    }),
-  ];
-
-  const result = new BattleEngine(player, enemy).run();
-
-  let damageDealt = 0;
-  for (const action of result.actions) {
-    if (player.some((p) => p.id === action.actorId) && action.amount) {
-      damageDealt += action.amount;
+    
+    // Verificar expiração
+    if (new Date() > raidInstance.expiresAt) {
+      await db
+        .update(raidInstances)
+        .set({ status: "expired" })
+        .where(eq(raidInstances.id, raidInstance.id));
+      
+      throw new Error("Esta raid expirou! Crie uma nova.");
     }
-  }
-  if (damageDealt === 0 && result.phase === "VICTORY") {
-    damageDealt = Math.min(raidItem.currentHp, 5000);
-  }
-
-  const newHp = Math.max(0, raidItem.currentHp - damageDealt);
-  const newStatus = newHp === 0 ? "defeated" : "active";
-
-  const goldEarned = Math.floor(raidItem.rewardGold + damageDealt * 0.1);
-  const gemsEarned = damageDealt >= 1000 ? Math.floor(raidItem.rewardGems * 0.5) : 10;
-
-  await database.transaction(async (tx) => {
-    await tx.update(raids).set({ currentHp: newHp, status: newStatus }).where(eq(raids.id, raidItem.id));
-
-    await tx.update(users).set({
-      gold: user.gold + goldEarned,
-      gems: user.gems + gemsEarned,
-      updatedAt: new Date(),
-    }).where(eq(users.id, user.id));
-
-    await tx.insert(economyTransactions).values({
+    
+    // Buscar usuário
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.discordId, userId))
+      .limit(1);
+    
+    if (!user) {
+      throw new Error("Usuário não encontrado!");
+    }
+    
+    // Verificar se já está na raid
+    const [existing] = await db
+      .select()
+      .from(raidInstanceParticipants)
+      .where(
+        and(
+          eq(raidInstanceParticipants.raidInstanceId, raidInstance.id),
+          eq(raidInstanceParticipants.userId, user.id)
+        )
+      )
+      .limit(1);
+    
+    if (existing) {
+      throw new Error("Você já está nesta raid!");
+    }
+    
+    // Contar participantes atuais
+    const participants = await db
+      .select()
+      .from(raidInstanceParticipants)
+      .where(eq(raidInstanceParticipants.raidInstanceId, raidInstance.id));
+    
+    if (participants.length >= raidInstance.maxPlayers) {
+      throw new Error("Raid está cheia! (4/4 jogadores)");
+    }
+    
+    // Adicionar participante
+    await db.insert(raidInstanceParticipants).values({
+      raidInstanceId: raidInstance.id,
       userId: user.id,
-      currency: "gold",
-      amount: goldEarned,
-      type: "earn",
-      source: "raid",
-      referenceId: `raid:${raidItem.id}:${Date.now()}`,
+      isReady: false,
+      contribution: 0,
     });
-
-    const existingParticipant = await tx.query.raidParticipants.findFirst({
-      where: and(eq(raidParticipants.raidId, raidItem.id), eq(raidParticipants.userId, user.id)),
-    });
-
-    if (!existingParticipant) {
-      await tx.insert(raidParticipants).values({
-        raidId: raidItem.id,
-        userId: user.id,
-        damageDealt,
-        attempts: 1,
-        lastAttemptAt: new Date(),
-      });
-    } else {
-      await tx.update(raidParticipants).set({
-        damageDealt: existingParticipant.damageDealt + damageDealt,
-        attempts: existingParticipant.attempts + 1,
-        lastAttemptAt: new Date(),
-      }).where(eq(raidParticipants.id, existingParticipant.id));
-    }
-  });
-
-  return {
-    result,
-    damageDealt,
-    raidStatus: { currentHp: newHp, maxHp: raidItem.maxHp, status: newStatus },
-    rewards: { gold: goldEarned, gems: gemsEarned },
-  };
-}
-
-export async function getRaidLeaderboard(raidId: string, limit = 10): Promise<RaidLeaderboardEntry[]> {
-  if (!db) {
-    const participants = memoryRaidParticipants
-      .filter((p) => p.raidId === raidId)
-      .sort((a, b) => b.damageDealt - a.damageDealt)
-      .slice(0, limit);
-
-    return participants.map((p, index) => ({
-      rank: index + 1,
-      discordId: p.discordId,
-      username: p.username,
-      damageDealt: p.damageDealt,
-      attempts: p.attempts,
-    }));
+    
+    logger.info(`[RAID] User ${userId} joined raid ${roomCode}`);
+    
+    return {
+      raidInstance,
+      participantCount: participants.length + 1,
+    };
   }
 
-  const topParticipants = await db
-    .select({
-      discordId: users.discordId,
-      username: users.username,
-      damageDealt: raidParticipants.damageDealt,
-      attempts: raidParticipants.attempts,
-    })
-    .from(raidParticipants)
-    .innerJoin(users, eq(raidParticipants.userId, users.id))
-    .where(eq(raidParticipants.raidId, raidId))
-    .orderBy(desc(raidParticipants.damageDealt))
-    .limit(limit);
+  /**
+   * ========================================
+   * ADICIONAR PERSONAGEM À RAID
+   * ========================================
+   */
+  async addCharacter(options: AddCharacterOptions) {
+    const { raidInstanceId, userId, userCharacterId } = options;
+    
+    // Buscar raid
+    const [raidInstance] = await db
+      .select()
+      .from(raidInstances)
+      .where(eq(raidInstances.id, raidInstanceId))
+      .limit(1);
+    
+    if (!raidInstance) {
+      throw new Error("Raid não encontrada!");
+    }
+    
+    if (raidInstance.status !== "waiting") {
+      throw new Error("Não é possível adicionar personagens após iniciar!");
+    }
+    
+    // Buscar usuário
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.discordId, userId))
+      .limit(1);
+    
+    if (!user) {
+      throw new Error("Usuário não encontrado!");
+    }
+    
+    // Verificar se é participante
+    const [participant] = await db
+      .select()
+      .from(raidInstanceParticipants)
+      .where(
+        and(
+          eq(raidInstanceParticipants.raidInstanceId, raidInstanceId),
+          eq(raidInstanceParticipants.userId, user.id)
+        )
+      )
+      .limit(1);
+    
+    if (!participant) {
+      throw new Error("Você não está nesta raid!");
+    }
+    
+    // Buscar personagem do usuário
+    const [userChar] = await db
+      .select({
+        userChar: userCharacters,
+        char: characters,
+      })
+      .from(userCharacters)
+      .innerJoin(characters, eq(userCharacters.characterId, characters.id))
+      .where(eq(userCharacters.id, userCharacterId))
+      .limit(1);
+    
+    if (!userChar || userChar.userChar.userId !== user.id) {
+      throw new Error("Personagem não encontrado ou não pertence a você!");
+    }
+    
+    // Verificar se personagem já está na raid
+    const [existing] = await db
+      .select()
+      .from(raidTeamMembers)
+      .where(
+        and(
+          eq(raidTeamMembers.raidInstanceId, raidInstanceId),
+          eq(raidTeamMembers.userCharacterId, userCharacterId)
+        )
+      )
+      .limit(1);
+    
+    if (existing) {
+      throw new Error("Este personagem já está na equipe!");
+    }
+    
+    // Contar personagens atuais
+    const teamMembers = await db
+      .select()
+      .from(raidTeamMembers)
+      .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId));
+    
+    if (teamMembers.length >= 4) {
+      throw new Error("Equipe já está completa! (4/4 personagens)");
+    }
+    
+    // Calcular HP atual (base + level + maestria)
+    const baseHp = userChar.char.baseHp;
+    const level = userChar.userChar.level;
+    const masteryLevel = userChar.userChar.masteryLevel || 1;
+    
+    // Formula: base + (level * 10) + (maestria boost)
+    const masteryBoost = Math.floor(baseHp * ((masteryLevel - 1) * 0.05));
+    const currentHp = baseHp + (level * 10) + masteryBoost;
+    
+    // Adicionar personagem
+    const position = teamMembers.length + 1;
+    
+    await db.insert(raidTeamMembers).values({
+      raidInstanceId,
+      participantId: participant.id,
+      userCharacterId,
+      position,
+      isAlive: true,
+      currentHp,
+      damageDone: 0,
+    });
+    
+    // Atualizar contribuição do participante
+    await db
+      .update(raidInstanceParticipants)
+      .set({
+        contribution: sql`${raidInstanceParticipants.contribution} + 1`,
+      })
+      .where(eq(raidInstanceParticipants.id, participant.id));
+    
+    logger.info(`[RAID] Added character ${userChar.char.name} to raid ${raidInstance.roomCode}`);
+    
+    return {
+      character: userChar.char,
+      position,
+      currentTeamSize: teamMembers.length + 1,
+    };
+  }
 
-  return topParticipants.map((p, index) => ({
-    rank: index + 1,
-    discordId: p.discordId,
-    username: p.username,
-    damageDealt: p.damageDealt,
-    attempts: p.attempts,
-  }));
+  /**
+   * ========================================
+   * BUSCAR STATUS DA RAID
+   * ========================================
+   */
+  async getRaidStatus(roomCode: string) {
+    const [raidInstance] = await db
+      .select()
+      .from(raidInstances)
+      .where(eq(raidInstances.roomCode, roomCode.toUpperCase()))
+      .limit(1);
+    
+    if (!raidInstance) {
+      throw new Error(`Raid ${roomCode} não encontrada!`);
+    }
+    
+    // Buscar participantes
+    const participants = await db
+      .select({
+        participant: raidInstanceParticipants,
+        user: users,
+      })
+      .from(raidInstanceParticipants)
+      .innerJoin(users, eq(raidInstanceParticipants.userId, users.id))
+      .where(eq(raidInstanceParticipants.raidInstanceId, raidInstance.id));
+    
+    // Buscar personagens do time
+    const teamMembers = await db
+      .select({
+        member: raidTeamMembers,
+        userChar: userCharacters,
+        char: characters,
+        participant: raidInstanceParticipants,
+        user: users,
+      })
+      .from(raidTeamMembers)
+      .innerJoin(userCharacters, eq(raidTeamMembers.userCharacterId, userCharacters.id))
+      .innerJoin(characters, eq(userCharacters.characterId, characters.id))
+      .innerJoin(raidInstanceParticipants, eq(raidTeamMembers.participantId, raidInstanceParticipants.id))
+      .innerJoin(users, eq(raidInstanceParticipants.userId, users.id))
+      .where(eq(raidTeamMembers.raidInstanceId, raidInstance.id))
+      .orderBy(raidTeamMembers.position);
+    
+    // Buscar raid map
+    const raidMap = getRaidById(raidInstance.raidMapId);
+    
+    return {
+      raidInstance,
+      raidMap,
+      participants,
+      teamMembers,
+    };
+  }
+
+  /**
+   * ========================================
+   * CALCULAR RECOMPENSAS
+   * ========================================
+   */
+  private calculateRewards(
+    raidMap: RaidMap,
+    difficulty: RaidDifficulty,
+    participantCount: number,
+    isFirstClear: boolean
+  ): RaidRewards {
+    const baseRewards = raidMap.baseRewards[difficulty];
+    
+    // Random dentro do range
+    const gold = Math.floor(
+      Math.random() * (baseRewards.gold[1] - baseRewards.gold[0] + 1) + baseRewards.gold[0]
+    );
+    const gems = Math.floor(
+      Math.random() * (baseRewards.gems[1] - baseRewards.gems[0] + 1) + baseRewards.gems[0]
+    );
+    const masteryXp = Math.floor(
+      Math.random() * (baseRewards.masteryXp[1] - baseRewards.masteryXp[0] + 1) + baseRewards.masteryXp[0]
+    );
+    const tickets = Math.floor(
+      Math.random() * (baseRewards.tickets[1] - baseRewards.tickets[0] + 1) + baseRewards.tickets[0]
+    );
+    
+    // Bônus de grupo
+    const groupBonus = participantCount === 2 ? 1.1 : participantCount === 3 ? 1.25 : participantCount === 4 ? 1.5 : 1.0;
+    
+    // Bônus primeira clear
+    const firstClearBonus = isFirstClear
+      ? difficulty === "normal"
+        ? 2
+        : difficulty === "hard"
+        ? 3
+        : 5
+      : 1;
+    
+    const finalGold = Math.floor(gold * groupBonus * firstClearBonus);
+    const finalGems = Math.floor(gems * groupBonus * firstClearBonus);
+    const finalMasteryXp = Math.floor(masteryXp * groupBonus * firstClearBonus);
+    const finalTickets = Math.floor(tickets * groupBonus * firstClearBonus);
+    
+    // Equipamentos especiais (drops)
+    const equipment: Array<{ id: string; name: string; rarity: string }> = [];
+    for (const drop of raidMap.specialDrops) {
+      const roll = Math.random() * 100;
+      if (roll < drop.dropChance * groupBonus) {
+        equipment.push({
+          id: `equipment_${drop.equipmentName.toLowerCase().replace(/\s+/g, "_")}`,
+          name: drop.equipmentName,
+          rarity: drop.rarity,
+        });
+      }
+    }
+    
+    // Loot boxes
+    const lootBoxes: Array<{ type: string }> = [];
+    const lootBoxDrops = raidMap.lootBoxDrops[difficulty];
+    
+    for (const drop of lootBoxDrops) {
+      const roll = Math.random() * 100;
+      if (roll < drop.chance) {
+        lootBoxes.push({ type: drop.type });
+      }
+    }
+    
+    return {
+      gold: finalGold,
+      gems: finalGems,
+      masteryXp: finalMasteryXp,
+      tickets: finalTickets,
+      equipment,
+      lootBoxes,
+    };
+  }
+
+  /**
+   * ========================================
+   * COMPLETAR RAID (VITÓRIA)
+   * ========================================
+   */
+  async completeRaid(raidInstanceId: string, clearTimeSeconds: number) {
+    const [raidInstance] = await db
+      .select()
+      .from(raidInstances)
+      .where(eq(raidInstances.id, raidInstanceId))
+      .limit(1);
+    
+    if (!raidInstance) {
+      throw new Error("Raid não encontrada!");
+    }
+    
+    const raidMap = getRaidById(raidInstance.raidMapId);
+    if (!raidMap) {
+      throw new Error("Raid map não encontrado!");
+    }
+    
+    // Buscar participantes
+    const participants = await db
+      .select({
+        participant: raidInstanceParticipants,
+        user: users,
+      })
+      .from(raidInstanceParticipants)
+      .innerJoin(users, eq(raidInstanceParticipants.userId, users.id))
+      .where(eq(raidInstanceParticipants.raidInstanceId, raidInstanceId));
+    
+    // Buscar team members para calcular dano total
+    const teamMembers = await db
+      .select()
+      .from(raidTeamMembers)
+      .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId));
+    
+    const totalDamage = teamMembers.reduce((sum, member) => sum + member.damageDone, 0);
+    const deathCount = teamMembers.filter((member) => !member.isAlive).length;
+    
+    // Calcular recompensas para cada participante
+    const rewardsByUser: Record<string, RaidRewards> = {};
+    
+    for (const { user } of participants) {
+      // Verificar primeira clear
+      const [firstClear] = await db
+        .select()
+        .from(raidFirstClears)
+        .where(
+          and(
+            eq(raidFirstClears.userId, user.id),
+            eq(raidFirstClears.raidMapId, raidInstance.raidMapId),
+            eq(raidFirstClears.difficulty, raidInstance.difficulty)
+          )
+        )
+        .limit(1);
+      
+      const isFirstClear = !firstClear;
+      
+      // Calcular recompensas
+      const rewards = this.calculateRewards(
+        raidMap,
+        raidInstance.difficulty,
+        participants.length,
+        isFirstClear
+      );
+      
+      rewardsByUser[user.id] = rewards;
+      
+      // Aplicar recompensas
+      await db
+        .update(users)
+        .set({
+          gold: sql`${users.gold} + ${rewards.gold}`,
+          gems: sql`${users.gems} + ${rewards.gems}`,
+          tickets: sql`${users.tickets} + ${rewards.tickets}`,
+        })
+        .where(eq(users.id, user.id));
+      
+      // Registrar primeira clear
+      if (isFirstClear) {
+        await db.insert(raidFirstClears).values({
+          userId: user.id,
+          raidMapId: raidInstance.raidMapId,
+          difficulty: raidInstance.difficulty,
+        });
+      }
+      
+      // Atualizar/criar entrada no leaderboard
+      const [leaderboardEntry] = await db
+        .select()
+        .from(raidLeaderboard)
+        .where(
+          and(
+            eq(raidLeaderboard.userId, user.id),
+            eq(raidLeaderboard.raidMapId, raidInstance.raidMapId),
+            eq(raidLeaderboard.difficulty, raidInstance.difficulty)
+          )
+        )
+        .limit(1);
+      
+      if (leaderboardEntry) {
+        // Atualizar se tempo for melhor
+        if (clearTimeSeconds < leaderboardEntry.bestTime) {
+          await db
+            .update(raidLeaderboard)
+            .set({
+              bestTime: clearTimeSeconds,
+              totalClears: sql`${raidLeaderboard.totalClears} + 1`,
+              fastestClearDate: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(raidLeaderboard.id, leaderboardEntry.id));
+        } else {
+          await db
+            .update(raidLeaderboard)
+            .set({
+              totalClears: sql`${raidLeaderboard.totalClears} + 1`,
+              updatedAt: new Date(),
+            })
+            .where(eq(raidLeaderboard.id, leaderboardEntry.id));
+        }
+      } else {
+        // Criar nova entrada
+        await db.insert(raidLeaderboard).values({
+          userId: user.id,
+          raidMapId: raidInstance.raidMapId,
+          difficulty: raidInstance.difficulty,
+          bestTime: clearTimeSeconds,
+          totalClears: 1,
+        });
+      }
+    }
+    
+    // Registrar completion
+    await db.insert(raidCompletions).values({
+      raidInstanceId,
+      raidMapId: raidInstance.raidMapId,
+      difficulty: raidInstance.difficulty,
+      participants: participants.map(({ user }) => user.id),
+      clearTime: clearTimeSeconds,
+      totalDamage,
+      deathCount,
+      rewards: rewardsByUser,
+    });
+    
+    // Atualizar status da raid
+    await db
+      .update(raidInstances)
+      .set({
+        status: "completed",
+        completedAt: new Date(),
+      })
+      .where(eq(raidInstances.id, raidInstanceId));
+    
+    logger.info(`[RAID] Completed raid ${raidInstance.roomCode} - Time: ${clearTimeSeconds}s`);
+    
+    return {
+      rewards: rewardsByUser,
+      clearTime: clearTimeSeconds,
+      totalDamage,
+      deathCount,
+    };
+  }
+
+  /**
+   * ========================================
+   * BUSCAR LEADERBOARD
+   * ========================================
+   */
+  async getLeaderboard(raidMapId: string, difficulty: RaidDifficulty, limit = 10) {
+    const entries = await db
+      .select({
+        entry: raidLeaderboard,
+        user: users,
+      })
+      .from(raidLeaderboard)
+      .innerJoin(users, eq(raidLeaderboard.userId, users.id))
+      .where(
+        and(
+          eq(raidLeaderboard.raidMapId, raidMapId),
+          eq(raidLeaderboard.difficulty, difficulty)
+        )
+      )
+      .orderBy(raidLeaderboard.bestTime)
+      .limit(limit);
+    
+    return entries;
+  }
+
+  /**
+   * ========================================
+   * SAIR DA RAID
+   * ========================================
+   */
+  async leaveRaid(userId: string, raidInstanceId: string) {
+    // Buscar usuário
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.discordId, userId))
+      .limit(1);
+    
+    if (!user) {
+      throw new Error("Usuário não encontrado!");
+    }
+    
+    // Buscar raid
+    const [raidInstance] = await db
+      .select()
+      .from(raidInstances)
+      .where(eq(raidInstances.id, raidInstanceId))
+      .limit(1);
+    
+    if (!raidInstance) {
+      throw new Error("Raid não encontrada!");
+    }
+    
+    // Se líder sair, cancelar raid
+    if (raidInstance.leaderId === user.id) {
+      await db
+        .update(raidInstances)
+        .set({ status: "expired" })
+        .where(eq(raidInstances.id, raidInstanceId));
+      
+      logger.info(`[RAID] Leader left, raid ${raidInstance.roomCode} cancelled`);
+      
+      return { cancelled: true };
+    }
+    
+    // Remover participante (cascade vai deletar personagens)
+    await db
+      .delete(raidInstanceParticipants)
+      .where(
+        and(
+          eq(raidInstanceParticipants.raidInstanceId, raidInstanceId),
+          eq(raidInstanceParticipants.userId, user.id)
+        )
+      );
+    
+    logger.info(`[RAID] User ${userId} left raid ${raidInstance.roomCode}`);
+    
+    return { cancelled: false };
+  }
+
+  /**
+   * ========================================
+   * LISTAR RAIDS DISPONÍVEIS
+   * ========================================
+   */
+  getAvailableRaids(playerLevel: number) {
+    return RAID_CATALOG.filter((raid) => playerLevel >= raid.minLevel);
+  }
+
+  /**
+   * ========================================
+   * LIMPAR RAIDS EXPIRADAS (Cron job)
+   * ========================================
+   */
+  async cleanupExpiredRaids() {
+    const now = new Date();
+    
+    const result = await db
+      .update(raidInstances)
+      .set({ status: "expired" })
+      .where(
+        and(
+          sql`${raidInstances.expiresAt} < ${now}`,
+          sql`${raidInstances.status} = 'waiting'`
+        )
+      )
+      .returning();
+    
+    if (result.length > 0) {
+      logger.info(`[RAID] Cleaned up ${result.length} expired raids`);
+    }
+    
+    return result.length;
+  }
+
+  /**
+   * ========================================
+   * INICIAR BATALHA DA RAID
+   * ========================================
+   */
+  async startRaidBattle(raidInstanceId: string) {
+    const [raidInstance] = await db
+      .select()
+      .from(raidInstances)
+      .where(eq(raidInstances.id, raidInstanceId))
+      .limit(1);
+    
+    if (!raidInstance) {
+      throw new Error("Raid não encontrada!");
+    }
+    
+    if (raidInstance.status !== "waiting") {
+      throw new Error("Raid já foi iniciada ou finalizada!");
+    }
+    
+    // Buscar raid map
+    const raidMap = getRaidById(raidInstance.raidMapId);
+    if (!raidMap) {
+      throw new Error("Raid map não encontrado!");
+    }
+    
+    // Buscar personagens do time
+    const teamMembers = await db
+      .select({
+        member: raidTeamMembers,
+        userChar: userCharacters,
+        char: characters,
+      })
+      .from(raidTeamMembers)
+      .innerJoin(userCharacters, eq(raidTeamMembers.userCharacterId, userCharacters.id))
+      .innerJoin(characters, eq(userCharacters.characterId, characters.id))
+      .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId))
+      .orderBy(raidTeamMembers.position);
+    
+    if (teamMembers.length !== 4) {
+      throw new Error("Time precisa ter 4 personagens para iniciar!");
+    }
+    
+    // Buscar equipamentos
+    const playerTeam = [];
+    
+    for (const { member, userChar, char } of teamMembers) {
+      // Buscar equipamento equipado
+      const [equipped] = await db
+        .select({
+          equipment: equipment,
+        })
+        .from(characterEquipped)
+        .innerJoin(userEquipment, eq(characterEquipped.userEquipmentId, userEquipment.id))
+        .innerJoin(equipment, eq(userEquipment.equipmentId, equipment.id))
+        .where(eq(characterEquipped.userCharacterId, userChar.id))
+        .limit(1);
+      
+      const fighter = createRaidFighterFromCharacter(
+        userChar,
+        char,
+        equipped?.equipment || null
+      );
+      
+      playerTeam.push(fighter);
+    }
+    
+    // Atualizar status da raid para "em progresso"
+    await db
+      .update(raidInstances)
+      .set({ status: "in_progress" })
+      .where(eq(raidInstances.id, raidInstanceId));
+    
+    // Criar engine de batalha
+    const battleEngine = new RaidBattleEngine(
+      raidMap,
+      raidInstance.difficulty,
+      playerTeam
+    );
+    
+    // Executar raid
+    logger.info(`[RAID] Starting battle for raid ${raidInstance.roomCode}`);
+    const result = await battleEngine.executeRaid();
+    
+    // Atualizar estado dos personagens
+    for (const fighter of playerTeam) {
+      await db
+        .update(raidTeamMembers)
+        .set({
+          isAlive: fighter.isAlive,
+          currentHp: fighter.hp,
+          damageDone: result.damageByCharacter[fighter.id] || 0,
+        })
+        .where(
+          and(
+            eq(raidTeamMembers.raidInstanceId, raidInstanceId),
+            eq(raidTeamMembers.userCharacterId, fighter.id)
+          )
+        );
+    }
+    
+    // Se vitória, completar raid e distribuir recompensas
+    if (result.victory) {
+      await this.completeRaid(raidInstanceId, result.timeElapsed);
+    } else {
+      // Derrota
+      await db
+        .update(raidInstances)
+        .set({ status: "failed" })
+        .where(eq(raidInstances.id, raidInstanceId));
+    }
+    
+    return result;
+  }
 }
+
+export const raidService = new RaidService();

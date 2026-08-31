@@ -34,6 +34,8 @@ import {
   adminRemoveResources,
 } from "../services/AdminService";
 import { lootBoxService } from "../services/LootBoxService";
+import { equipmentService } from "../services/EquipmentService";
+import { handleRaidCommand } from "./raid-handlers";
 import {
   applyEmbedImage,
   createBannersEmbed,
@@ -50,6 +52,11 @@ import {
   createLootBoxOpeningEmbed,
   createLootBoxHistoryEmbed,
   createDailyFreeBoxEmbed,
+  createEquipmentDetailsEmbed,
+  createEquipmentInventoryEmbed,
+  createEquipmentCatalogEmbed,
+  createEquipmentEquippedEmbed,
+  createEquipmentUnequippedEmbed,
 } from "./embeds";
 import type { UltimateDecisionProvider } from "../battle/BattleState";
 import { logger } from "../lib/logger";
@@ -166,9 +173,6 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
       const subcommand = interaction.options.getSubcommand();
       
       try {
-        const { equipmentService } = await import("../services/EquipmentService");
-        const { getProfile } = await import("../services/PhaseOneService");
-        
         const profile = await getProfile(discordId);
         if (!profile) {
           await respondToAutocomplete(interaction, []);
@@ -196,7 +200,7 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
           return;
         }
         
-        // Autocomplete de equipamento do catálogo
+        // Autocomplete de equipamento do catálogo (para /equipamento info)
         if (focused.name === "nome") {
           const catalog = await equipmentService.listCatalog();
           const choices = catalog.map((equip) => ({
@@ -281,7 +285,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
   try {
     // Defer IMEDIATAMENTE para evitar timeout de 3 segundos
     // Alguns comandos podem sobrescrever com seu próprio defer
-    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha", "meta", "arena", "equipamento", "loja", "lootbox"];
+    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha", "meta", "arena", "equipamento", "loja", "lootbox", "raid"];
     
     if (shouldDeferEarly.includes(commandName)) {
       try {
@@ -1179,16 +1183,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       const subcommand = interaction.options.getSubcommand();
       
       try {
-        const { equipmentService } = await import("../services/EquipmentService");
-        const { getProfile, getTeam } = await import("../services/PhaseOneService");
-        const { 
-          createEquipmentDetailsEmbed,
-          createEquipmentInventoryEmbed,
-          createEquipmentCatalogEmbed,
-          createEquipmentEquippedEmbed,
-          createEquipmentUnequippedEmbed
-        } = await import("./embeds");
-        
         const profile = await getProfile(discordId);
         if (!profile) {
           await interaction.editReply("❌ Perfil não encontrado. Use `/perfil` primeiro!");
@@ -1900,3 +1894,11 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     }
   }
 }
+
+    // ========================================
+    // RAID COMMAND HANDLER
+    // ========================================
+    if (commandName === "raid") {
+      await handleRaidCommand(interaction, discordId, getProfile);
+      return;
+    }

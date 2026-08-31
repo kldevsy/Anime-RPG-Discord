@@ -728,6 +728,58 @@ export const PHASE_TRANSITION: PassiveAbility = {
   maxActivationsPerBattle: 1,
 };
 
+/**
+ * ========================================
+ * PASSIVAS DOS NOVOS PERSONAGENS
+ * ========================================
+ */
+
+export const JASHIN_RITUAL: PassiveAbility = {
+  id: "jashin_ritual",
+  name: "Ritual de Jashin",
+  description: "Ao causar dano crítico, aplica maldição no alvo. Enquanto amaldiçoado, Hidan reflete 40% do dano que recebe de volta ao alvo.",
+  trigger: "on_critical_hit",
+  effects: [
+    { type: "apply_status", statusType: "cursed", value: 3, chance: 100 },
+    { type: "reflect_damage", value: 40, target: "cursed_enemy" }
+  ],
+  conditions: [
+    { type: "target_has_status", value: "cursed" }
+  ],
+  maxActivationsPerBattle: 99,
+  description: "Ao causar dano crítico, aplica maldição no alvo. Enquanto amaldiçoado, Hidan reflete 40% do dano que recebe de volta ao alvo."
+};
+
+export const HELLSING_IMMORTALITY: PassiveAbility = {
+  id: "hellsing_immortality",
+  name: "Imortalidade de Hellsing",
+  description: "Ao derrotar um inimigo, recupera 25% do HP máximo e ganha +15% de ataque permanentemente durante a batalha (acumulativo).",
+  trigger: "on_kill",
+  effects: [
+    { type: "heal_percent", value: 25, target: "self" },
+    { type: "increase_attack", value: 15, duration: 99 }
+  ],
+  maxActivationsPerBattle: 5,
+  description: "Ao derrotar um inimigo, recupera 25% do HP máximo e ganha +15% de ataque permanentemente durante a batalha (acumulativo)."
+};
+
+export const BLOOD_MANIPULATION: PassiveAbility = {
+  id: "blood_manipulation",
+  name: "Manipulação de Sangue",
+  description: "Início de cada rodada: causa 50 de dano a todos os inimigos e aplica Sangramento (3 turnos). Inimigos sangrando sofrem 30% mais dano dos ataques de Choso.",
+  trigger: "on_round_start",
+  effects: [
+    { type: "damage", value: 50, target: "enemies" },
+    { type: "apply_status", statusType: "bleed", value: 3, chance: 100, target: "enemies" },
+    { type: "bonus_damage_percent", value: 30, target: "bleeding_enemies", condition: "target_bleeding" }
+  ],
+  conditions: [
+    { type: "always" }
+  ],
+  maxActivationsPerRound: 1,
+  description: "Início de cada rodada: causa 50 de dano a todos os inimigos e aplica Sangramento (3 turnos). Inimigos sangrando sofrem 30% mais dano."
+};
+
 export const AOE_PUNISHMENT: PassiveAbility = {
   id: "aoe_punishment",
   name: "Punição em Área",
@@ -790,6 +842,11 @@ export const PASSIVE_LIBRARY: Record<string, PassiveAbility> = {
   enrage: ENRAGE,
   phase_transition: PHASE_TRANSITION,
   aoe_punishment: AOE_PUNISHMENT,
+  
+  // Novos Personagens
+  jashin_ritual: JASHIN_RITUAL,
+  hellsing_immortality: HELLSING_IMMORTALITY,
+  blood_manipulation: BLOOD_MANIPULATION,
 };
 
 /**

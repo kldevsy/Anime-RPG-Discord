@@ -405,7 +405,55 @@ export const commandDefinitions = [
         )
     ),
 
-  // 17. /admin
+  // 18. /raid
+  new SlashCommandBuilder()
+    .setName("raid")
+    .setDescription("🏰 Sistema de Raids Cooperativas")
+    .addStringOption((option) =>
+      option
+        .setName("acao")
+        .setDescription("O que fazer")
+        .setRequired(true)
+        .addChoices(
+          { name: "📋 Listar Raids", value: "list" },
+          { name: "🆕 Criar Sala", value: "create" },
+          { name: "🔍 Entrar com Código", value: "join" },
+          { name: "📊 Status da Sala", value: "status" },
+          { name: "🚪 Sair da Raid", value: "leave" },
+          { name: "🏆 Leaderboard", value: "ranking" },
+          { name: "ℹ️ Info do Mapa", value: "info" }
+        )
+    )
+    .addStringOption((option) =>
+      option
+        .setName("codigo")
+        .setDescription("Código da sala (ex: RAID-A7F9)")
+        .setRequired(false)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("mapa")
+        .setDescription("Mapa da raid")
+        .setRequired(false)
+        .addChoices(
+          { name: "🗼 Torre do Esquecimento", value: "forgotten_tower" },
+          { name: "🌋 Caverna do Caos", value: "chaos_cavern" },
+          { name: "☁️ Santuário Celestial", value: "celestial_sanctuary" }
+        )
+    )
+    .addStringOption((option) =>
+      option
+        .setName("dificuldade")
+        .setDescription("Dificuldade da raid")
+        .setRequired(false)
+        .addChoices(
+          { name: "🟢 Normal", value: "normal" },
+          { name: "🟡 Difícil", value: "hard" },
+          { name: "🔴 Pesadelo", value: "nightmare" }
+        )
+    ),
+
+  // 19. /admin
   new SlashCommandBuilder()
     .setName("admin")
     .setDescription("Comandos administrativos para gerenciamento do RPG.")

@@ -1,0 +1,122 @@
+// ========================================
+// ADICIONAR NO RaidService.ts
+// ========================================
+
+import { RaidBattleEngine, createRaidFighterFromCharacter } from "./RaidBattleEngine";
+
+// Adicionar este método na classe RaidService:
+
+/**
+ * ========================================
+ * INICIAR BATALHA DA RAID
+ * ========================================
+ */
+async startRaidBattle(raidInstanceId: string) {
+  const [raidInstance] = await db
+    .select()
+    .from(raidInstances)
+    .where(eq(raidInstances.id, raidInstanceId))
+    .limit(1);
+  
+  if (!raidInstance) {
+    throw new Error("Raid não encontrada!");
+  }
+  
+  if (raidInstance.status !== "waiting") {
+    throw new Error("Raid já foi iniciada ou finalizada!");
+  }
+  
+  // Buscar raid map
+  const raidMap = getRaidById(raidInstance.raidMapId);
+  if (!raidMap) {
+    throw new Error("Raid map não encontrado!");
+  }
+  
+  // Buscar personagens do time
+  const teamMembers = await db
+    .select({
+      member: raidTeamMembers,
+      userChar: userCharacters,
+      char: characters,
+    })
+    .from(raidTeamMembers)
+    .innerJoin(userCharacters, eq(raidTeamMembers.userCharacterId, userCharacters.id))
+    .innerJoin(characters, eq(userCharacters.characterId, characters.id))
+    .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId))
+    .orderBy(raidTeamMembers.position);
+  
+  if (teamMembers.length !== 4) {
+    throw new Error("Time precisa ter 4 personagens para iniciar!");
+  }
+  
+  // Buscar equipamentos
+  const playerTeam = [];
+  
+  for (const { member, userChar, char } of teamMembers) {
+    // Buscar equipamento equipado
+    const [equipped] = await db
+      .select({
+        equipment: equipment,
+      })
+      .from(characterEquipped)
+      .innerJoin(userEquipment, eq(characterEquipped.userEquipmentId, userEquipment.id))
+      .innerJoin(equipment, eq(userEquipment.equipmentId, equipment.id))
+      .where(eq(characterEquipped.userCharacterId, userChar.id))
+      .limit(1);
+    
+    const fighter = createRaidFighterFromCharacter(
+      userChar,
+      char,
+      equipped?.equipment || null
+    );
+    
+    playerTeam.push(fighter);
+  }
+  
+  // Atualizar status da raid para "em progresso"
+  await db
+    .update(raidInstances)
+    .set({ status: "in_progress" })
+    .where(eq(raidInstances.id, raidInstanceId));
+  
+  // Criar engine de batalha
+  const battleEngine = new RaidBattleEngine(
+    raidMap,
+    raidInstance.difficulty,
+    playerTeam
+  );
+  
+  // Executar raid
+  logger.info(`[RAID] Starting battle for raid ${raidInstance.roomCode}`);
+  const result = await battleEngine.executeRaid();
+  
+  // Atualizar estado dos personagens
+  for (const fighter of playerTeam) {
+    await db
+      .update(raidTeamMembers)
+      .set({
+        isAlive: fighter.isAlive,
+        currentHp: fighter.hp,
+        damageDone: result.damageByCharacter[fighter.id] || 0,
+      })
+      .where(
+        and(
+          eq(raidTeamMembers.raidInstanceId, raidInstanceId),
+          eq(raidTeamMembers.userCharacterId, fighter.id)
+        )
+      );
+  }
+  
+  // Se vitória, completar raid e distribuir recompensas
+  if (result.victory) {
+    await this.completeRaid(raidInstanceId, result.timeElapsed);
+  } else {
+    // Derrota
+    await db
+      .update(raidInstances)
+      .set({ status: "failed" })
+      .where(eq(raidInstances.id, raidInstanceId));
+  }
+  
+  return result;
+}

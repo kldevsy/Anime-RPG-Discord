@@ -1,0 +1,145 @@
+// ========================================
+// SUBSTITUIR O HANDLER "raid_start" no handlers.ts
+// ========================================
+
+// Handler para botão "Iniciar Raid" 
+if (interaction.customId.startsWith("raid_start:")) {
+  const raidInstanceId = interaction.customId.split(":")[1];
+  
+  try {
+    await interaction.deferReply();
+    
+    // Mensagem inicial
+    await interaction.editReply("⚔️ **Iniciando Raid...**\n\n🎮 Preparando batalha...");
+    
+    // Aguardar 2 segundos para criar suspense
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Executar batalha
+    const result = await raidService.startRaidBattle(raidInstanceId);
+    
+    // Criar embed de resultado
+    if (result.victory) {
+      // VITÓRIA!
+      const status = await raidService.getRaidStatus(
+        (await db.select().from(raidInstances).where(eq(raidInstances.id, raidInstanceId)).limit(1))[0].roomCode
+      );
+      
+      // Buscar recompensas
+      const [completion] = await db
+        .select()
+        .from(raidCompletions)
+        .where(eq(raidCompletions.raidInstanceId, raidInstanceId))
+        .orderBy(desc(raidCompletions.completedAt))
+        .limit(1);
+      
+      if (!completion || !status.raidMap) {
+        await interaction.editReply("❌ Erro ao buscar recompensas!");
+        return;
+      }
+      
+      const rewardsByUser = completion.rewards as Record<string, any>;
+      
+      const embed = createRaidVictoryEmbed(
+        status.raidMap,
+        status.raidInstance.difficulty,
+        result.timeElapsed,
+        Object.values(result.damageByCharacter).reduce((sum: number, dmg: any) => sum + dmg, 0),
+        result.casualties.length,
+        rewardsByUser,
+        status.participants
+      );
+      
+      // Mostrar log de batalha resumido
+      const battleSummary = result.battleLog.slice(0, 10).join("");
+      
+      const summaryEmbed = new EmbedBuilder()
+        .setTitle("📜 Resumo da Batalha")
+        .setDescription(battleSummary + "\n\n*...e muito mais!*")
+        .setColor(0x95A5A6)
+        .setFooter({ text: `${result.totalWaves} waves completadas • ${result.timeElapsed}s` });
+      
+      await interaction.editReply({
+        content: null,
+        embeds: [embed, summaryEmbed],
+      });
+      
+    } else {
+      // DERROTA
+      const [raidInstance] = await db
+        .select()
+        .from(raidInstances)
+        .where(eq(raidInstances.id, raidInstanceId))
+        .limit(1);
+      
+      if (!raidInstance) {
+        await interaction.editReply("❌ Erro ao buscar raid!");
+        return;
+      }
+      
+      const raidMap = getRaidById(raidInstance.raidMapId);
+      if (!raidMap) {
+        await interaction.editReply("❌ Erro ao buscar mapa!");
+        return;
+      }
+      
+      const themeEmoji = raidMap.theme === "Místico/Sombrio" ? "🗼" : raidMap.theme === "Fogo/Demoníaco" ? "🌋" : "☁️";
+      const difficultyEmoji = raidInstance.difficulty === "normal" ? "🟢" : raidInstance.difficulty === "hard" ? "🟡" : "🔴";
+      
+      const defeatEmbed = new EmbedBuilder()
+        .setTitle("💀 RAID FRACASSADA 💀")
+        .setColor(0xE74C3C)
+        .setDescription(
+          `${themeEmoji} **${raidMap.name}** ${difficultyEmoji}\n\n` +
+          `❌ **Seu time foi derrotado!**\n\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `📊 **Estatísticas:**\n` +
+          `⚔️ Wave Alcançada: ${result.currentWave}/${result.totalWaves}\n` +
+          `⏱️ Tempo: ${Math.floor(result.timeElapsed / 60)}min ${result.timeElapsed % 60}s\n` +
+          `💀 Baixas: ${result.casualties.length}/4\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+          `**Dano Causado:**\n`
+        );
+      
+      // Adicionar dano por personagem
+      for (const [charId, damage] of Object.entries(result.damageByCharacter)) {
+        const fighter = result.survivors.find((f: any) => f.id === charId) || 
+                       { name: result.casualties.find((name: string) => name.includes(charId.substring(0, 8))) || "?" };
+        defeatEmbed.addFields({
+          name: `${fighter.name}`,
+          value: `💥 ${damage.toLocaleString()} dano`,
+          inline: true,
+        });
+      }
+      
+      defeatEmbed.addFields({
+        name: "💡 Dica",
+        value:
+          "• Melhore seus personagens (level, maestria)\n" +
+          "• Equipe equipamentos melhores\n" +
+          "• Traga mais jogadores (+50% bônus com 4)\n" +
+          "• Tente uma dificuldade menor",
+        inline: false,
+      });
+      
+      // Log resumido
+      const battleSummary = result.battleLog.slice(0, 8).join("");
+      
+      const summaryEmbed = new EmbedBuilder()
+        .setTitle("📜 Últimos Momentos")
+        .setDescription(battleSummary)
+        .setColor(0x95A5A6);
+      
+      await interaction.editReply({
+        content: null,
+        embeds: [defeatEmbed, summaryEmbed],
+      });
+    }
+    
+  } catch (error: any) {
+    console.error("❌ [RAID START ERROR]", error);
+    await interaction.editReply(`❌ Erro ao iniciar raid: ${error.message}`);
+  }
+  
+  return;
+}

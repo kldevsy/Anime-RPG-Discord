@@ -423,6 +423,97 @@ export const masteryXpInventory = pgTable("mastery_xp_inventory", {
   accumulatedXp: integer("accumulated_xp").notNull().default(0),
 });
 
+// ========================================
+// RAID SYSTEM TABLES (New Cooperative System)
+// ========================================
+
+export const raidDifficultyEnum = pgEnum("raid_difficulty", ["normal", "hard", "nightmare"]);
+export const raidStatusEnum = pgEnum("raid_status", ["waiting", "in_progress", "completed", "failed", "expired"]);
+
+// Raid Instances - Active raid rooms
+export const raidInstances = pgTable("raid_instances", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leaderId: uuid("leader_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  raidMapId: text("raid_map_id").notNull(),
+  difficulty: raidDifficultyEnum("difficulty").notNull(),
+  roomCode: text("room_code").notNull().unique(),
+  status: raidStatusEnum("status").notNull().default("waiting"),
+  maxPlayers: integer("max_players").notNull().default(4),
+  currentWave: integer("current_wave").notNull().default(0),
+  battleState: jsonb("battle_state").$type<Record<string, unknown> | null>(),
+  revivesUsed: integer("revives_used").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("raid_instances_room_code_unique").on(table.roomCode),
+]);
+
+// Raid Participants - Players in raid
+export const raidInstanceParticipants = pgTable("raid_instance_participants", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  raidInstanceId: uuid("raid_instance_id").notNull().references(() => raidInstances.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  isReady: boolean("is_ready").notNull().default(false),
+  contribution: integer("contribution").notNull().default(0), // number of characters added
+}, (table) => [
+  uniqueIndex("raid_instance_participants_raid_user_unique").on(table.raidInstanceId, table.userId),
+]);
+
+// Raid Team Members - Characters in raid
+export const raidTeamMembers = pgTable("raid_team_members", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  raidInstanceId: uuid("raid_instance_id").notNull().references(() => raidInstances.id, { onDelete: "cascade" }),
+  participantId: uuid("participant_id").notNull().references(() => raidInstanceParticipants.id, { onDelete: "cascade" }),
+  userCharacterId: uuid("user_character_id").notNull().references(() => userCharacters.id, { onDelete: "restrict" }),
+  position: integer("position").notNull(), // 1-4
+  isAlive: boolean("is_alive").notNull().default(true),
+  currentHp: integer("current_hp").notNull(),
+  damageDone: integer("damage_done").notNull().default(0),
+}, (table) => [
+  uniqueIndex("raid_team_members_raid_position_unique").on(table.raidInstanceId, table.position),
+]);
+
+// Raid Completions - History of cleared raids
+export const raidCompletions = pgTable("raid_completions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  raidInstanceId: uuid("raid_instance_id").notNull().references(() => raidInstances.id, { onDelete: "cascade" }),
+  raidMapId: text("raid_map_id").notNull(),
+  difficulty: raidDifficultyEnum("difficulty").notNull(),
+  participants: jsonb("participants").$type<Array<string>>().notNull(), // array of user IDs
+  clearTime: integer("clear_time").notNull(), // in seconds
+  totalDamage: integer("total_damage").notNull(),
+  deathCount: integer("death_count").notNull(),
+  rewards: jsonb("rewards").$type<Record<string, unknown>>().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Raid Leaderboard - Best times per raid/difficulty
+export const raidLeaderboard = pgTable("raid_leaderboard", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  raidMapId: text("raid_map_id").notNull(),
+  difficulty: raidDifficultyEnum("difficulty").notNull(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  bestTime: integer("best_time").notNull(), // in seconds
+  totalClears: integer("total_clears").notNull().default(1),
+  fastestClearDate: timestamp("fastest_clear_date", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("raid_leaderboard_map_difficulty_user_unique").on(table.raidMapId, table.difficulty, table.userId),
+]);
+
+// Raid First Clears - Track first time completions for bonus rewards
+export const raidFirstClears = pgTable("raid_first_clears", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  raidMapId: text("raid_map_id").notNull(),
+  difficulty: raidDifficultyEnum("difficulty").notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("raid_first_clears_user_map_difficulty_unique").on(table.userId, table.raidMapId, table.difficulty),
+]);
+
 export type User = typeof users.$inferSelect;
 export type Character = typeof characters.$inferSelect;
 export type UserCharacter = typeof userCharacters.$inferSelect;
@@ -445,3 +536,9 @@ export type LootBoxOpening = typeof lootBoxOpenings.$inferSelect;
 export type LootBoxPity = typeof lootBoxPity.$inferSelect;
 export type DailyFreeBox = typeof dailyFreeBox.$inferSelect;
 export type MasteryXpInventory = typeof masteryXpInventory.$inferSelect;
+export type RaidInstance = typeof raidInstances.$inferSelect;
+export type RaidInstanceParticipant = typeof raidInstanceParticipants.$inferSelect;
+export type RaidTeamMember = typeof raidTeamMembers.$inferSelect;
+export type RaidCompletion = typeof raidCompletions.$inferSelect;
+export type RaidLeaderboard = typeof raidLeaderboard.$inferSelect;
+export type RaidFirstClear = typeof raidFirstClears.$inferSelect;

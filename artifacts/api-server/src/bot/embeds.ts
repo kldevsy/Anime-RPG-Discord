@@ -1131,3 +1131,346 @@ export function createDailyFreeBoxEmbed(): EmbedBuilder {
     )
     .setFooter({ text: "Volte amanhã para outra caixa grátis!" });
 }
+
+// ==========================================
+// 🏰 RAID EMBEDS
+// ==========================================
+
+import type { RaidMap } from "@workspace/db/data/raid-catalog";
+
+/**
+ * Embed: Lista de raids disponíveis
+ */
+export function createRaidListEmbed(availableRaids: RaidMap[]): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle("🏰 RAIDS DISPONÍVEIS 🏰")
+    .setColor(0x9B59B6)
+    .setDescription(
+      "**Sistema Cooperativo Multiplayer**\n" +
+      "Reúna até 4 jogadores para enfrentar desafios épicos!\n\n" +
+      "🎯 **Use `/raid criar` para começar!**"
+    )
+    .setTimestamp();
+
+  if (availableRaids.length === 0) {
+    embed.addFields({
+      name: "❌ Nenhuma Raid Disponível",
+      value: "Você precisa subir de nível para desbloquear raids!",
+    });
+    return embed;
+  }
+
+  for (const raid of availableRaids) {
+    const difficulties = raid.availableDifficulties
+      .map((d) => (d === "normal" ? "🟢" : d === "hard" ? "🟡" : "🔴"))
+      .join(" ");
+
+    embed.addFields({
+      name: `${raid.theme === "Místico/Sombrio" ? "🗼" : raid.theme === "Fogo/Demoníaco" ? "🌋" : "☁️"} ${raid.name}`,
+      value:
+        `**Nível:** ${raid.minLevel}+ | **Power:** ${raid.recommendedPower}+\n` +
+        `**Dificuldades:** ${difficulties}\n` +
+        `**Tempo:** ${raid.estimatedTime}\n` +
+        `*${raid.description.slice(0, 100)}...*`,
+      inline: false,
+    });
+  }
+
+  embed.setFooter({ text: "💎 Recompensas Premium • 👥 1-4 Jogadores" });
+
+  return embed;
+}
+
+/**
+ * Embed: Sala de espera da raid
+ */
+export function createRaidRoomEmbed(
+  raidMap: RaidMap,
+  difficulty: string,
+  roomCode: string,
+  participants: Array<{ user: any; participant: any }>,
+  teamMembers: Array<{ char: any; user: any; member: any }>
+): EmbedBuilder {
+  const difficultyEmoji = difficulty === "normal" ? "🟢" : difficulty === "hard" ? "🟡" : "🔴";
+  const themeEmoji = raidMap.theme === "Místico/Sombrio" ? "🗼" : raidMap.theme === "Fogo/Demoníaco" ? "🌋" : "☁️";
+
+  const embed = new EmbedBuilder()
+    .setTitle(`👥 SALA DE RAID 👥`)
+    .setColor(difficulty === "normal" ? 0x2ECC71 : difficulty === "hard" ? 0xF39C12 : 0xE74C3C)
+    .setDescription(
+      `${themeEmoji} **${raidMap.name}** ${difficultyEmoji}\n` +
+      `🎯 **Dificuldade:** ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}\n` +
+      `🔑 **Código:** \`${roomCode}\`\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━`
+    );
+
+  // Participantes
+  let playersText = `**Jogadores:** ${participants.length}/4\n\n`;
+
+  for (const { user, participant } of participants) {
+    const isLeader = participant.contribution === 0 && participants[0].user.id === user.id;
+    const icon = isLeader ? "👑" : "🎮";
+    const userChars = teamMembers.filter((m) => m.user.id === user.id);
+
+    playersText += `${icon} **${user.username}** ${isLeader ? "[Líder]" : ""}\n`;
+
+    if (userChars.length > 0) {
+      for (const { char, member } of userChars) {
+        playersText += `   • ${char.name} Nv.${member.currentHp > 0 ? "✅" : "💀"}\n`;
+      }
+    } else {
+      playersText += `   ⏳ *Escolhendo personagens...*\n`;
+    }
+
+    playersText += "\n";
+  }
+
+  // Slots vazios
+  for (let i = participants.length; i < 4; i++) {
+    playersText += `⏳ **Aguardando jogador ${i + 1}...**\n\n`;
+  }
+
+  embed.addFields({
+    name: "━━━━━━━━━━━━━━━━━━━━━━",
+    value: playersText,
+    inline: false,
+  });
+
+  // Equipe
+  const teamText =
+    teamMembers.length === 4
+      ? "✅ **Equipe completa!** (4/4 personagens)"
+      : `⚠️ **Adicione personagens:** ${teamMembers.length}/4\n\n` +
+        `💡 *Use os botões abaixo para adicionar seus personagens!*\n` +
+        `Cada jogador pode adicionar personagens até completar 4 total.`;
+
+  embed.addFields({
+    name: "🎴 Equipe da Raid",
+    value: teamText,
+    inline: false,
+  });
+
+  embed.setFooter({
+    text: `⏰ Expira em 15min • Compartilhe o código: ${roomCode}`,
+  });
+  embed.setTimestamp();
+
+  return embed;
+}
+
+/**
+ * Embed: Detalhes do mapa de raid
+ */
+export function createRaidMapDetailsEmbed(raidMap: RaidMap, difficulty: string): EmbedBuilder {
+  const difficultyEmoji = difficulty === "normal" ? "🟢" : difficulty === "hard" ? "🟡" : "🔴";
+  const themeEmoji = raidMap.theme === "Místico/Sombrio" ? "🗼" : raidMap.theme === "Fogo/Demoníaco" ? "🌋" : "☁️";
+
+  const embed = new EmbedBuilder()
+    .setTitle(`${themeEmoji} ${raidMap.name}`)
+    .setColor(difficulty === "normal" ? 0x2ECC71 : difficulty === "hard" ? 0xF39C12 : 0xE74C3C)
+    .setDescription(
+      `${difficultyEmoji} **${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}**\n\n` +
+      `${raidMap.description}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━`
+    );
+
+  // Informações
+  embed.addFields(
+    {
+      name: "📊 Informações",
+      value:
+        `**Nível Mínimo:** ${raidMap.minLevel}\n` +
+        `**Power Recomendado:** ${raidMap.recommendedPower}\n` +
+        `**Tempo Estimado:** ${raidMap.estimatedTime}\n` +
+        `**Waves:** ${raidMap.waves.length} + Boss`,
+      inline: true,
+    },
+    {
+      name: "👥 Multiplayer",
+      value:
+        `**Jogadores:** 1-4\n` +
+        `**Personagens:** 4 total\n` +
+        `**Revives:** 2 max\n` +
+        `**Bônus Grupo:** Até +50%`,
+      inline: true,
+    }
+  );
+
+  // Boss
+  embed.addFields({
+    name: `💀 Boss: ${raidMap.boss.name}`,
+    value:
+      `*${raidMap.boss.title}*\n\n` +
+      `❤️ **HP:** ${raidMap.boss.hp.toLocaleString()}\n` +
+      `⚔️ **ATK:** ${raidMap.boss.attack} | 🛡️ **DEF:** ${raidMap.boss.defense} | ⚡ **SPD:** ${raidMap.boss.speed}\n\n` +
+      `🔮 **Passiva:** ${raidMap.boss.passive.slice(0, 150)}...\n\n` +
+      `✨ **Ultimate:** *${raidMap.boss.ultimate.name}* - ${raidMap.boss.ultimate.description.slice(0, 100)}...`,
+    inline: false,
+  });
+
+  // Recompensas
+  const rewards = raidMap.baseRewards[difficulty as keyof typeof raidMap.baseRewards];
+  if (rewards && rewards.gold[0] > 0) {
+    embed.addFields({
+      name: "🎁 Recompensas Base",
+      value:
+        `💰 **Gold:** ${rewards.gold[0].toLocaleString()} - ${rewards.gold[1].toLocaleString()}\n` +
+        `💎 **Gemas:** ${rewards.gems[0]} - ${rewards.gems[1]}\n` +
+        `✨ **XP Maestria:** ${rewards.masteryXp[0]} - ${rewards.masteryXp[1]}\n` +
+        `🎟️ **Tickets:** ${rewards.tickets[0]} - ${rewards.tickets[1]}`,
+      inline: true,
+    });
+  }
+
+  // Drops especiais
+  if (raidMap.specialDrops.length > 0) {
+    const dropsText = raidMap.specialDrops
+      .slice(0, 3)
+      .map((drop) => `• ${drop.equipmentName} [${drop.rarity}] - ${drop.dropChance}%`)
+      .join("\n");
+
+    embed.addFields({
+      name: "⚔️ Drops Exclusivos",
+      value: dropsText,
+      inline: true,
+    });
+  }
+
+  embed.setFooter({
+    text: "💡 Bônus Primeira Clear: 2x-5x recompensas!",
+  });
+
+  if (raidMap.imageUrl) {
+    embed.setImage(raidMap.imageUrl);
+  }
+
+  return embed;
+}
+
+/**
+ * Embed: Vitória na raid
+ */
+export function createRaidVictoryEmbed(
+  raidMap: RaidMap,
+  difficulty: string,
+  clearTime: number,
+  totalDamage: number,
+  deathCount: number,
+  rewardsByUser: Record<string, any>,
+  participants: Array<{ user: any }>
+): EmbedBuilder {
+  const difficultyEmoji = difficulty === "normal" ? "🟢" : difficulty === "hard" ? "🟡" : "🔴";
+  const themeEmoji = raidMap.theme === "Místico/Sombrio" ? "🗼" : raidMap.theme === "Fogo/Demoníaco" ? "🌋" : "☁️";
+
+  const minutes = Math.floor(clearTime / 60);
+  const seconds = clearTime % 60;
+
+  const embed = new EmbedBuilder()
+    .setTitle("🎉 RAID CONCLUÍDA COM SUCESSO! 🎉")
+    .setColor(0xF1C40F)
+    .setDescription(
+      `${themeEmoji} **${raidMap.name}** ${difficultyEmoji}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `⏱️ **Tempo:** ${minutes}min ${seconds}s\n` +
+      `💀 **Mortes:** ${deathCount}\n` +
+      `⚔️ **Dano Total:** ${totalDamage.toLocaleString()}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━`
+    );
+
+  // Recompensas por jogador
+  for (const { user } of participants) {
+    const rewards = rewardsByUser[user.id];
+    if (!rewards) continue;
+
+    let rewardText =
+      `💰 **${rewards.gold.toLocaleString()}** Gold\n` +
+      `💎 **${rewards.gems}** Gemas\n` +
+      `✨ **${rewards.masteryXp}** XP Maestria\n` +
+      `🎟️ **${rewards.tickets}** Tickets\n`;
+
+    if (rewards.equipment && rewards.equipment.length > 0) {
+      rewardText += `\n⚔️ **Equipamentos:**\n`;
+      for (const equip of rewards.equipment) {
+        rewardText += `   • ${equip.name} [${equip.rarity}] 🎊\n`;
+      }
+    }
+
+    if (rewards.lootBoxes && rewards.lootBoxes.length > 0) {
+      rewardText += `\n📦 **Loot Boxes:**\n`;
+      const boxCount: Record<string, number> = {};
+      for (const box of rewards.lootBoxes) {
+        boxCount[box.type] = (boxCount[box.type] || 0) + 1;
+      }
+      for (const [type, count] of Object.entries(boxCount)) {
+        const boxName = type.charAt(0).toUpperCase() + type.slice(1);
+        rewardText += `   • ${count}x ${boxName}\n`;
+      }
+    }
+
+    embed.addFields({
+      name: `🎁 ${user.username}`,
+      value: rewardText,
+      inline: false,
+    });
+  }
+
+  embed.setFooter({
+    text: `🏆 ${participants.length} jogadores • Use /raid ranking para ver o leaderboard!`,
+  });
+  embed.setTimestamp();
+
+  return embed;
+}
+
+/**
+ * Embed: Leaderboard de raid
+ */
+export function createRaidLeaderboardEmbed(
+  raidMap: RaidMap,
+  difficulty: string,
+  entries: Array<{ entry: any; user: any }>
+): EmbedBuilder {
+  const difficultyEmoji = difficulty === "normal" ? "🟢" : difficulty === "hard" ? "🟡" : "🔴";
+  const themeEmoji = raidMap.theme === "Místico/Sombrio" ? "🗼" : raidMap.theme === "Fogo/Demoníaco" ? "🌋" : "☁️";
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🏆 LEADERBOARD - ${raidMap.name}`)
+    .setColor(0xF1C40F)
+    .setDescription(`${themeEmoji} ${difficultyEmoji} **${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}**\n━━━━━━━━━━━━━━━━━━━━━━`);
+
+  if (entries.length === 0) {
+    embed.addFields({
+      name: "❌ Nenhum Record",
+      value: "Seja o primeiro a completar esta raid!",
+    });
+    return embed;
+  }
+
+  let leaderboardText = "";
+
+  for (let i = 0; i < entries.length; i++) {
+    const { entry, user } = entries[i];
+    const rank = i + 1;
+    const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `**${rank}.**`;
+
+    const minutes = Math.floor(entry.bestTime / 60);
+    const seconds = entry.bestTime % 60;
+
+    leaderboardText +=
+      `${medal} **${user.username}**\n` +
+      `   ⏱️ ${minutes}min ${seconds}s • 🔄 ${entry.totalClears} clears\n\n`;
+  }
+
+  embed.addFields({
+    name: "🏅 Top Jogadores",
+    value: leaderboardText || "Nenhum record ainda!",
+    inline: false,
+  });
+
+  embed.setFooter({
+    text: "⚡ Complete raids para aparecer no ranking!",
+  });
+  embed.setTimestamp();
+
+  return embed;
+}

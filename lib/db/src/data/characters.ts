@@ -36,6 +36,9 @@ import {
   INFINITY,
   MANGEKYO_SHARINGAN,
   PERFECT_SUSANOO_PASSIVE,
+  JASHIN_RITUAL,
+  HELLSING_IMMORTALITY,
+  BLOOD_MANIPULATION,
 } from "./passive-library.ts";
 
 /**
@@ -1484,6 +1487,136 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Se o alvo for um boss ou elite",
             effect: "aplicação de debuffs permanentes reduz todos os stats em 60% pelo resto da batalha (selamento)",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Naruto",
+      name: "Hidan",
+      rarity: "mythic",
+      role: "control",
+      baseHp: 1350,
+      baseAttack: 210,
+      baseDefense: 165,
+      baseSpeed: 105,
+      imageUrl:
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+      passive: "Ritual de Jashin: ao causar crítico, aplica maldição. Enquanto amaldiçoado, reflete 40% do dano recebido de volta ao alvo.",
+      passiveAbility: JASHIN_RITUAL,
+      ultimate: {
+        id: "hidan_curse_ritual",
+        name: "Ritual da Maldição Eterna",
+        description:
+          "Hidan se inflige dano e todos os inimigos amaldiçoados sofrem o mesmo dano multiplicado. Quanto mais inimigos amaldiçoados, mais devastador.",
+        chargeRequired: 110,
+        chargeOnBasic: 20,
+        chargeOnDamageTaken: 30,
+        chargeOnCritical: 15,
+        type: "DEBUFF",
+        targetType: "aoe_enemy",
+        multiplier: 2.8,
+        statusEffects: [
+          { type: "cursed", chance: 100, duration: 4, value: 0 },
+          { type: "bleed", chance: 100, duration: 3, value: 80 },
+          { type: "attack_down", chance: 80, duration: 3, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Para cada inimigo amaldiçoado",
+            effect: "multiplica o dano em 0.6x adicional (máx 3.0x com 5 inimigos)",
+          },
+          {
+            condition: "Hidan se auto-inflinge 20% do HP máximo",
+            effect: "mas causa 2.8x + 0.6x por alvo amaldiçoado em TODOS inimigos amaldiçoados",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Hellsing",
+      name: "Alucard",
+      rarity: "epic",
+      role: "dps",
+      baseHp: 1100,
+      baseAttack: 245,
+      baseDefense: 115,
+      baseSpeed: 122,
+      imageUrl:
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+      passive: "Imortalidade de Hellsing: ao derrotar inimigo, recupera 25% HP máximo e ganha +15% ATK permanente (acumulativo).",
+      passiveAbility: HELLSING_IMMORTALITY,
+      ultimate: {
+        id: "alucard_level_zero",
+        name: "Liberação - Nível Zero",
+        description:
+          "Alucard libera todos os seus selos, invocando um exército de almas para devastar o campo de batalha.",
+        chargeRequired: 100,
+        chargeOnBasic: 26,
+        chargeOnDamageTaken: 12,
+        chargeOnCritical: 20,
+        type: "AOE",
+        targetType: "aoe_enemy",
+        multiplier: 3.2,
+        statusEffects: [
+          { type: "bleed", chance: 90, duration: 3, value: 70 },
+          { type: "fear", chance: 75, duration: 2, value: 0 },
+          { type: "lifesteal", chance: 100, duration: 2, value: 35 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Por cada inimigo derrotado anteriormente na batalha",
+            effect: "aumenta o multiplicador em 0.3x (máx +1.5x com 5 kills)",
+          },
+          {
+            condition: "Se Alucard estiver abaixo de 40% HP",
+            effect: "ganha vampirismo de 50% do dano causado e adiciona 1.0x ao multiplicador",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Jujutsu Kaisen",
+      name: "Choso",
+      rarity: "legendary",
+      role: "control",
+      baseHp: 1180,
+      baseAttack: 225,
+      baseDefense: 125,
+      baseSpeed: 115,
+      imageUrl:
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+      passive: "Manipulação de Sangue: início da rodada causa 50 de dano AoE e aplica Sangramento. Inimigos sangrando sofrem +30% dano de Choso.",
+      passiveAbility: BLOOD_MANIPULATION,
+      ultimate: {
+        id: "choso_piercing_blood",
+        name: "Sangue Perfurante",
+        description:
+          "Um jato de sangue ultra-comprimido que perfura todos os inimigos em linha reta, causando dano massivo e sangramento profundo.",
+        chargeRequired: 95,
+        chargeOnBasic: 24,
+        chargeOnDamageTaken: 14,
+        chargeOnCritical: 16,
+        type: "EXECUTE",
+        targetType: "aoe_enemy",
+        multiplier: 3.5,
+        statusEffects: [
+          { type: "bleed", chance: 100, duration: 4, value: 90 },
+          { type: "defense_down", chance: 90, duration: 3, value: 35 },
+          { type: "poison", chance: 60, duration: 3, value: 45 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Inimigos já sangrando",
+            effect: "dano aumenta em 50% e Sangramento acumula (não reseta duração, causa +40 dano/turno)",
+          },
+          {
+            condition: "Se o alvo estiver abaixo de 30% HP e sangrando",
+            effect: "executa instantaneamente se o dano total exceder HP restante",
+          },
+          {
+            condition: "Choso consome 10% do HP máximo",
+            effect: "mas ganha +1.0x no multiplicador final",
           },
         ],
       },
