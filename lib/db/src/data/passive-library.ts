@@ -740,14 +740,14 @@ export const JASHIN_RITUAL: PassiveAbility = {
   description: "Ao causar dano crítico, aplica maldição no alvo. Enquanto amaldiçoado, Hidan reflete 40% do dano que recebe de volta ao alvo.",
   trigger: "on_critical_hit",
   effects: [
-    { type: "apply_status", statusType: "cursed", value: 3, chance: 100 },
-    { type: "reflect_damage", value: 40, target: "cursed_enemy" }
+    { type: "apply_status", statusType: "burn", value: 3, chance: 100 },
+    { type: "reflect_damage", value: 40, target: "attacker" }
   ],
   conditions: [
-    { type: "target_has_status", value: "cursed" }
+    { type: "hp_below_percent", value: 30 }
   ],
   maxActivationsPerBattle: 99,
-  description: "Ao causar dano crítico, aplica maldição no alvo. Enquanto amaldiçoado, Hidan reflete 40% do dano que recebe de volta ao alvo."
+  description: "Ao causar dano crítico, aplica queimadura no alvo e reflete 40% do dano recebido."
 };
 
 export const HELLSING_IMMORTALITY: PassiveAbility = {
@@ -766,18 +766,13 @@ export const HELLSING_IMMORTALITY: PassiveAbility = {
 export const BLOOD_MANIPULATION: PassiveAbility = {
   id: "blood_manipulation",
   name: "Manipulação de Sangue",
-  description: "Início de cada rodada: causa 50 de dano a todos os inimigos e aplica Sangramento (3 turnos). Inimigos sangrando sofrem 30% mais dano dos ataques de Choso.",
+  description: "Início de cada rodada: causa 50 de dano a todos os inimigos e aplica Sangramento (3 turnos).",
   trigger: "on_round_start",
   effects: [
     { type: "damage", value: 50, target: "enemies" },
-    { type: "apply_status", statusType: "bleed", value: 3, chance: 100, target: "enemies" },
-    { type: "bonus_damage_percent", value: 30, target: "bleeding_enemies", condition: "target_bleeding" }
+    { type: "apply_status", statusType: "bleed", value: 3, chance: 100, target: "enemies" }
   ],
-  conditions: [
-    { type: "always" }
-  ],
-  maxActivationsPerRound: 1,
-  description: "Início de cada rodada: causa 50 de dano a todos os inimigos e aplica Sangramento (3 turnos). Inimigos sangrando sofrem 30% mais dano."
+  maxActivationsPerRound: 1
 };
 
 export const AOE_PUNISHMENT: PassiveAbility = {

@@ -1883,6 +1883,14 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       }
     }
 
+    // ========================================
+    // RAID COMMAND HANDLER
+    // ========================================
+    if (commandName === "raid") {
+      await handleRaidCommand(interaction, discordId, getProfile);
+      return;
+    }
+
     await interaction.reply({ content: "Comando não reconhecido.", ephemeral: true });
   } catch (err: any) {
     logger.error({ err, command: commandName }, "Discord command handler failed");
@@ -1894,11 +1902,3 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     }
   }
 }
-
-    // ========================================
-    // RAID COMMAND HANDLER
-    // ========================================
-    if (commandName === "raid") {
-      await handleRaidCommand(interaction, discordId, getProfile);
-      return;
-    }

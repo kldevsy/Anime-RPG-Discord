@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
-    "./data/equipment": "./src/data/equipment.ts"
+    "./data/equipment": "./src/data/equipment.ts",
+    "./data/raid-catalog": "./src/data/raid-catalog.ts"
   },
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
