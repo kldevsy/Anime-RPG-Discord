@@ -1902,3 +1902,221 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     }
   }
 }
+
+
+/**
+ * ========================================
+ * BUTTON INTERACTION HANDLER
+ * ========================================
+ */
+export async function handleButtonInteraction(interaction: any) {
+  const discordId = interaction.user.id;
+  const customId = interaction.customId;
+
+  // Defer para evitar timeout
+  await interaction.deferReply({ ephemeral: true });
+
+  try {
+    // ========================================
+    // RAID BUTTON HANDLERS
+    // ========================================
+    if (customId.startsWith("raid_")) {
+      const [_, action, raidId] = customId.split(":");
+
+      if (action === "add_char") {
+        // Buscar personagens do usuário
+        const profile = await getProfile(discordId);
+        if (!profile || profile.collection.length === 0) {
+          await interaction.editReply("❌ Você não tem personagens! Use `/invocar` primeiro.");
+          return;
+        }
+
+        // Criar select menu com personagens
+        const options = profile.collection.slice(0, 25).map((item: any) => ({
+          label: `${item.character.name} (Nv.${item.level})`,
+          description: `${item.character.anime} • ${item.character.rarity}`,
+          value: item.ownedId,
+        }));
+
+        const selectMenu = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(`raid_char_select:${raidId}`)
+            .setPlaceholder("Escolha um personagem para adicionar")
+            .addOptions(options)
+        );
+
+        await interaction.editReply({
+          content: "**Selecione um personagem para adicionar à raid:**",
+          components: [selectMenu],
+        });
+        return;
+      }
+
+      if (action === "status") {
+        // Buscar status da raid
+        const { raidService } = await import("../services/RaidService");
+        const { db } = await import("@workspace/db");
+        const { raidInstances } = await import("@workspace/db/schema");
+        const { eq } = await import("drizzle-orm");
+
+        const [raidInstance] = await db
+          .select()
+          .from(raidInstances)
+          .where(eq(raidInstances.id, raidId))
+          .limit(1);
+
+        if (!raidInstance) {
+          await interaction.editReply("❌ Raid não encontrada!");
+          return;
+        }
+
+        const status = await raidService.getRaidStatus(raidInstance.roomCode);
+        const { createRaidRoomEmbed } = await import("./embeds");
+
+        const embed = createRaidRoomEmbed(
+          status.raidMap!,
+          status.raidInstance.difficulty,
+          raidInstance.roomCode,
+          status.participants,
+          status.teamMembers
+        );
+
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+
+      if (action === "start") {
+        // Iniciar raid
+        const { raidService } = await import("../services/RaidService");
+        const { db } = await import("@workspace/db");
+        const { raidInstances } = await import("@workspace/db/schema");
+        const { eq } = await import("drizzle-orm");
+
+        const [raidInstance] = await db
+          .select()
+          .from(raidInstances)
+          .where(eq(raidInstances.id, raidId))
+          .limit(1);
+
+        if (!raidInstance) {
+          await interaction.editReply("❌ Raid não encontrada!");
+          return;
+        }
+
+        // Verificar se é o líder
+        if (raidInstance.leaderId !== discordId) {
+          await interaction.editReply("❌ Apenas o líder pode iniciar a raid!");
+          return;
+        }
+
+        // Verificar se tem 4 personagens
+        const status = await raidService.getRaidStatus(raidInstance.roomCode);
+        if (status.teamMembers.length < 4) {
+          await interaction.editReply(
+            `❌ A raid precisa de 4 personagens!\n\n` +
+              `**Atual:** ${status.teamMembers.length}/4\n\n` +
+              `Peça aos jogadores para adicionar mais personagens.`
+          );
+          return;
+        }
+
+        try {
+          // Iniciar batalha da raid
+          const result = await raidService.startRaidBattle(raidInstance.id);
+
+          await interaction.editReply(
+            `🚀 **RAID INICIADA!**\n\n` +
+              `⚔️ A batalha está acontecendo...\n\n` +
+              `Use \`/raid acao:Status codigo:${raidInstance.roomCode}\` para ver o resultado!`
+          );
+        } catch (error: any) {
+          await interaction.editReply(`❌ Erro ao iniciar raid: ${error.message}`);
+        }
+        return;
+      }
+
+      if (action === "leave") {
+        // Sair da raid
+        const { raidService } = await import("../services/RaidService");
+
+        try {
+          const result = await raidService.leaveRaid(discordId, raidId);
+
+          if (result.cancelled) {
+            await interaction.editReply("✅ Você (líder) saiu da raid. A sala foi cancelada.");
+          } else {
+            await interaction.editReply("✅ Você saiu da raid.");
+          }
+        } catch (error: any) {
+          await interaction.editReply(`❌ ${error.message}`);
+        }
+        return;
+      }
+    }
+
+    // ========================================
+    // SELECT MENU HANDLER (personagem selecionado)
+    // ========================================
+    if (customId.startsWith("raid_char_select:")) {
+      // Este será tratado por handleSelectMenuInteraction
+      await interaction.editReply("❌ Use o menu dropdown acima para selecionar.");
+      return;
+    }
+
+    await interaction.editReply("❌ Ação desconhecida!");
+  } catch (error: any) {
+    console.error("❌ [BUTTON INTERACTION ERROR]", error);
+    await interaction.editReply(`❌ Erro: ${error.message}`);
+  }
+}
+
+
+/**
+ * ========================================
+ * SELECT MENU INTERACTION HANDLER
+ * ========================================
+ */
+export async function handleSelectMenuInteraction(interaction: any) {
+  const discordId = interaction.user.id;
+  const customId = interaction.customId;
+  const selectedValue = interaction.values[0];
+
+  // Defer para evitar timeout
+  await interaction.deferReply({ ephemeral: true });
+
+  try {
+    // ========================================
+    // RAID CHARACTER SELECT
+    // ========================================
+    if (customId.startsWith("raid_char_select:")) {
+      const raidId = customId.split(":")[1];
+      const ownedCharacterId = selectedValue;
+
+      const { raidService } = await import("../services/RaidService");
+
+      try {
+        await raidService.addCharacterToTeam({
+          userId: discordId,
+          raidInstanceId: raidId,
+          ownedCharacterId,
+        });
+
+        const profile = await getProfile(discordId);
+        const character = profile.collection.find((c: any) => c.ownedId === ownedCharacterId);
+
+        await interaction.editReply(
+          `✅ **${character?.character.name}** foi adicionado à equipe da raid!\n\n` +
+            `Use os botões na mensagem original para ver o status ou iniciar a raid.`
+        );
+      } catch (error: any) {
+        await interaction.editReply(`❌ ${error.message}`);
+      }
+      return;
+    }
+
+    await interaction.editReply("❌ Ação desconhecida!");
+  } catch (error: any) {
+    console.error("❌ [SELECT MENU INTERACTION ERROR]", error);
+    await interaction.editReply(`❌ Erro: ${error.message}`);
+  }
+}

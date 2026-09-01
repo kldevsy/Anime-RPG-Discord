@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, REST, Routes } from "discord.js";
 import { commandDefinitions } from "./commands";
-import { handleAutocompleteInteraction, handleInteraction } from "./handlers";
+import { handleAutocompleteInteraction, handleInteraction, handleButtonInteraction, handleSelectMenuInteraction } from "./handlers";
 import { logger } from "../lib/logger";
 
 export class BotInitializationError extends Error {
@@ -60,6 +60,26 @@ export function createBotClient() {
         await handleAutocompleteInteraction(interaction);
       } catch (err) {
         logger.error({ err, command: interaction.commandName }, "Autocomplete interaction failed");
+      }
+      return;
+    }
+
+    if (interaction.isButton()) {
+      logger.info({ customId: interaction.customId, user: interaction.user.tag }, "Received button interaction");
+      try {
+        await handleButtonInteraction(interaction);
+      } catch (err) {
+        logger.error({ err, customId: interaction.customId }, "Button interaction failed");
+      }
+      return;
+    }
+
+    if (interaction.isStringSelectMenu()) {
+      logger.info({ customId: interaction.customId, user: interaction.user.tag }, "Received select menu interaction");
+      try {
+        await handleSelectMenuInteraction(interaction);
+      } catch (err) {
+        logger.error({ err, customId: interaction.customId }, "Select menu interaction failed");
       }
       return;
     }
