@@ -39,6 +39,9 @@ import {
   JASHIN_RITUAL,
   HELLSING_IMMORTALITY,
   BLOOD_MANIPULATION,
+  MOON_CRESCENT_BLADE,
+  SERPENT_REBIRTH,
+  DARKNESS_VOID,
 } from "./passive-library.ts";
 
 /**
@@ -1517,7 +1520,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
         targetType: "aoe_enemy",
         multiplier: 2.8,
         statusEffects: [
-          { type: "cursed", chance: 100, duration: 4, value: 0 },
+          { type: "poison", chance: 100, duration: 4, value: 50 },
           { type: "bleed", chance: 100, duration: 3, value: 80 },
           { type: "attack_down", chance: 80, duration: 3, value: 30 },
         ],
@@ -1560,8 +1563,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
         multiplier: 3.2,
         statusEffects: [
           { type: "bleed", chance: 90, duration: 3, value: 70 },
-          { type: "fear", chance: 75, duration: 2, value: 0 },
-          { type: "lifesteal", chance: 100, duration: 2, value: 35 },
+          { type: "stun", chance: 75, duration: 1, value: 0 },
         ],
         conditionalRules: [
           {
@@ -1617,6 +1619,149 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Choso consome 10% do HP máximo",
             effect: "mas ganha +1.0x no multiplicador final",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Demon Slayer",
+      name: "Kokushibo",
+      rarity: "mythic",
+      role: "dps",
+      baseHp: 1350,
+      baseAttack: 260,
+      baseDefense: 130,
+      baseSpeed: 140,
+      imageUrl:
+        "https://cdn.discordapp.com/attachments/1482939713664057506/1541613929178861648/file_00000000aaf0820eafffd6c359a9ebbf.png?ex=6a91871a&is=6a90359a&hm=d0b9a98434d343705f164adaa1cfa21f669ed03978060209a03d99105fbe21c7&",
+      passive: "Lâmina da Lua Crescente: Cada ataque tem 40% de chance de aplicar múltiplos cortes lunares, causando sangramento intenso e reduzindo defesa do alvo em até 45%.",
+      passiveAbility: MOON_CRESCENT_BLADE,
+      ultimate: {
+        id: "kokushibo_sixteenth_form",
+        name: "Décima Sexta Forma: Luar Sobre Terra Solitária",
+        description:
+          "Kokushibo desencadeia um tsunami de lâminas lunares que perfuram todos os inimigos, causando dano devastador e efeitos debilitantes múltiplos.",
+        chargeRequired: 90,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 16,
+        chargeOnCritical: 26,
+        type: "AOE",
+        targetType: "aoe_enemy",
+        multiplier: 3.4,
+        statusEffects: [
+          { type: "bleed", chance: 100, duration: 4, value: 80 },
+          { type: "defense_down", chance: 100, duration: 3, value: 40 },
+          { type: "speed_down", chance: 90, duration: 3, value: 35 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Garante acerto crítico em todos os alvos",
+            effect: "Cada inimigo com sangramento ativo sofre 25% de dano adicional",
+          },
+          {
+            condition: "Por cada inimigo derrotado anteriormente",
+            effect: "Aumenta o multiplicador em 0.4x (máx +2.0x com 5 kills)",
+          },
+          {
+            condition: "Se Kokushibo tiver buffs de velocidade ativos",
+            effect: "Ataca duas vezes em sequência, aplicando todos os efeitos novamente",
+          },
+        ],
+      },
+    },
+    {
+      anime: "Naruto",
+      name: "Orochimaru",
+      rarity: "legendary",
+      role: "support",
+      baseHp: 1150,
+      baseAttack: 190,
+      baseDefense: 145,
+      baseSpeed: 118,
+      imageUrl:
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+      passive: "Renascimento da Serpente: Ao cair abaixo de 40% HP, regenera completamente (1x por batalha). Tem 30% de chance de transferir 50% do dano recebido para um inimigo aleatório.",
+      passiveAbility: SERPENT_REBIRTH,
+      ultimate: {
+        id: "orochimaru_edo_tensei",
+        name: "Edo Tensei: Invocação dos Mortos",
+        description:
+          "Orochimaru invoca almas ressurretas para atormentar o campo de batalha, aplicando múltiplos debuffs devastadores e roubando vida dos inimigos.",
+        chargeRequired: 100,
+        chargeOnBasic: 22,
+        chargeOnDamageTaken: 20,
+        chargeOnCritical: 18,
+        type: "DEBUFF",
+        targetType: "aoe_enemy",
+        multiplier: 2.0,
+        statusEffects: [
+          { type: "poison", chance: 100, duration: 5, value: 70 },
+          { type: "attack_down", chance: 90, duration: 4, value: 35 },
+          { type: "defense_down", chance: 90, duration: 4, value: 35 },
+          { type: "speed_down", chance: 80, duration: 3, value: 25 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Cada inimigo afetado",
+            effect: "Orochimaru drena 8% do HP máximo do alvo e se cura pela mesma quantidade",
+          },
+          {
+            condition: "Se houver 3+ inimigos envenenados",
+            effect: "Todos os aliados ganham +20% ATK e escudo de 200 HP por 3 turnos",
+          },
+          {
+            condition: "Inimigos que já estavam envenenados",
+            effect: "O veneno acumula (não reseta duração) e causa dano dobrado (+70/turno adicional)",
+          },
+        ],
+      },
+    },
+    {
+      anime: "One Piece",
+      name: "Marshall D. Teach (Barba Negra)",
+      rarity: "legendary",
+      role: "control",
+      baseHp: 1400,
+      baseAttack: 215,
+      baseDefense: 155,
+      baseSpeed: 105,
+      imageUrl:
+        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+      passive: "Vácuo das Trevas: A cada 2 ataques, ativa vácuo gravitacional que puxa todos os inimigos, reduzindo velocidade em 25% e aplicando stun em 40%. Ganha 8% ATK por cada inimigo sob controle.",
+      passiveAbility: DARKNESS_VOID,
+      ultimate: {
+        id: "blackbeard_black_hole",
+        name: "Yami Yami no Mi: Buraco Negro + Tremor",
+        description:
+          "Barba Negra combina o poder das duas Akuma no Mi: cria um buraco negro gravitacional que imobiliza todos os inimigos, seguido de um tremor devastador que causa dano massivo.",
+        chargeRequired: 95,
+        chargeOnBasic: 24,
+        chargeOnDamageTaken: 22,
+        chargeOnCritical: 20,
+        type: "STUN",
+        targetType: "aoe_enemy",
+        multiplier: 3.0,
+        statusEffects: [
+          { type: "stun", chance: 100, duration: 2, value: 0 },
+          { type: "defense_down", chance: 100, duration: 4, value: 50 },
+          { type: "speed_down", chance: 100, duration: 4, value: 40 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Buraco Negro (Yami Yami): Absorve todos os buffs ativos dos inimigos",
+            effect: "Para cada buff absorvido, Barba Negra ganha +15% ATK e +100 HP de cura",
+          },
+          {
+            condition: "Tremor (Gura Gura): Após o stun",
+            effect: "Causa dano adicional igual a 50% do dano base em todos os inimigos atordoados",
+          },
+          {
+            condition: "Se houver 3+ inimigos atordoados simultaneamente",
+            effect: "Barba Negra ganha escudo de 400 HP e imunidade a debuffs por 2 turnos",
+          },
+          {
+            condition: "Inimigos que já estavam com velocidade reduzida",
+            effect: "O efeito de slow acumula até 80% de redução máxima",
           },
         ],
       },

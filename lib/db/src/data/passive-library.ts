@@ -737,7 +737,7 @@ export const PHASE_TRANSITION: PassiveAbility = {
 export const JASHIN_RITUAL: PassiveAbility = {
   id: "jashin_ritual",
   name: "Ritual de Jashin",
-  description: "Ao causar dano crítico, aplica maldição no alvo. Enquanto amaldiçoado, Hidan reflete 40% do dano que recebe de volta ao alvo.",
+  description: "Ao causar dano crítico, aplica queimadura no alvo e reflete 40% do dano recebido.",
   trigger: "on_critical_hit",
   effects: [
     { type: "apply_status", statusType: "burn", value: 3, chance: 100 },
@@ -746,8 +746,7 @@ export const JASHIN_RITUAL: PassiveAbility = {
   conditions: [
     { type: "hp_below_percent", value: 30 }
   ],
-  maxActivationsPerBattle: 99,
-  description: "Ao causar dano crítico, aplica queimadura no alvo e reflete 40% do dano recebido."
+  maxActivationsPerBattle: 99
 };
 
 export const HELLSING_IMMORTALITY: PassiveAbility = {
@@ -759,8 +758,7 @@ export const HELLSING_IMMORTALITY: PassiveAbility = {
     { type: "heal_percent", value: 25, target: "self" },
     { type: "increase_attack", value: 15, duration: 99 }
   ],
-  maxActivationsPerBattle: 5,
-  description: "Ao derrotar um inimigo, recupera 25% do HP máximo e ganha +15% de ataque permanentemente durante a batalha (acumulativo)."
+  maxActivationsPerBattle: 5
 };
 
 export const BLOOD_MANIPULATION: PassiveAbility = {
@@ -784,6 +782,53 @@ export const AOE_PUNISHMENT: PassiveAbility = {
     { type: "bonus_damage", value: 100, chance: 20, target: "enemies" }
   ],
   maxActivationsPerRound: 2,
+};
+
+/**
+ * ========================================
+ * PASSIVAS DOS 3 NOVOS PERSONAGENS
+ * ========================================
+ */
+
+export const MOON_CRESCENT_BLADE: PassiveAbility = {
+  id: "moon_crescent_blade",
+  name: "Lâmina da Lua Crescente",
+  description: "Cada ataque tem 40% de chance de causar múltiplos cortes lunares: aplica sangramento (4 turnos) e reduz DEF do alvo em 15% por 3 turnos (stackável até 45%).",
+  trigger: "on_hit",
+  effects: [
+    { type: "apply_status", statusType: "bleed", value: 60, duration: 4, chance: 40, target: "target" },
+    { type: "apply_status", statusType: "defense_down", value: 15, duration: 3, chance: 40, target: "target" }
+  ],
+  maxActivationsPerRound: 3
+};
+
+export const SERPENT_REBIRTH: PassiveAbility = {
+  id: "serpent_rebirth",
+  name: "Renascimento da Serpente",
+  description: "Ao cair abaixo de 40% HP, se regenera completamente (1x por batalha). Ao sofrer dano, tem 30% de chance de trocar de corpo e transferir 50% do dano recebido para um inimigo aleatório.",
+  trigger: "on_damaged",
+  effects: [
+    { type: "heal_percent", value: 100, target: "self", chance: 100 },
+    { type: "transfer_damage", value: 50, chance: 30, target: "random_enemy" }
+  ],
+  conditions: [
+    { type: "hp_below_percent", value: 40 }
+  ],
+  maxActivationsPerBattle: 1
+};
+
+export const DARKNESS_VOID: PassiveAbility = {
+  id: "darkness_void",
+  name: "Vácuo das Trevas",
+  description: "A cada 2 ataques, ativa Vácuo Gravitacional: puxa todos os inimigos, reduzindo velocidade em 25% e aplicando stun em 40% por 1 turno. Cada inimigo sob controle aumenta seu ATK em 8%.",
+  trigger: "on_basic_attack",
+  effects: [
+    { type: "apply_status", statusType: "speed_down", value: 25, duration: 2, chance: 100, target: "enemies" },
+    { type: "apply_status", statusType: "stun", value: 0, duration: 1, chance: 40, target: "enemies" },
+    { type: "increase_attack_per_controlled_enemy", value: 8, target: "self" }
+  ],
+  stackCounter: 2,
+  cooldownRounds: 1
 };
 
 /**
@@ -842,6 +887,11 @@ export const PASSIVE_LIBRARY: Record<string, PassiveAbility> = {
   jashin_ritual: JASHIN_RITUAL,
   hellsing_immortality: HELLSING_IMMORTALITY,
   blood_manipulation: BLOOD_MANIPULATION,
+  
+  // Kokushibo, Orochimaru, Barba Negra
+  moon_crescent_blade: MOON_CRESCENT_BLADE,
+  serpent_rebirth: SERPENT_REBIRTH,
+  darkness_void: DARKNESS_VOID,
 };
 
 /**
