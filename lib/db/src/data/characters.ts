@@ -1504,7 +1504,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 165,
       baseSpeed: 105,
       imageUrl:
-        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1543818159272759327/file_000000004400820eb2c8f79f3bfb01da.png?ex=6a983a73&is=6a96e8f3&hm=6df39f85d6de83378e69f45387e230078223ac1bbcef47c4a69b5f2f16545ba6&",
       passive: "Ritual de Jashin: ao causar crítico, aplica maldição. Enquanto amaldiçoado, reflete 40% do dano recebido de volta ao alvo.",
       passiveAbility: JASHIN_RITUAL,
       ultimate: {
@@ -1546,7 +1546,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 115,
       baseSpeed: 122,
       imageUrl:
-        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1543818692931100682/ChatGPT_Image_30_de_ago._de_2026_23_03_35.png?ex=6a983af3&is=6a96e973&hm=01fc00a69d346ac7297796ced931f5a61ced430955a2d0e5b0a9e81518056b08",
       passive: "Imortalidade de Hellsing: ao derrotar inimigo, recupera 25% HP máximo e ganha +15% ATK permanente (acumulativo).",
       passiveAbility: HELLSING_IMMORTALITY,
       ultimate: {
@@ -1587,7 +1587,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 125,
       baseSpeed: 115,
       imageUrl:
-        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1544397853642858546/file_0000000076e4820eb54271dde778f713.png?ex=6a985c15&is=6a970a95&hm=48e3b8c222a57de11c06d30c9b15fa3b123127b901ebef844c6957507d497806&",
       passive: "Manipulação de Sangue: início da rodada causa 50 de dano AoE e aplica Sangramento. Inimigos sangrando sofrem +30% dano de Choso.",
       passiveAbility: BLOOD_MANIPULATION,
       ultimate: {
@@ -1633,7 +1633,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 130,
       baseSpeed: 140,
       imageUrl:
-        "https://cdn.discordapp.com/attachments/1482939713664057506/1541613929178861648/file_00000000aaf0820eafffd6c359a9ebbf.png?ex=6a91871a&is=6a90359a&hm=d0b9a98434d343705f164adaa1cfa21f669ed03978060209a03d99105fbe21c7&",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1544397853147922546/file_00000000efcc820eaf7a358bcc40bed9.png?ex=6a985c15&is=6a970a95&hm=bbec91cb30f32e4c6cf4117e881fe272c9051a231ae80afc0ea774d4b0ba8aa2&",
       passive: "Lâmina da Lua Crescente: Cada ataque tem 40% de chance de aplicar múltiplos cortes lunares, causando sangramento intenso e reduzindo defesa do alvo em até 45%.",
       passiveAbility: MOON_CRESCENT_BLADE,
       ultimate: {
@@ -1679,7 +1679,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 145,
       baseSpeed: 118,
       imageUrl:
-        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1544397852527169617/file_00000000b6dc820e9d36b6d3c1b1bf1e.png?ex=6a985c15&is=6a970a95&hm=cfee2ef2ec9802ba2654567f9224c435183b310fe4eac40bb85d731a0a391e5b&",
       passive: "Renascimento da Serpente: Ao cair abaixo de 40% HP, regenera completamente (1x por batalha). Tem 30% de chance de transferir 50% do dano recebido para um inimigo aleatório.",
       passiveAbility: SERPENT_REBIRTH,
       ultimate: {
@@ -1726,7 +1726,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 155,
       baseSpeed: 105,
       imageUrl:
-        "https://cdn.discordapp.com/attachments/979267903989899264/1542300558273024161/file_00000000ea4c820e878efde9947d103f.png?ex=6a90bad3&is=6a8f6953&hm=506347a4c36b471500e501550e05a0e0124905225c4f0b3bf04b87879e99307b&",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1544399117248233472/content.png?ex=6a985d43&is=6a970bc3&hm=60b117054d7bdbc0ae226958bfdd4bcb0a2fbc78630dfdb66cffba3a2d91f359",
       passive: "Vácuo das Trevas: A cada 2 ataques, ativa vácuo gravitacional que puxa todos os inimigos, reduzindo velocidade em 25% e aplicando stun em 40%. Ganha 8% ATK por cada inimigo sob controle.",
       passiveAbility: DARKNESS_VOID,
       ultimate: {
