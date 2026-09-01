@@ -1625,7 +1625,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
     },
     {
       anime: "Demon Slayer",
-      name: "Kokushibo",
+      name: "Kokushibo (Moon)",
       rarity: "mythic",
       role: "dps",
       baseHp: 1350,
@@ -1637,7 +1637,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       passive: "Lâmina da Lua Crescente: Cada ataque tem 40% de chance de aplicar múltiplos cortes lunares, causando sangramento intenso e reduzindo defesa do alvo em até 45%.",
       passiveAbility: MOON_CRESCENT_BLADE,
       ultimate: {
-        id: "kokushibo_sixteenth_form",
+        id: "kokushibo_moon_sixteenth_form",
         name: "Décima Sexta Forma: Luar Sobre Terra Solitária",
         description:
           "Kokushibo desencadeia um tsunami de lâminas lunares que perfuram todos os inimigos, causando dano devastador e efeitos debilitantes múltiplos.",
