@@ -1913,21 +1913,21 @@ export async function handleButtonInteraction(interaction: any) {
   const discordId = interaction.user.id;
   const customId = interaction.customId;
 
-  // Defer para evitar timeout
-  await interaction.deferReply({ ephemeral: true });
-
   try {
     // ========================================
     // RAID BUTTON HANDLERS
     // ========================================
     if (customId.startsWith("raid_")) {
+      // Defer IMEDIATAMENTE para evitar timeout
+      await interaction.deferUpdate();
+      
       const [_, action, raidId] = customId.split(":");
 
       if (action === "add_char") {
         // Buscar personagens do usuário
         const profile = await getProfile(discordId);
         if (!profile || profile.collection.length === 0) {
-          await interaction.editReply("❌ Você não tem personagens! Use `/invocar` primeiro.");
+          await interaction.followUp({ content: "❌ Você não tem personagens! Use `/invocar` primeiro.", ephemeral: true });
           return;
         }
 
@@ -1945,9 +1945,10 @@ export async function handleButtonInteraction(interaction: any) {
             .addOptions(options)
         );
 
-        await interaction.editReply({
+        await interaction.followUp({
           content: "**Selecione um personagem para adicionar à raid:**",
           components: [selectMenu],
+          ephemeral: true,
         });
         return;
       }
@@ -1966,7 +1967,7 @@ export async function handleButtonInteraction(interaction: any) {
           .limit(1);
 
         if (!raidInstance) {
-          await interaction.editReply("❌ Raid não encontrada!");
+          await interaction.followUp({ content: "❌ Raid não encontrada!", ephemeral: true });
           return;
         }
 
@@ -1981,7 +1982,7 @@ export async function handleButtonInteraction(interaction: any) {
           status.teamMembers
         );
 
-        await interaction.editReply({ embeds: [embed] });
+        await interaction.followUp({ embeds: [embed], ephemeral: true });
         return;
       }
 
@@ -1999,24 +2000,26 @@ export async function handleButtonInteraction(interaction: any) {
           .limit(1);
 
         if (!raidInstance) {
-          await interaction.editReply("❌ Raid não encontrada!");
+          await interaction.followUp({ content: "❌ Raid não encontrada!", ephemeral: true });
           return;
         }
 
         // Verificar se é o líder
         if (raidInstance.leaderId !== discordId) {
-          await interaction.editReply("❌ Apenas o líder pode iniciar a raid!");
+          await interaction.followUp({ content: "❌ Apenas o líder pode iniciar a raid!", ephemeral: true });
           return;
         }
 
         // Verificar se tem 4 personagens
         const status = await raidService.getRaidStatus(raidInstance.roomCode);
         if (status.teamMembers.length < 4) {
-          await interaction.editReply(
-            `❌ A raid precisa de 4 personagens!\n\n` +
+          await interaction.followUp({
+            content:
+              `❌ A raid precisa de 4 personagens!\n\n` +
               `**Atual:** ${status.teamMembers.length}/4\n\n` +
-              `Peça aos jogadores para adicionar mais personagens.`
-          );
+              `Peça aos jogadores para adicionar mais personagens.`,
+            ephemeral: true,
+          });
           return;
         }
 
@@ -2024,13 +2027,15 @@ export async function handleButtonInteraction(interaction: any) {
           // Iniciar batalha da raid
           const result = await raidService.startRaidBattle(raidInstance.id);
 
-          await interaction.editReply(
-            `🚀 **RAID INICIADA!**\n\n` +
+          await interaction.followUp({
+            content:
+              `🚀 **RAID INICIADA!**\n\n` +
               `⚔️ A batalha está acontecendo...\n\n` +
-              `Use \`/raid acao:Status codigo:${raidInstance.roomCode}\` para ver o resultado!`
-          );
+              `Use \`/raid acao:Status codigo:${raidInstance.roomCode}\` para ver o resultado!`,
+            ephemeral: true,
+          });
         } catch (error: any) {
-          await interaction.editReply(`❌ Erro ao iniciar raid: ${error.message}`);
+          await interaction.followUp({ content: `❌ Erro ao iniciar raid: ${error.message}`, ephemeral: true });
         }
         return;
       }
@@ -2043,30 +2048,29 @@ export async function handleButtonInteraction(interaction: any) {
           const result = await raidService.leaveRaid(discordId, raidId);
 
           if (result.cancelled) {
-            await interaction.editReply("✅ Você (líder) saiu da raid. A sala foi cancelada.");
+            await interaction.followUp({ content: "✅ Você (líder) saiu da raid. A sala foi cancelada.", ephemeral: true });
           } else {
-            await interaction.editReply("✅ Você saiu da raid.");
+            await interaction.followUp({ content: "✅ Você saiu da raid.", ephemeral: true });
           }
         } catch (error: any) {
-          await interaction.editReply(`❌ ${error.message}`);
+          await interaction.followUp({ content: `❌ ${error.message}`, ephemeral: true });
         }
         return;
       }
     }
 
-    // ========================================
-    // SELECT MENU HANDLER (personagem selecionado)
-    // ========================================
-    if (customId.startsWith("raid_char_select:")) {
-      // Este será tratado por handleSelectMenuInteraction
-      await interaction.editReply("❌ Use o menu dropdown acima para selecionar.");
-      return;
-    }
-
-    await interaction.editReply("❌ Ação desconhecida!");
+    await interaction.followUp({ content: "❌ Ação desconhecida!", ephemeral: true });
   } catch (error: any) {
     console.error("❌ [BUTTON INTERACTION ERROR]", error);
-    await interaction.editReply(`❌ Erro: ${error.message}`);
+    try {
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.reply({ content: `❌ Erro: ${error.message}`, ephemeral: true });
+      } else {
+        await interaction.followUp({ content: `❌ Erro: ${error.message}`, ephemeral: true });
+      }
+    } catch (followUpError) {
+      console.error("❌ [BUTTON FOLLOW-UP ERROR]", followUpError);
+    }
   }
 }
 
@@ -2081,14 +2085,14 @@ export async function handleSelectMenuInteraction(interaction: any) {
   const customId = interaction.customId;
   const selectedValue = interaction.values[0];
 
-  // Defer para evitar timeout
-  await interaction.deferReply({ ephemeral: true });
-
   try {
     // ========================================
     // RAID CHARACTER SELECT
     // ========================================
     if (customId.startsWith("raid_char_select:")) {
+      // Defer IMEDIATAMENTE
+      await interaction.deferUpdate();
+      
       const raidId = customId.split(":")[1];
       const ownedCharacterId = selectedValue;
 
@@ -2104,19 +2108,29 @@ export async function handleSelectMenuInteraction(interaction: any) {
         const profile = await getProfile(discordId);
         const character = profile.collection.find((c: any) => c.ownedId === ownedCharacterId);
 
-        await interaction.editReply(
-          `✅ **${character?.character.name}** foi adicionado à equipe da raid!\n\n` +
-            `Use os botões na mensagem original para ver o status ou iniciar a raid.`
-        );
+        await interaction.followUp({
+          content:
+            `✅ **${character?.character.name}** foi adicionado à equipe da raid!\n\n` +
+            `Use os botões na mensagem original para ver o status ou iniciar a raid.`,
+          ephemeral: true,
+        });
       } catch (error: any) {
-        await interaction.editReply(`❌ ${error.message}`);
+        await interaction.followUp({ content: `❌ ${error.message}`, ephemeral: true });
       }
       return;
     }
 
-    await interaction.editReply("❌ Ação desconhecida!");
+    await interaction.followUp({ content: "❌ Ação desconhecida!", ephemeral: true });
   } catch (error: any) {
     console.error("❌ [SELECT MENU INTERACTION ERROR]", error);
-    await interaction.editReply(`❌ Erro: ${error.message}`);
+    try {
+      if (!interaction.deferred && !interaction.replied) {
+        await interaction.reply({ content: `❌ Erro: ${error.message}`, ephemeral: true });
+      } else {
+        await interaction.followUp({ content: `❌ Erro: ${error.message}`, ephemeral: true });
+      }
+    } catch (followUpError) {
+      console.error("❌ [SELECT MENU FOLLOW-UP ERROR]", followUpError);
+    }
   }
 }
