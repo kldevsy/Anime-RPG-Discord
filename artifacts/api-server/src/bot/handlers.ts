@@ -1913,6 +1913,9 @@ export async function handleButtonInteraction(interaction: any) {
   const discordId = interaction.user.id;
   const customId = interaction.customId;
 
+  console.log(`[BUTTON] CustomId: "${customId}"`);
+  console.log(`[BUTTON] Starts with raid_: ${customId.startsWith("raid_")}`);
+
   try {
     // ========================================
     // RAID BUTTON HANDLERS
@@ -1921,9 +1924,16 @@ export async function handleButtonInteraction(interaction: any) {
       // Defer IMEDIATAMENTE para evitar timeout
       await interaction.deferUpdate();
       
-      const [_, action, raidId] = customId.split(":");
+      const parts = customId.split(":");
+      console.log(`[BUTTON] Parts:`, parts);
+      
+      const action = parts[1];
+      const raidId = parts[2];
+      
+      console.log(`[BUTTON] Action: "${action}", RaidId: "${raidId}"`);
 
       if (action === "add_char") {
+        console.log("[BUTTON] Handling add_char");
         // Buscar personagens do usuário
         const profile = await getProfile(discordId);
         if (!profile || profile.collection.length === 0) {
@@ -1954,6 +1964,7 @@ export async function handleButtonInteraction(interaction: any) {
       }
 
       if (action === "status") {
+        console.log("[BUTTON] Handling status");
         // Buscar status da raid
         const { raidService } = await import("../services/RaidService");
         const { db } = await import("@workspace/db");
@@ -1987,6 +1998,7 @@ export async function handleButtonInteraction(interaction: any) {
       }
 
       if (action === "start") {
+        console.log("[BUTTON] Handling start");
         // Iniciar raid
         const { raidService } = await import("../services/RaidService");
         const { db } = await import("@workspace/db");
@@ -2041,6 +2053,7 @@ export async function handleButtonInteraction(interaction: any) {
       }
 
       if (action === "leave") {
+        console.log("[BUTTON] Handling leave");
         // Sair da raid
         const { raidService } = await import("../services/RaidService");
 
@@ -2057,8 +2070,13 @@ export async function handleButtonInteraction(interaction: any) {
         }
         return;
       }
+
+      console.log(`[BUTTON] Unknown action: "${action}"`);
+      await interaction.followUp({ content: `❌ Ação desconhecida: ${action}`, ephemeral: true });
+      return;
     }
 
+    console.log("[BUTTON] CustomId does not start with raid_");
     await interaction.followUp({ content: "❌ Ação desconhecida!", ephemeral: true });
   } catch (error: any) {
     console.error("❌ [BUTTON INTERACTION ERROR]", error);
