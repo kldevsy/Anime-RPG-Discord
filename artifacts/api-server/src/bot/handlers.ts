@@ -2173,9 +2173,12 @@ export async function handleSelectMenuInteraction(interaction: any) {
           .where(eq(raidInstances.id, raidId))
           .limit(1);
 
+        let teamCount = 1; // default
+        
         if (raidInstance) {
           // Buscar status atualizado
           const status = await raidService.getRaidStatus(raidInstance.roomCode);
+          teamCount = status.teamMembers.length;
           
           // Atualizar mensagem original
           const updatedEmbed = createRaidRoomEmbed(
@@ -2211,22 +2214,25 @@ export async function handleSelectMenuInteraction(interaction: any) {
               .setStyle(ButtonStyle.Danger)
           );
           
-          // Buscar mensagem original para atualizar
+          // Atualizar mensagem da raid no canal
+          // A mensagem original está referenciada na interação do botão original
+          // Vamos enviar um followUp atualizado no canal público
           try {
-            // A mensagem original está no canal, precisamos buscar
-            const originalMessage = interaction.message;
-            if (originalMessage && originalMessage.edit) {
-              await originalMessage.edit({ embeds: [updatedEmbed], components: [row] });
-            }
+            // Envia mensagem atualizada no canal
+            await interaction.channel.send({
+              content: `🔄 **Equipe Atualizada!** ${status.teamMembers.length}/4 personagens`,
+              embeds: [updatedEmbed],
+              components: [row]
+            });
           } catch (updateError) {
-            console.error("Erro ao atualizar mensagem original:", updateError);
+            console.error("Erro ao enviar atualização:", updateError);
           }
         }
 
         await interaction.followUp({
           content:
             `✅ **${character?.character.name}** foi adicionado à equipe da raid!\n\n` +
-            `A mensagem da raid foi atualizada.`,
+            `📊 Time: ${teamCount}/4 personagens`,
           ephemeral: true,
         });
       } catch (error: any) {
