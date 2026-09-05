@@ -1915,24 +1915,50 @@ export async function handleButtonInteraction(interaction: any) {
 
   console.log(`[BUTTON] CustomId: "${customId}"`);
 
+  // DEFER IMEDIATAMENTE - ANTES DE QUALQUER LÓGICA
+  await interaction.deferUpdate().catch(() => {
+    // Se já foi respondido, ignora
+  });
+
   try {
     // ========================================
     // RAID BUTTON HANDLERS
     // ========================================
     if (customId.startsWith("raid_")) {
-      // Defer IMEDIATAMENTE para evitar timeout
-      await interaction.deferUpdate();
-      
       // Parse: raid_ACTION:RAID_ID
-      // Exemplo: raid_add_char:e79b2adf-1617-4f20-bafa-f14f7c9c9e0d
       const colonIndex = customId.indexOf(":");
-      const actionPart = customId.substring(5, colonIndex); // Remove "raid_" prefix
+      const actionPart = customId.substring(5, colonIndex);
       const raidId = customId.substring(colonIndex + 1);
       
       console.log(`[BUTTON] Action: "${actionPart}", RaidId: "${raidId}"`);
 
       if (actionPart === "add_char") {
         console.log("[BUTTON] Handling add_char");
+        
+        // Buscar raid status primeiro para ver personagens já adicionados
+        const { raidService } = await import("../services/RaidService");
+        const { db } = await import("@workspace/db");
+        const { raidInstances } = await import("@workspace/db/schema");
+        const { eq } = await import("drizzle-orm");
+
+        const [raidInstance] = await db
+          .select()
+          .from(raidInstances)
+          .where(eq(raidInstances.id, raidId))
+          .limit(1);
+
+        if (!raidInstance) {
+          await interaction.followUp({ content: "❌ Raid não encontrada!", ephemeral: true });
+          return;
+        }
+
+        const raidStatus = await raidService.getRaidStatus(raidInstance.roomCode);
+        
+        // IDs dos personagens já na raid
+        const alreadyAddedIds = new Set(
+          raidStatus.teamMembers.map((m: any) => m.userChar.id)
+        );
+        
         // Buscar personagens do usuário
         const profile = await getProfile(discordId);
         if (!profile || profile.collection.length === 0) {
@@ -1940,8 +1966,21 @@ export async function handleButtonInteraction(interaction: any) {
           return;
         }
 
-        // Criar select menu com personagens
-        const options = profile.collection.slice(0, 25).map((item: any) => ({
+        // Filtrar personagens já adicionados
+        const availableCharacters = profile.collection.filter(
+          (item: any) => !alreadyAddedIds.has(item.ownedId)
+        );
+
+        if (availableCharacters.length === 0) {
+          await interaction.followUp({ 
+            content: "❌ Você já adicionou todos os seus personagens disponíveis!", 
+            ephemeral: true 
+          });
+          return;
+        }
+
+        // Criar select menu com personagens disponíveis
+        const options = availableCharacters.slice(0, 25).map((item: any) => ({
           label: `${item.character.name} (Nv.${item.level})`,
           description: `${item.character.anime} • ${item.character.rarity}`,
           value: item.ownedId,
@@ -1955,7 +1994,7 @@ export async function handleButtonInteraction(interaction: any) {
         );
 
         await interaction.followUp({
-          content: "**Selecione um personagem para adicionar à raid:**",
+          content: `**Selecione um personagem para adicionar à raid:**\n\n📊 Time atual: ${raidStatus.teamMembers.length}/4`,
           components: [selectMenu],
           ephemeral: true,
         });
@@ -2076,15 +2115,11 @@ export async function handleButtonInteraction(interaction: any) {
     }
 
     console.log("[BUTTON] CustomId does not start with raid_");
-    await interaction.followUp({ content: "❌ Botão desconhecido!", ephemeral: true });
+    await interaction.followUp({ content: "❌ Botão desconhecido!", ephemeral: true }).catch(() => {});
   } catch (error: any) {
     console.error("❌ [BUTTON INTERACTION ERROR]", error);
     try {
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.reply({ content: `❌ Erro: ${error.message}`, ephemeral: true });
-      } else {
-        await interaction.followUp({ content: `❌ Erro: ${error.message}`, ephemeral: true });
-      }
+      await interaction.followUp({ content: `❌ Erro: ${error.message}`, ephemeral: true }).catch(() => {});
     } catch (followUpError) {
       console.error("❌ [BUTTON FOLLOW-UP ERROR]", followUpError);
     }
@@ -2102,18 +2137,24 @@ export async function handleSelectMenuInteraction(interaction: any) {
   const customId = interaction.customId;
   const selectedValue = interaction.values[0];
 
+  // DEFER IMEDIATAMENTE - ANTES DE QUALQUER LÓGICA
+  await interaction.deferUpdate().catch(() => {
+    // Se já foi respondido, ignora
+  });
+
   try {
     // ========================================
     // RAID CHARACTER SELECT
     // ========================================
     if (customId.startsWith("raid_char_select:")) {
-      // Defer IMEDIATAMENTE
-      await interaction.deferUpdate();
-      
       const raidId = customId.split(":")[1];
       const ownedCharacterId = selectedValue;
 
       const { raidService } = await import("../services/RaidService");
+      const { db } = await import("@workspace/db");
+      const { raidInstances } = await import("@workspace/db/schema");
+      const { eq } = await import("drizzle-orm");
+      const { createRaidRoomEmbed } = await import("./embeds");
 
       try {
         await raidService.addCharacter({
@@ -2125,10 +2166,67 @@ export async function handleSelectMenuInteraction(interaction: any) {
         const profile = await getProfile(discordId);
         const character = profile.collection.find((c: any) => c.ownedId === ownedCharacterId);
 
+        // Buscar raid instance para pegar roomCode
+        const [raidInstance] = await db
+          .select()
+          .from(raidInstances)
+          .where(eq(raidInstances.id, raidId))
+          .limit(1);
+
+        if (raidInstance) {
+          // Buscar status atualizado
+          const status = await raidService.getRaidStatus(raidInstance.roomCode);
+          
+          // Atualizar mensagem original
+          const updatedEmbed = createRaidRoomEmbed(
+            status.raidMap!,
+            status.raidInstance.difficulty,
+            raidInstance.roomCode,
+            status.participants,
+            status.teamMembers
+          );
+          
+          // Atualizar botões
+          const canStart = status.teamMembers.length === 4 && status.raidInstance.status === "waiting";
+          
+          const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import("discord.js");
+          const row = new ActionRowBuilder<any>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`raid_add_char:${raidInstance.id}`)
+              .setLabel("➕ Adicionar Personagem")
+              .setStyle(ButtonStyle.Primary)
+              .setDisabled(status.teamMembers.length >= 4),
+            new ButtonBuilder()
+              .setCustomId(`raid_status:${raidInstance.id}`)
+              .setLabel("📊 Ver Status")
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId(`raid_start:${raidInstance.id}`)
+              .setLabel("🚀 Iniciar Raid")
+              .setStyle(ButtonStyle.Success)
+              .setDisabled(!canStart),
+            new ButtonBuilder()
+              .setCustomId(`raid_leave:${raidInstance.id}`)
+              .setLabel("🚪 Sair")
+              .setStyle(ButtonStyle.Danger)
+          );
+          
+          // Buscar mensagem original para atualizar
+          try {
+            // A mensagem original está no canal, precisamos buscar
+            const originalMessage = interaction.message;
+            if (originalMessage && originalMessage.edit) {
+              await originalMessage.edit({ embeds: [updatedEmbed], components: [row] });
+            }
+          } catch (updateError) {
+            console.error("Erro ao atualizar mensagem original:", updateError);
+          }
+        }
+
         await interaction.followUp({
           content:
             `✅ **${character?.character.name}** foi adicionado à equipe da raid!\n\n` +
-            `Use os botões na mensagem original para ver o status ou iniciar a raid.`,
+            `A mensagem da raid foi atualizada.`,
           ephemeral: true,
         });
       } catch (error: any) {
@@ -2141,11 +2239,7 @@ export async function handleSelectMenuInteraction(interaction: any) {
   } catch (error: any) {
     console.error("❌ [SELECT MENU INTERACTION ERROR]", error);
     try {
-      if (!interaction.deferred && !interaction.replied) {
-        await interaction.reply({ content: `❌ Erro: ${error.message}`, ephemeral: true });
-      } else {
-        await interaction.followUp({ content: `❌ Erro: ${error.message}`, ephemeral: true });
-      }
+      await interaction.followUp({ content: `❌ Erro: ${error.message}`, ephemeral: true }).catch(() => {});
     } catch (followUpError) {
       console.error("❌ [SELECT MENU FOLLOW-UP ERROR]", followUpError);
     }
