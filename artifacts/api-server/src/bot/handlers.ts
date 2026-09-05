@@ -2116,10 +2116,10 @@ export async function handleSelectMenuInteraction(interaction: any) {
       const { raidService } = await import("../services/RaidService");
 
       try {
-        await raidService.addCharacterToTeam({
-          userId: discordId,
+        await raidService.addCharacter({
           raidInstanceId: raidId,
-          ownedCharacterId,
+          userId: discordId,
+          userCharacterId: ownedCharacterId,
         });
 
         const profile = await getProfile(discordId);
