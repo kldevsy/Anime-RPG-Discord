@@ -2127,6 +2127,9 @@ export async function handleButtonInteraction(interaction: any) {
 }
 
 
+// Simple lock system to prevent duplicate interactions
+const interactionLocks = new Map<string, boolean>();
+
 /**
  * ========================================
  * SELECT MENU INTERACTION HANDLER
@@ -2136,6 +2139,21 @@ export async function handleSelectMenuInteraction(interaction: any) {
   const discordId = interaction.user.id;
   const customId = interaction.customId;
   const selectedValue = interaction.values[0];
+
+  // Create unique lock key
+  const lockKey = `${customId}:${discordId}:${selectedValue}`;
+  
+  // Check if already processing
+  if (interactionLocks.get(lockKey)) {
+    console.log(`[SELECT MENU] Duplicate interaction detected, ignoring: ${lockKey}`);
+    return;
+  }
+  
+  // Set lock
+  interactionLocks.set(lockKey, true);
+  
+  // Auto-release lock after 10 seconds
+  setTimeout(() => interactionLocks.delete(lockKey), 10000);
 
   // DEFER IMEDIATAMENTE - ANTES DE QUALQUER LÓGICA
   await interaction.deferUpdate().catch(() => {
@@ -2237,6 +2255,9 @@ export async function handleSelectMenuInteraction(interaction: any) {
         });
       } catch (error: any) {
         await interaction.followUp({ content: `❌ ${error.message}`, ephemeral: true });
+      } finally {
+        // Release lock
+        interactionLocks.delete(lockKey);
       }
       return;
     }
@@ -2249,5 +2270,8 @@ export async function handleSelectMenuInteraction(interaction: any) {
     } catch (followUpError) {
       console.error("❌ [SELECT MENU FOLLOW-UP ERROR]", followUpError);
     }
+  } finally {
+    // Release lock in case of unhandled error
+    interactionLocks.delete(lockKey);
   }
 }
