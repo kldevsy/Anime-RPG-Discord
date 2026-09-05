@@ -3,6 +3,7 @@ import { chooseAction } from "./AIController";
 import { calculateDamage } from "./DamageCalculator";
 import { StatusManager } from "./StatusManager";
 import { PassiveManager } from "./PassiveManager";
+import * as PassiveStackManager from "./PassiveStackManager";
 import type { BattleAction, BattlePhase, BattleSnapshot, Combatant, UltimateDecision, UltimateDecisionProvider } from "./BattleState";
 import type { PassiveContext } from "./PassiveTypes";
 
@@ -17,6 +18,12 @@ export class BattleEngine {
 
   constructor(private readonly playerTeam: Combatant[], private readonly enemyTeam: Combatant[]) {
     this.passiveManager = new PassiveManager(0);
+    
+    // Inicializa sistema de stacks para todos os combatentes
+    [...this.playerTeam, ...this.enemyTeam].forEach((combatant) => {
+      PassiveStackManager.initializePassiveStacks(combatant);
+    });
+    
     // Trigger passivas de início de batalha
     this.triggerPassivesForAllCombatants("on_battle_start");
   }
@@ -138,6 +145,13 @@ export class BattleEngine {
   private processRoundStart() {
     // Atualiza round no PassiveManager
     this.passiveManager.setRound(this.round);
+    
+    // Reseta contadores de ativação por rodada e decrementa cooldowns de passivas
+    for (const unit of [...this.playerTeam, ...this.enemyTeam]) {
+      if (!unit.alive) continue;
+      PassiveStackManager.resetRoundActivations(unit);
+      PassiveStackManager.decrementPassiveCooldowns(unit);
+    }
     
     // Trigger passivas de início de rodada
     this.triggerPassivesForAllCombatants("on_round_start");
@@ -589,6 +603,8 @@ export class BattleEngine {
     trigger: import("./PassiveTypes").PassiveTrigger,
     extra?: Partial<PassiveContext>
   ): void {
+    if (!unit.passiveAbility) return;
+    
     const allies = this.teamOf(unit);
     const enemies = allies === this.playerTeam ? this.enemyTeam : this.playerTeam;
 
@@ -600,15 +616,116 @@ export class BattleEngine {
       enemies,
       ...extra,
     };
-
+    
+    // ========================================
+    // LÓGICA DE STACKS AVANÇADOS
+    // ========================================
+    const passive = unit.passiveAbility;
+    
+    // Verifica se pode ativar (limites de ativação e cooldown)
+    if (!PassiveStackManager.canActivatePassive(unit, passive)) {
+      return;
+    }
+    
+    // Verifica condições da passiva
+    const targetHpPercent = extra?.target ? (extra.target.hp / extra.target.maxHp) * 100 : undefined;
+    const meetsConditions = PassiveStackManager.checkPassiveConditions(unit, passive, {
+      targetHpPercent,
+      isFirstRound: this.round === 1,
+      isCritical: extra?.damage?.critical,
+    });
+    
+    if (!meetsConditions) {
+      return;
+    }
+    
+    // Se tem stackCounter, incrementa e verifica se deve disparar stackEffect
+    if (passive.stackCounter) {
+      const shouldTriggerStackEffect = PassiveStackManager.incrementPassiveStack(unit, passive.id);
+      
+      if (shouldTriggerStackEffect && passive.stackEffect) {
+        // Dispara o stackEffect (ex: Rinnegan stun a cada 3 ataques)
+        this.applyPassiveEffect(unit, passive.stackEffect, context);
+        
+        this.actions.push({
+          round: this.round,
+          actorId: unit.id,
+          actorName: unit.name,
+          type: "passive_trigger",
+          skillName: `${passive.name} (Stack Effect)`,
+        });
+        
+        // Inicia cooldown se houver
+        if (passive.cooldownRounds) {
+          PassiveStackManager.startPassiveCooldown(unit, passive.id, passive.cooldownRounds);
+        }
+      }
+      
+      // Não executa efeitos normais se só tem stackEffect
+      if (passive.stackEffect && !passive.effects.length) {
+        return;
+      }
+    }
+    
+    // Se tem stackLimit (resistências progressivas), adiciona stack
+    if (passive.stackLimit && trigger === "on_damaged") {
+      PassiveStackManager.addProgressiveStack(unit, passive.id);
+    }
+    
+    // Processa efeitos normais da passiva
     const results = this.passiveManager.processTrigger(context, this.actions);
+    
+    // Registra ativação
+    PassiveStackManager.recordPassiveActivation(unit, passive.id);
+    
+    // Se tem conditionalEffects e as condições são atendidas, aplica
+    if (passive.conditionalEffects && meetsConditions) {
+      for (const effect of passive.conditionalEffects) {
+        this.applyPassiveEffect(unit, effect, context);
+      }
+    }
 
-    // Log passivas ativadas (opcional - pode adicionar ao actions se quiser feedback visual)
+    // Log passivas ativadas
     for (const result of results) {
       if (result.activated && result.effects.some(e => e.success)) {
         // Passiva foi ativada com sucesso
-        // Pode adicionar log aqui se desejar
       }
+    }
+  }
+  
+  /**
+   * Aplica um efeito específico de passiva
+   */
+  private applyPassiveEffect(
+    owner: Combatant,
+    effect: any,
+    context: PassiveContext
+  ): void {
+    const target = context.target || owner;
+    
+    switch (effect.type) {
+      case "apply_status":
+        if (effect.chance && Math.random() * 100 > effect.chance) break;
+        if (effect.statusType) {
+          StatusManager.applyStatus(target, {
+            type: effect.statusType as any,
+            duration: effect.duration || 1,
+            stacks: 1,
+            value: effect.value || 0,
+            originId: owner.id,
+          });
+        }
+        break;
+        
+      case "increase_crit_chance":
+        owner.critChance += effect.value;
+        break;
+        
+      case "gain_ultimate_charge":
+        this.addUltimateCharge(owner, "turn_start", effect.value);
+        break;
+        
+      // Adicione mais efeitos conforme necessário
     }
   }
 }

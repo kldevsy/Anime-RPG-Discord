@@ -370,7 +370,7 @@ export const DEADLY_SENTENCING: PassiveAbility = {
   description: "Ao ser atacado, tem 30% de chance de confiscar 20% do ATK do inimigo por 2 turnos (stackável)",
   trigger: "on_damaged",
   effects: [
-    { type: "steal_stats", value: 20, duration: 2, statType: "attack", chance: 30, target: "attacker" }
+    { type: "steal_stats", value: 20, duration: 2, statusType: "attack", chance: 30, target: "attacker" }
   ],
 };
 

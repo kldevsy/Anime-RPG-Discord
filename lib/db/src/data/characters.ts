@@ -171,6 +171,11 @@ export const passiveAbilitySchema = z.object({
   maxActivationsPerRound: z.number().int().positive().optional(),
   cooldownRounds: z.number().int().nonnegative().optional(),
   priority: z.number().int().optional(),
+  // Novas propriedades avançadas
+  stackCounter: z.number().int().positive().optional(),
+  stackLimit: z.number().int().positive().optional(),
+  stackEffect: passiveEffectSchema.optional(),
+  conditionalEffects: z.array(passiveEffectSchema).optional(),
 });
 
 export type PassiveAbility = z.infer<typeof passiveAbilitySchema>;

@@ -99,6 +99,18 @@ export interface SkillConditionalEffect {
   ultimateChargeBonus?: number;
 }
 
+/**
+ * Tracking de stacks para passivas avançadas
+ */
+export interface PassiveStackState {
+  passiveId: string;
+  currentStacks: number;
+  maxStacks?: number;
+  cooldownRemaining: number;
+  activationsThisBattle: number;
+  activationsThisRound: number;
+}
+
 export interface UltimateSkill extends Skill {
   stableKey: string;
   chargePolicy: UltimateChargePolicy;
@@ -140,6 +152,7 @@ export interface Combatant {
   };
   passive?: string;
   passiveAbility?: import("./PassiveTypes").PassiveAbility;
+  passiveStacks?: Map<string, PassiveStackState>; // NOVO: tracking de stacks
   isBoss?: boolean;
   currentPhase?: number;
   maxPhases?: number;
