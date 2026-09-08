@@ -2158,14 +2158,15 @@ export async function handleSelectMenuInteraction(interaction: any) {
   // Check if already processing
   if (interactionLocks.get(lockKey)) {
     console.log(`[SELECT MENU] Duplicate interaction detected, ignoring: ${lockKey}`);
+    // Try to acknowledge if not done yet
+    try {
+      await interaction.deferUpdate().catch(() => {});
+    } catch {}
     return;
   }
   
-  // Set lock
+  // Set lock BEFORE defer to prevent race condition
   interactionLocks.set(lockKey, true);
-  
-  // Auto-release lock after 10 seconds
-  setTimeout(() => interactionLocks.delete(lockKey), 10000);
 
   // DEFER IMEDIATAMENTE - ANTES DE QUALQUER LÓGICA
   await interaction.deferUpdate().catch(() => {

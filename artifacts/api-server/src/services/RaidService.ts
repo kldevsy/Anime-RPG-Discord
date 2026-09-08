@@ -340,6 +340,8 @@ class RaidService {
       throw new Error("Você não está nesta raid!");
     }
     
+    logger.info(`[RAID] Found participant - ID: ${participant.id}, UserId: ${participant.userId}`);
+    
     // Buscar personagem do usuário
     const [userChar] = await db
       .select({
@@ -354,6 +356,8 @@ class RaidService {
     if (!userChar || userChar.userChar.userId !== user.id) {
       throw new Error("Personagem não encontrado ou não pertence a você!");
     }
+    
+    logger.info(`[RAID] Found character - CharId: ${userCharacterId}, Name: ${userChar.char.name}, UserId: ${userChar.userChar.userId}`);
     
     // Verificar se personagem já está na raid
     const [existing] = await db
@@ -387,9 +391,20 @@ class RaidService {
     const level = userChar.userChar.level;
     const masteryLevel = userChar.userChar.masteryLevel || 1;
     
+    // Validar valores antes de calcular
+    if (!baseHp || baseHp <= 0) {
+      throw new Error(`HP base inválido: ${baseHp}`);
+    }
+    
+    if (!level || level <= 0) {
+      throw new Error(`Level inválido: ${level}`);
+    }
+    
     // Formula: base + (level * 10) + (maestria boost)
     const masteryBoost = Math.floor(baseHp * ((masteryLevel - 1) * 0.05));
     const currentHp = baseHp + (level * 10) + masteryBoost;
+    
+    logger.info(`[RAID] HP Calculation - Base: ${baseHp}, Level: ${level}, Mastery: ${masteryLevel}, Final: ${currentHp}`);
     
     // Encontrar próxima posição disponível (1-4)
     const usedPositions = new Set(teamMembers.map(m => m.position));
@@ -402,15 +417,30 @@ class RaidService {
       throw new Error("Todas as posições estão ocupadas!");
     }
     
-    await db.insert(raidTeamMembers).values({
-      raidInstanceId,
+    // Validar dados antes de inserir
+    if (!participant.id) {
+      throw new Error("Participant ID inválido!");
+    }
+    
+    if (!userCharacterId) {
+      throw new Error("User Character ID inválido!");
+    }
+    
+    logger.info(`[RAID] Inserting character - RaidId: ${raidInstanceId}, ParticipantId: ${participant.id}, CharId: ${userCharacterId}, Position: ${position}, HP: ${currentHp}`);
+    
+    const insertValues = {
+      raidInstanceId: raidInstanceId,
       participantId: participant.id,
-      userCharacterId,
-      position,
+      userCharacterId: userCharacterId,
+      position: position,
       isAlive: true,
-      currentHp,
+      currentHp: currentHp,
       damageDone: 0,
-    });
+    };
+    
+    logger.info(`[RAID] Insert values:`, JSON.stringify(insertValues));
+    
+    await db.insert(raidTeamMembers).values(insertValues);
     
     // Atualizar contribuição do participante
     await db
