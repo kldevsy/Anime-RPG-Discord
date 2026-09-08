@@ -1,4 +1,4 @@
-import { db } from "@workspace/db";
+  port { db } from "@workspace/db";
 import {
   raidInstances,
   raidInstanceParticipants,
@@ -314,8 +314,12 @@ class RaidService {
     const operationPromise = this._addCharacterInternal(options);
     addCharacterLocks.set(lockKey, operationPromise);
     
+    // Keep lock for at least 2 seconds to prevent rapid duplicates
+    const minLockTime = new Promise(resolve => setTimeout(resolve, 2000));
+    
     try {
       const result = await operationPromise;
+      await minLockTime; // Wait for minimum lock time
       return result;
     } finally {
       // Always release lock
@@ -387,20 +391,25 @@ class RaidService {
     
     logger.info(`[RAID] Found character - CharId: ${userCharacterId}, Name: ${userChar.char.name}, UserId: ${userChar.userChar.userId}`);
     
-    // Verificar se personagem já está na raid
-    const [existing] = await db
-      .select()
-      .from(raidTeamMembers)
-      .where(
-        and(
-          eq(raidTeamMembers.raidInstanceId, raidInstanceId),
-          eq(raidTeamMembers.userCharacterId, userCharacterId)
+    // Verificar se personagem já está na raid (with retry)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const [existing] = await db
+        .select()
+        .from(raidTeamMembers)
+        .where(
+          and(
+            eq(raidTeamMembers.raidInstanceId, raidInstanceId),
+            eq(raidTeamMembers.userCharacterId, userCharacterId)
+          )
         )
-      )
-      .limit(1);
-    
-    if (existing) {
-      throw new Error("Este personagem já está na equipe!");
+        .limit(1);
+      
+      if (existing) {
+        throw new Error("Este personagem já está na equipe!");
+      }
+      
+      // Small delay to avoid race condition
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 50));
     }
     
     // Contar personagens atuais
