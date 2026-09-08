@@ -456,19 +456,15 @@ class RaidService {
     
     logger.info(`[RAID] Inserting character - RaidId: ${raidInstanceId}, ParticipantId: ${participant.id}, CharId: ${userCharacterId}, Position: ${position}, HP: ${currentHp}`);
     
-    const insertValues = {
-      raidInstanceId: raidInstanceId,
+    await db.insert(raidTeamMembers).values({
+      raidInstanceId,
       participantId: participant.id,
-      userCharacterId: userCharacterId,
-      position: position,
+      userCharacterId,
+      position,
       isAlive: true,
-      currentHp: currentHp,
+      currentHp,
       damageDone: 0,
-    };
-    
-    logger.info(`[RAID] Insert values:`, JSON.stringify(insertValues));
-    
-    await db.insert(raidTeamMembers).values(insertValues);
+    });
     
     // Atualizar contribuição do participante
     await db
