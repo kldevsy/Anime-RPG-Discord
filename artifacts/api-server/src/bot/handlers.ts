@@ -1931,10 +1931,13 @@ export async function handleButtonInteraction(interaction: any) {
     }
   }
 
-  // Helper para responder (usa followUp se defer funcionou, senão reply)
+  // Helper para responder (usa followUp se defer funcionou, senão ignora)
   const respond = async (options: any) => {
-    const method = deferred ? 'followUp' : 'reply';
-    return interaction[method](options);
+    if (!deferred) {
+      console.log(`[BUTTON] Skipping response - interaction expired`);
+      return;
+    }
+    return interaction.followUp(options);
   };
 
   try {
@@ -2202,10 +2205,13 @@ export async function handleSelectMenuInteraction(interaction: any) {
     }
   }
 
-  // Helper para responder (usa followUp se defer funcionou, senão reply)
+  // Helper para responder (usa followUp se defer funcionou, senão ignora)
   const respond = async (options: any) => {
-    const method = deferred ? 'followUp' : 'reply';
-    return interaction[method](options);
+    if (!deferred) {
+      console.log(`[BUTTON] Skipping response - interaction expired`);
+      return;
+    }
+    return interaction.followUp(options);
   };
 
   try {
