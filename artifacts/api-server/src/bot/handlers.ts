@@ -1916,9 +1916,26 @@ export async function handleButtonInteraction(interaction: any) {
   console.log(`[BUTTON] CustomId: "${customId}"`);
 
   // DEFER IMEDIATAMENTE - ANTES DE QUALQUER LÓGICA
-  await interaction.deferUpdate().catch(() => {
-    // Se já foi respondido, ignora
-  });
+  let deferred = false;
+  try {
+    await interaction.deferUpdate();
+    deferred = true;
+  } catch (deferError: any) {
+    console.error(`[BUTTON] Failed to defer:`, deferError.message);
+    // Se erro 10062 (Unknown interaction) ou 40060 (Already acknowledged), não é fatal
+    if (deferError.code === 10062 || deferError.code === 40060) {
+      console.log(`[BUTTON] Continuing despite defer error`);
+    } else {
+      // Outro erro, aborta
+      return;
+    }
+  }
+
+  // Helper para responder (usa followUp se defer funcionou, senão reply)
+  const respond = async (options: any) => {
+    const method = deferred ? 'followUp' : 'reply';
+    return interaction[method](options);
+  };
 
   try {
     // ========================================
@@ -1948,7 +1965,7 @@ export async function handleButtonInteraction(interaction: any) {
           .limit(1);
 
         if (!raidInstance) {
-          await interaction.followUp({ content: "❌ Raid não encontrada!", ephemeral: true });
+          await respond({ content: "❌ Raid não encontrada!", ephemeral: true });
           return;
         }
 
@@ -1962,7 +1979,7 @@ export async function handleButtonInteraction(interaction: any) {
         // Buscar personagens do usuário
         const profile = await getProfile(discordId);
         if (!profile || profile.collection.length === 0) {
-          await interaction.followUp({ content: "❌ Você não tem personagens! Use `/invocar` primeiro.", ephemeral: true });
+          await respond({ content: "❌ Você não tem personagens! Use `/invocar` primeiro.", ephemeral: true });
           return;
         }
 
@@ -1972,7 +1989,7 @@ export async function handleButtonInteraction(interaction: any) {
         );
 
         if (availableCharacters.length === 0) {
-          await interaction.followUp({ 
+          await respond({ 
             content: "❌ Você já adicionou todos os seus personagens disponíveis!", 
             ephemeral: true 
           });
@@ -1993,7 +2010,7 @@ export async function handleButtonInteraction(interaction: any) {
             .addOptions(options)
         );
 
-        await interaction.followUp({
+        await respond({
           content: `**Selecione um personagem para adicionar à raid:**\n\n📊 Time atual: ${raidStatus.teamMembers.length}/4`,
           components: [selectMenu],
           ephemeral: true,
@@ -2016,7 +2033,7 @@ export async function handleButtonInteraction(interaction: any) {
           .limit(1);
 
         if (!raidInstance) {
-          await interaction.followUp({ content: "❌ Raid não encontrada!", ephemeral: true });
+          await respond({ content: "❌ Raid não encontrada!", ephemeral: true });
           return;
         }
 
@@ -2031,7 +2048,7 @@ export async function handleButtonInteraction(interaction: any) {
           status.teamMembers
         );
 
-        await interaction.followUp({ embeds: [embed], ephemeral: true });
+        await respond({ embeds: [embed], ephemeral: true });
         return;
       }
 
@@ -2050,7 +2067,7 @@ export async function handleButtonInteraction(interaction: any) {
           .limit(1);
 
         if (!raidInstance) {
-          await interaction.followUp({ content: "❌ Raid não encontrada!", ephemeral: true });
+          await respond({ content: "❌ Raid não encontrada!", ephemeral: true });
           return;
         }
 
@@ -2062,20 +2079,20 @@ export async function handleButtonInteraction(interaction: any) {
           .limit(1);
 
         if (!user) {
-          await interaction.followUp({ content: "❌ Usuário não encontrado!", ephemeral: true });
+          await respond({ content: "❌ Usuário não encontrado!", ephemeral: true });
           return;
         }
 
         // Verificar se é o líder
         if (raidInstance.leaderId !== user.id) {
-          await interaction.followUp({ content: "❌ Apenas o líder pode iniciar a raid!", ephemeral: true });
+          await respond({ content: "❌ Apenas o líder pode iniciar a raid!", ephemeral: true });
           return;
         }
 
         // Verificar se tem 4 personagens
         const status = await raidService.getRaidStatus(raidInstance.roomCode);
         if (status.teamMembers.length < 4) {
-          await interaction.followUp({
+          await respond({
             content:
               `❌ A raid precisa de 4 personagens!\n\n` +
               `**Atual:** ${status.teamMembers.length}/4\n\n` +
@@ -2089,7 +2106,7 @@ export async function handleButtonInteraction(interaction: any) {
           // Iniciar batalha da raid
           const result = await raidService.startRaidBattle(raidInstance.id);
 
-          await interaction.followUp({
+          await respond({
             content:
               `🚀 **RAID INICIADA!**\n\n` +
               `⚔️ A batalha está acontecendo...\n\n` +
@@ -2097,7 +2114,7 @@ export async function handleButtonInteraction(interaction: any) {
             ephemeral: true,
           });
         } catch (error: any) {
-          await interaction.followUp({ content: `❌ Erro ao iniciar raid: ${error.message}`, ephemeral: true });
+          await respond({ content: `❌ Erro ao iniciar raid: ${error.message}`, ephemeral: true });
         }
         return;
       }
@@ -2111,27 +2128,27 @@ export async function handleButtonInteraction(interaction: any) {
           const result = await raidService.leaveRaid(discordId, raidId);
 
           if (result.cancelled) {
-            await interaction.followUp({ content: "✅ Você (líder) saiu da raid. A sala foi cancelada.", ephemeral: true });
+            await respond({ content: "✅ Você (líder) saiu da raid. A sala foi cancelada.", ephemeral: true });
           } else {
-            await interaction.followUp({ content: "✅ Você saiu da raid.", ephemeral: true });
+            await respond({ content: "✅ Você saiu da raid.", ephemeral: true });
           }
         } catch (error: any) {
-          await interaction.followUp({ content: `❌ ${error.message}`, ephemeral: true });
+          await respond({ content: `❌ ${error.message}`, ephemeral: true });
         }
         return;
       }
 
       console.log(`[BUTTON] Unknown action: "${actionPart}"`);
-      await interaction.followUp({ content: `❌ Ação desconhecida: ${actionPart}`, ephemeral: true });
+      await respond({ content: `❌ Ação desconhecida: ${actionPart}`, ephemeral: true });
       return;
     }
 
     console.log("[BUTTON] CustomId does not start with raid_");
-    await interaction.followUp({ content: "❌ Botão desconhecido!", ephemeral: true }).catch(() => {});
+    await respond({ content: "❌ Botão desconhecido!", ephemeral: true }).catch(() => {});
   } catch (error: any) {
     console.error("❌ [BUTTON INTERACTION ERROR]", error);
     try {
-      await interaction.followUp({ content: `❌ Erro: ${error.message}`, ephemeral: true }).catch(() => {});
+      await respond({ content: `❌ Erro: ${error.message}`, ephemeral: true }).catch(() => {});
     } catch (followUpError) {
       console.error("❌ [BUTTON FOLLOW-UP ERROR]", followUpError);
     }
@@ -2169,9 +2186,27 @@ export async function handleSelectMenuInteraction(interaction: any) {
   interactionLocks.set(lockKey, true);
 
   // DEFER IMEDIATAMENTE - ANTES DE QUALQUER LÓGICA
-  await interaction.deferUpdate().catch(() => {
-    // Se já foi respondido, ignora
-  });
+  let deferred = false;
+  try {
+    await interaction.deferUpdate();
+    deferred = true;
+  } catch (deferError: any) {
+    console.error(`[SELECT MENU] Failed to defer:`, deferError.message);
+    // Se erro 10062 (Unknown interaction) ou 40060 (Already acknowledged), não é fatal
+    if (deferError.code === 10062 || deferError.code === 40060) {
+      console.log(`[SELECT MENU] Continuing despite defer error`);
+    } else {
+      // Outro erro, aborta
+      interactionLocks.delete(lockKey);
+      return;
+    }
+  }
+
+  // Helper para responder (usa followUp se defer funcionou, senão reply)
+  const respond = async (options: any) => {
+    const method = deferred ? 'followUp' : 'reply';
+    return interaction[method](options);
+  };
 
   try {
     // ========================================
@@ -2260,14 +2295,15 @@ export async function handleSelectMenuInteraction(interaction: any) {
           }
         }
 
-        await interaction.followUp({
+        // Responder ao usuário
+        await respond({
           content:
             `✅ **${character?.character.name}** foi adicionado à equipe da raid!\n\n` +
             `📊 Time: ${teamCount}/4 personagens`,
           ephemeral: true,
         });
       } catch (error: any) {
-        await interaction.followUp({ content: `❌ ${error.message}`, ephemeral: true });
+        await respond({ content: `❌ ${error.message}`, ephemeral: true }).catch(() => {});
       } finally {
         // Release lock
         interactionLocks.delete(lockKey);
@@ -2275,11 +2311,11 @@ export async function handleSelectMenuInteraction(interaction: any) {
       return;
     }
 
-    await interaction.followUp({ content: "❌ Ação desconhecida!", ephemeral: true });
+    await respond({ content: "❌ Ação desconhecida!", ephemeral: true });
   } catch (error: any) {
     console.error("❌ [SELECT MENU INTERACTION ERROR]", error);
     try {
-      await interaction.followUp({ content: `❌ Erro: ${error.message}`, ephemeral: true }).catch(() => {});
+      await respond({ content: `❌ Erro: ${error.message}`, ephemeral: true }).catch(() => {});
     } catch (followUpError) {
       console.error("❌ [SELECT MENU FOLLOW-UP ERROR]", followUpError);
     }
