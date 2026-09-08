@@ -21,6 +21,9 @@ import { RaidBattleEngine, createRaidFighterFromCharacter } from "./RaidBattleEn
 type RaidDifficulty = "normal" | "hard" | "nightmare";
 type RaidStatus = "waiting" | "in_progress" | "completed" | "failed" | "expired";
 
+// Lock system to prevent duplicate character additions
+const addCharacterLocks = new Map<string, Promise<any>>();
+
 interface CreateRaidOptions {
   leaderId: string;
   raidMapId: string;
@@ -296,6 +299,31 @@ class RaidService {
    * ========================================
    */
   async addCharacter(options: AddCharacterOptions) {
+    const { raidInstanceId, userId, userCharacterId } = options;
+    
+    // Create unique lock key for this operation
+    const lockKey = `${raidInstanceId}:${userId}:${userCharacterId}`;
+    
+    // Check if already processing this exact operation
+    if (addCharacterLocks.has(lockKey)) {
+      logger.warn(`[RAID] Duplicate addCharacter call blocked: ${lockKey}`);
+      throw new Error("Já está adicionando este personagem. Aguarde...");
+    }
+    
+    // Create promise for this operation
+    const operationPromise = this._addCharacterInternal(options);
+    addCharacterLocks.set(lockKey, operationPromise);
+    
+    try {
+      const result = await operationPromise;
+      return result;
+    } finally {
+      // Always release lock
+      addCharacterLocks.delete(lockKey);
+    }
+  }
+
+  private async _addCharacterInternal(options: AddCharacterOptions) {
     const { raidInstanceId, userId, userCharacterId } = options;
     
     // Buscar raid
