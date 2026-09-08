@@ -2162,6 +2162,9 @@ export async function handleButtonInteraction(interaction: any) {
 // Simple lock system to prevent duplicate interactions
 const interactionLocks = new Map<string, boolean>();
 
+// Additional lock for raid character additions (prevents DB-level duplicates)
+const raidAddCharLocks = new Map<string, boolean>();
+
 /**
  * ========================================
  * SELECT MENU INTERACTION HANDLER
@@ -2227,6 +2230,23 @@ export async function handleSelectMenuInteraction(interaction: any) {
       const { raidInstances } = await import("@workspace/db/schema");
       const { eq } = await import("drizzle-orm");
       const { createRaidRoomEmbed } = await import("./embeds");
+
+      // Additional lock to prevent duplicate character additions
+      const addCharLockKey = `${raidId}:${discordId}:${ownedCharacterId}`;
+      
+      if (raidAddCharLocks.get(addCharLockKey)) {
+        console.log(`[SELECT MENU] Blocked duplicate character addition: ${addCharLockKey}`);
+        await respond({
+          content: "⏳ Já está processando essa adição. Aguarde...",
+          ephemeral: true,
+        });
+        return;
+      }
+      
+      raidAddCharLocks.set(addCharLockKey, true);
+      
+      // Auto-release after 10 seconds
+      setTimeout(() => raidAddCharLocks.delete(addCharLockKey), 10000);
 
       try {
         await raidService.addCharacter({
@@ -2313,7 +2333,8 @@ export async function handleSelectMenuInteraction(interaction: any) {
       } catch (error: any) {
         await respond({ content: `❌ ${error.message}`, ephemeral: true }).catch(() => {});
       } finally {
-        // Release lock
+        // Release locks
+        raidAddCharLocks.delete(addCharLockKey);
         interactionLocks.delete(lockKey);
       }
       return;
