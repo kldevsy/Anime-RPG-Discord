@@ -2040,7 +2040,7 @@ export async function handleButtonInteraction(interaction: any) {
         // Iniciar raid
         const { raidService } = await import("../services/RaidService");
         const { db } = await import("@workspace/db");
-        const { raidInstances } = await import("@workspace/db/schema");
+        const { raidInstances, users } = await import("@workspace/db/schema");
         const { eq } = await import("drizzle-orm");
 
         const [raidInstance] = await db
@@ -2054,8 +2054,20 @@ export async function handleButtonInteraction(interaction: any) {
           return;
         }
 
+        // Buscar user pelo discordId para comparar com leaderId
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.discordId, discordId))
+          .limit(1);
+
+        if (!user) {
+          await interaction.followUp({ content: "❌ Usuário não encontrado!", ephemeral: true });
+          return;
+        }
+
         // Verificar se é o líder
-        if (raidInstance.leaderId !== discordId) {
+        if (raidInstance.leaderId !== user.id) {
           await interaction.followUp({ content: "❌ Apenas o líder pode iniciar a raid!", ephemeral: true });
           return;
         }

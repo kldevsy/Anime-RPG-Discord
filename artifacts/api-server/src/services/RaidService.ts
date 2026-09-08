@@ -13,7 +13,7 @@ import {
   equipment,
   userEquipment,
 } from "@workspace/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { RAID_CATALOG, getRaidById, type RaidMap } from "@workspace/db/data/raid-catalog";
 import { logger } from "../lib/logger";
 import { RaidBattleEngine, createRaidFighterFromCharacter } from "./RaidBattleEngine";
@@ -375,7 +375,8 @@ class RaidService {
     const teamMembers = await db
       .select()
       .from(raidTeamMembers)
-      .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId));
+      .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId))
+      .orderBy(asc(raidTeamMembers.position));
     
     if (teamMembers.length >= 4) {
       throw new Error("Equipe já está completa! (4/4 personagens)");
@@ -390,8 +391,16 @@ class RaidService {
     const masteryBoost = Math.floor(baseHp * ((masteryLevel - 1) * 0.05));
     const currentHp = baseHp + (level * 10) + masteryBoost;
     
-    // Adicionar personagem
-    const position = teamMembers.length + 1;
+    // Encontrar próxima posição disponível (1-4)
+    const usedPositions = new Set(teamMembers.map(m => m.position));
+    let position = 1;
+    while (usedPositions.has(position) && position <= 4) {
+      position++;
+    }
+    
+    if (position > 4) {
+      throw new Error("Todas as posições estão ocupadas!");
+    }
     
     await db.insert(raidTeamMembers).values({
       raidInstanceId,
