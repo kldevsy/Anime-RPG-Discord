@@ -456,15 +456,20 @@ class RaidService {
     
     logger.info(`[RAID] Inserting character - RaidId: ${raidInstanceId}, ParticipantId: ${participant.id}, CharId: ${userCharacterId}, Position: ${position}, HP: ${currentHp}`);
     
-    await db.insert(raidTeamMembers).values({
-      raidInstanceId,
-      participantId: participant.id,
-      userCharacterId,
-      position,
-      isAlive: true,
-      currentHp,
-      damageDone: 0,
-    });
+    try {
+      await db.insert(raidTeamMembers).values({
+        raidInstanceId,
+        participantId: participant.id,
+        userCharacterId,
+        position,
+        isAlive: true,
+        currentHp,
+        damageDone: 0,
+      });
+    } catch (insertError: any) {
+      logger.error(`[RAID] Insert failed:`, insertError);
+      throw new Error(`Erro ao adicionar personagem: ${insertError.message}`);
+    }
     
     // Atualizar contribuição do participante
     await db
