@@ -2287,17 +2287,19 @@ export async function handleSelectMenuInteraction(interaction: any) {
           );
           
           // Atualizar mensagem da raid no canal
-          // A mensagem original está referenciada na interação do botão original
-          // Vamos enviar um followUp atualizado no canal público
-          try {
-            // Envia mensagem atualizada no canal
-            await interaction.channel.send({
-              content: `🔄 **Equipe Atualizada!** ${status.teamMembers.length}/4 personagens`,
-              embeds: [updatedEmbed],
-              components: [row]
-            });
-          } catch (updateError) {
-            console.error("Erro ao enviar atualização:", updateError);
+          // Só envia mensagem pública se não conseguimos responder com followUp
+          // (quando defer falhou, enviamos no canal; quando defer funcionou, só ephemeral)
+          if (!deferred) {
+            try {
+              // Envia mensagem atualizada no canal
+              await interaction.channel.send({
+                content: `🔄 **Equipe Atualizada!** ${status.teamMembers.length}/4 personagens`,
+                embeds: [updatedEmbed],
+                components: [row]
+              });
+            } catch (updateError) {
+              console.error("Erro ao enviar atualização:", updateError);
+            }
           }
         }
 
