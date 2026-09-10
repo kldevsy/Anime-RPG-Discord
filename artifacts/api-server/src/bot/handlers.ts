@@ -2425,7 +2425,7 @@ export async function handleButtonInteraction(interaction: any) {
           .setDisabled(category === "pve")
       );
 
-      await interaction.update({ embeds: [embed], components: [categoryRow1, categoryRow2] });
+      await interaction.editReply({ embeds: [embed], components: [categoryRow1, categoryRow2] });
       return;
     }
 
@@ -2541,7 +2541,7 @@ export async function handleButtonInteraction(interaction: any) {
         components.push(claimRow);
       }
 
-      await interaction.update({ embeds: [embed], components });
+      await interaction.editReply({ embeds: [embed], components });
       return;
     }
 
@@ -2757,7 +2757,7 @@ export async function handleButtonInteraction(interaction: any) {
           .setDisabled(page >= totalPages - 1)
       );
 
-      await interaction.update({ embeds: [embed], components: [row] });
+      await interaction.editReply({ embeds: [embed], components: [row] });
       return;
     }
 
