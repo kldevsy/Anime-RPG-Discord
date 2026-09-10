@@ -415,12 +415,6 @@ class RaidService {
   private isRaidPositionUniqueViolation(error: unknown): boolean {
     return this.isUniqueViolation(error, "raid_team_members_raid_position_unique");
   }
-    return this.isUniqueViolation(error, "raid_team_members_raid_character_unique");
-  }
-
-  private isRaidPositionUniqueViolation(error: unknown): boolean {
-    return this.isUniqueViolation(error, "raid_team_members_raid_position_unique");
-  }
 
   /**
    * ========================================
