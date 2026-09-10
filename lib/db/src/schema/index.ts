@@ -436,7 +436,7 @@ export const raidInstances = pgTable("raid_instances", {
   leaderId: uuid("leader_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   raidMapId: text("raid_map_id").notNull(),
   difficulty: raidDifficultyEnum("difficulty").notNull(),
-  roomCode: text("room_code").notNull().unique(),
+  roomCode: text("room_code").notNull(),
   status: raidStatusEnum("status").notNull().default("waiting"),
   maxPlayers: integer("max_players").notNull().default(4),
   currentWave: integer("current_wave").notNull().default(0),
