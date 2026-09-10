@@ -29,6 +29,13 @@
       "when": 1788128952964,
       "tag": "0003_youthful_red_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789009898525,
+      "tag": "0004_raid_instances",
+      "breakpoints": true
     }
   ]
 }
