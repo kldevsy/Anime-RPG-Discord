@@ -36,6 +36,12 @@ import {
 import { lootBoxService } from "../services/LootBoxService";
 import { equipmentService } from "../services/EquipmentService";
 import { handleRaidCommand } from "./raid-handlers";
+import { raidService } from "../services/RaidService";
+import { getRaidById } from "@workspace/db/data/raid-catalog";
+import { db } from "@workspace/db";
+import { raidInstances, users, raidInstanceParticipants } from "@workspace/db/schema";
+import { eq, and } from "drizzle-orm";
+import { createRaidRoomEmbed, createBattleProgressEmbed as createBattleProgressEmbedStatic } from "./embeds";
 import {
   applyEmbedImage,
   createBannersEmbed,
@@ -307,7 +313,13 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       }
       
       const teamData = await getTeam(discordId);
-      const embed = createProfileEmbed(profile.user, profile.collection.length, teamData?.members?.length ?? 0);
+      const embed = createProfileEmbed(
+        profile.user,
+        profile.collection.length,
+        teamData?.members?.length ?? 0,
+        profile.collection,
+        teamData?.members
+      );
       await interaction.editReply({ embeds: [embed] });
       return;
     }
@@ -1120,13 +1132,13 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         enemyTeamName = `Arena: ${battleResult.enemyTeamName}`;
         
         // Determina resultado baseado na fase
-        const isVictory = battleResult.result.phase === "PLAYER_VICTORY";
+        const isVictory = battleResult.snapshot.phase === "VICTORY";
         
         // Cria embed final usando o embed padrão de batalha
         const finalEmbed = createBattleResultEmbed(
           username,
           enemyTeamName,
-          battleResult.result,
+          battleResult.snapshot,
           {
             gold: battleResult.rewards.gold,
             xp: battleResult.rewards.xp,
@@ -1915,6 +1927,13 @@ export async function handleButtonInteraction(interaction: any) {
 
   console.log(`[BUTTON] CustomId: "${customId}"`);
 
+  // Botões que não são de raid são tratados por outros mecanismos (ex: awaitMessageComponent no arena)
+  // Não fazemos defer nem processamos aqui
+  if (!customId.startsWith("raid_")) {
+    console.log("[BUTTON] Non-raid button - ignoring (handled by awaitMessageComponent)");
+    return;
+  }
+
   // DEFER IMEDIATAMENTE - ANTES DE QUALQUER LÓGICA
   let deferred = false;
   try {
@@ -1951,12 +1970,6 @@ export async function handleButtonInteraction(interaction: any) {
       if (actionPart === "add_char") {
         console.log("[BUTTON] Handling add_char");
         
-        // Buscar raid status primeiro para ver personagens já adicionados
-        const { raidService } = await import("../services/RaidService");
-        const { db } = await import("@workspace/db");
-        const { raidInstances } = await import("@workspace/db/schema");
-        const { eq } = await import("drizzle-orm");
-
         const [raidInstance] = await db
           .select()
           .from(raidInstances)
@@ -2019,11 +2032,6 @@ export async function handleButtonInteraction(interaction: any) {
 
       if (actionPart === "status") {
         console.log("[BUTTON] Handling status");
-        // Buscar status da raid
-        const { raidService } = await import("../services/RaidService");
-        const { db } = await import("@workspace/db");
-        const { raidInstances } = await import("@workspace/db/schema");
-        const { eq } = await import("drizzle-orm");
 
         const [raidInstance] = await db
           .select()
@@ -2037,7 +2045,6 @@ export async function handleButtonInteraction(interaction: any) {
         }
 
         const status = await raidService.getRaidStatus(raidInstance.roomCode);
-        const { createRaidRoomEmbed } = await import("./embeds");
 
         const embed = createRaidRoomEmbed(
           status.raidMap!,
@@ -2054,11 +2061,6 @@ export async function handleButtonInteraction(interaction: any) {
       if (actionPart === "start") {
         console.log("[BUTTON] Handling start");
         // Iniciar raid
-        const { raidService } = await import("../services/RaidService");
-        const { db } = await import("@workspace/db");
-        const { raidInstances, users } = await import("@workspace/db/schema");
-        const { eq } = await import("drizzle-orm");
-        const { getRaidById } = await import("@workspace/db/data/raid-catalog");
 
         const [raidInstance] = await db
           .select()
@@ -2107,9 +2109,6 @@ export async function handleButtonInteraction(interaction: any) {
         }
 
         try {
-          // Importar embed do arena
-          const { createBattleProgressEmbed } = await import("./embeds");
-
           // Responder imediatamente (antes de iniciar a batalha, que pode demorar muito)
           await respond({ content: `⚔️ **Iniciando a raid ${raidMap.name}...** Acompanhe a batalha no canal!`, ephemeral: true });
 
@@ -2128,7 +2127,7 @@ export async function handleButtonInteraction(interaction: any) {
               ? `💀 ${raidMap.name} — Boss`
               : `⚔️ ${raidMap.name} — Wave ${waveNum}/${totalWaves - 1}`;
 
-            const embed = createBattleProgressEmbed(
+            const embed = createBattleProgressEmbedStatic(
               `Raid Cooperativa`,
               waveLabel,
               snap,
@@ -2179,7 +2178,6 @@ export async function handleButtonInteraction(interaction: any) {
       if (actionPart === "leave") {
         console.log("[BUTTON] Handling leave");
         // Sair da raid
-        const { raidService } = await import("../services/RaidService");
 
         try {
           const result = await raidService.leaveRaid(discordId, raidId);
@@ -2201,7 +2199,7 @@ export async function handleButtonInteraction(interaction: any) {
     }
 
     console.log("[BUTTON] CustomId does not start with raid_");
-    await respond({ content: "❌ Botão desconhecido!", ephemeral: true }).catch(() => {});
+    // Não deveria chegar aqui pois retornamos antes do try
   } catch (error: any) {
     console.error("❌ [BUTTON INTERACTION ERROR]", error);
     try {
@@ -2275,12 +2273,6 @@ export async function handleSelectMenuInteraction(interaction: any) {
       const raidId = customId.split(":")[1];
       const ownedCharacterId = selectedValue;
 
-      const { raidService } = await import("../services/RaidService");
-      const { db } = await import("@workspace/db");
-      const { raidInstances } = await import("@workspace/db/schema");
-      const { eq } = await import("drizzle-orm");
-      const { createRaidRoomEmbed } = await import("./embeds");
-
       // Additional lock to prevent duplicate character additions
       const addCharLockKey = `${raidId}:${discordId}:${ownedCharacterId}`;
       
@@ -2334,7 +2326,6 @@ export async function handleSelectMenuInteraction(interaction: any) {
           // Atualizar botões
           const canStart = status.teamMembers.length === 4 && status.raidInstance.status === "waiting";
           
-          const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import("discord.js");
           const row = new ActionRowBuilder<any>().addComponents(
             new ButtonBuilder()
               .setCustomId(`raid_add_char:${raidInstance.id}`)

@@ -90,25 +90,145 @@ export function formatUltimateSummary(ultimate: CharacterUltimate | null | undef
   return `✨ **${name}** — ${description}`;
 }
 
-export function createProfileEmbed(user: any, collectionCount: number, teamCount: number) {
+export function createProfileEmbed(user: any, collectionCount: number, teamCount: number, collection?: any[], teamMembers?: any[]) {
   const avatarUrl = user.avatar
     ? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.avatar}.png`
     : DEFAULT_EMBED_IMAGE_URL;
 
-  return new EmbedBuilder()
-    .setTitle(`👤 Perfil de ${user.username}`)
-    .setColor(0x3498db)
+  // Cor baseada na raridade mais alta da coleção
+  const rarityColors: Record<string, number> = {
+    mythic: 0xFF4500,
+    legendary: 0xF1C40F,
+    epic: 0x9B59B6,
+    rare: 0x3498DB,
+    uncommon: 0x2ECC71,
+    common: 0x95A5A6,
+  };
+
+  let embedColor = 0x3498DB;
+  if (collection && collection.length > 0) {
+    const rarityOrder = ["mythic", "legendary", "epic", "rare", "uncommon", "common"];
+    for (const rarity of rarityOrder) {
+      if (collection.some((c: any) => c.character?.rarity === rarity)) {
+        embedColor = rarityColors[rarity];
+        break;
+      }
+    }
+  }
+
+  // Contagem por raridade
+  const rarityCounts: Record<string, number> = {};
+  if (collection) {
+    for (const item of collection) {
+      const rarity = item.character?.rarity ?? "common";
+      rarityCounts[rarity] = (rarityCounts[rarity] ?? 0) + 1;
+    }
+  }
+
+  const rarityEmojis: Record<string, string> = {
+    mythic: "🔴",
+    legendary: "🟡",
+    epic: "🟣",
+    rare: "🔵",
+    uncommon: "🟢",
+    common: "⚪",
+  };
+
+  const rarityLine = ["mythic", "legendary", "epic", "rare", "uncommon", "common"]
+    .filter(r => rarityCounts[r])
+    .map(r => `${rarityEmojis[r]} ${rarityCounts[r]}`)
+    .join("  ") || "Nenhum personagem";
+
+  // Calcular poder total da coleção
+  const totalPower = collection?.reduce((sum: number, c: any) => {
+    const char = c.character;
+    if (!char) return sum;
+    return sum + (char.baseHp ?? 0) + (char.baseAttack ?? 0) * 2 + (char.baseDefense ?? 0);
+  }, 0) ?? 0;
+
+  // Top 3 personagens mais fortes
+  const top3 = collection
+    ? [...collection]
+        .sort((a: any, b: any) => {
+          const powerA = (a.character?.baseAttack ?? 0) * 2 + (a.character?.baseHp ?? 0);
+          const powerB = (b.character?.baseAttack ?? 0) * 2 + (b.character?.baseHp ?? 0);
+          return powerB - powerA;
+        })
+        .slice(0, 3)
+    : [];
+
+  const top3Text = top3.length > 0
+    ? top3.map((c: any, i: number) => {
+        const medals = ["🥇", "🥈", "🥉"];
+        const rarity = c.character?.rarity ?? "common";
+        return `${medals[i]} **${c.character?.name ?? "?"}** ${rarityEmojis[rarity] ?? ""}  Nv.${c.level ?? 1}`;
+      }).join("\n")
+    : "Nenhum personagem ainda";
+
+  // Equipe atual
+  const teamText = teamMembers && teamMembers.length > 0
+    ? teamMembers.map((m: any) => {
+        const name = m.character?.name ?? m.name ?? "?";
+        const rarity = m.character?.rarity ?? "common";
+        return `${rarityEmojis[rarity] ?? "▪️"} **${name}**`;
+      }).join("\n")
+    : "Equipe vazia — use `/equipe` para montar!";
+
+  // Recursos formatados
+  const goldStr = (user.gold ?? 0).toLocaleString("pt-BR");
+  const gemsStr = (user.gems ?? 0).toLocaleString("pt-BR");
+  const ticketsStr = (user.tickets ?? 0).toLocaleString("pt-BR");
+
+  const embed = new EmbedBuilder()
+    .setTitle(`✨ ${user.username}`)
+    .setColor(embedColor)
     .setThumbnail(avatarUrl)
-    .addFields(
-      { name: "🆔 ID Discord", value: user.discordId, inline: true },
-      { name: "💰 Gold (Ouro)", value: `${user.gold ?? 0}`, inline: true },
-      { name: "💎 Gems (Gemas)", value: `${user.gems ?? 0}`, inline: true },
-      { name: "🎟️ Tickets", value: `${user.tickets ?? 0}`, inline: true },
-      { name: "🎴 Personagens Possuídos", value: `${collectionCount}`, inline: true },
-      { name: "⚔️ Membros na Equipe", value: `${teamCount} / 5`, inline: true }
+    .setDescription(
+      `🆔 \`${user.discordId}\`\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━`
     )
-    .setFooter({ text: "Anime RPG • Batalhas Automáticas por Turnos" })
+    .addFields(
+      {
+        name: "💰 Recursos",
+        value:
+          `🪙 Gold: **${goldStr}**\n` +
+          `💎 Gemas: **${gemsStr}**\n` +
+          `🎟️ Tickets: **${ticketsStr}**`,
+        inline: true,
+      },
+      {
+        name: "📊 Coleção",
+        value:
+          `🎴 Total: **${collectionCount}** personagens\n` +
+          `⚔️ Equipe: **${teamCount}/5** slots\n` +
+          `⚡ Poder: **${totalPower.toLocaleString("pt-BR")}**`,
+        inline: true,
+      },
+      {
+        name: "\u200b",
+        value: "\u200b",
+        inline: true,
+      },
+      {
+        name: "🏆 Raridades na Coleção",
+        value: rarityLine,
+        inline: false,
+      },
+      {
+        name: "🌟 Top 3 Personagens",
+        value: top3Text,
+        inline: true,
+      },
+      {
+        name: "⚔️ Equipe Atual",
+        value: teamText,
+        inline: true,
+      }
+    )
+    .setFooter({ text: "Anime RPG • Use /personagens para ver sua coleção completa" })
     .setTimestamp();
+
+  return embed;
 }
 
 export function createBannersEmbed(bannersList: any[]) {
