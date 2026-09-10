@@ -46,6 +46,10 @@ export const users = pgTable("users", {
   gold: integer("gold").notNull().default(0),
   gems: integer("gems").notNull().default(1000),
   tickets: integer("tickets").notNull().default(10),
+  totalBattlesWon: integer("total_battles_won").notNull().default(0),
+  totalSummons: integer("total_summons").notNull().default(0),
+  totalPveCleared: integer("total_pve_cleared").notNull().default(0),
+  highestTeamPower: integer("highest_team_power").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

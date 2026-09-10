@@ -17,13 +17,14 @@ import {
 import { listPlayerBattles, runPlayerBattle } from "../services/BattleService";
 import { getPveStageById, listPveStages, listPveWorlds } from "../services/PveService";
 import { getTransactionHistory } from "../services/EconomyService";
-import { claimQuestReward, getUserQuests } from "../services/QuestService";
+import { claimQuestReward, getUserQuests, updateQuestProgress } from "../services/QuestService";
 import { claimDailyReward, getDailyRewardStatus } from "../services/DailyRewardService";
 import {
   getCollectionLeaderboard,
   getPveLeaderboard,
   getTeamPowerLeaderboard,
   getWealthLeaderboard,
+  type RankingEntry,
 } from "../services/RankingService";
 import {
   adminClearBattleState,
@@ -138,6 +139,13 @@ function formatPveStageChoice(stage: Awaited<ReturnType<typeof listPveStages>>[n
   const world = worldName ?? `Mundo ${stage.worldId.slice(0, 8)}`;
   const name = `${world} / Fase ${stage.position} • ${stage.name} — ${stage.enemyName}`;
   return { name: name.slice(0, 100), value: stage.id };
+}
+
+function createProgressBar(current: number, max: number, length: number = 10): string {
+  const percentage = Math.min(current / max, 1);
+  const filled = Math.round(percentage * length);
+  const empty = length - filled;
+  return `[${"█".repeat(filled)}${"░".repeat(empty)}]`;
 }
 
 export async function handleAutocompleteInteraction(interaction: AutocompleteInteraction): Promise<void> {
@@ -348,6 +356,15 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         
         console.log(`✅ [SUMMON] User ${discordId} summoned ${result.results.length} characters`);
         
+        // Atualizar progresso de missões e stats
+        try {
+          await updateQuestProgress(discordId, "summon", quantity);
+          const { incrementSummons } = await import("../services/RankingService");
+          await incrementSummons(discordId, quantity);
+        } catch (err) {
+          console.error("[QUEST/STATS] Failed to update summon progress:", err);
+        }
+        
         // Verificar se os personagens foram adicionados
         const profileAfterSummon = await getProfile(discordId);
         console.log(`✅ [SUMMON] Profile collection size: ${profileAfterSummon?.collection?.length ?? 0}`);
@@ -379,30 +396,111 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       const profile = await getProfile(discordId);
       const catalog = await listCharacters({ anime: animeFilter, rarity: rarityFilter });
 
-      const embed = new EmbedBuilder()
-        .setTitle("🎴 Catálogo e Coleção de Personagens")
-        .setColor(0x3498db)
-        .setDescription(`Exibindo **${catalog.length}** personagem(ns) no catálogo.`);
+      // Emojis para raridades
+      const rarityEmojis: Record<string, string> = {
+        comum: "⚪",
+        raro: "🔵",
+        epico: "🟣",
+        lendario: "🟡",
+        mitico: "🔴",
+      };
 
-      let text = "";
+      // Emojis para roles
+      const roleEmojis: Record<string, string> = {
+        dps: "⚔️",
+        tank: "🛡️",
+        suporte: "💚",
+        support: "💚",
+        controle: "🎯",
+      };
+
       const ownedIds = new Set(profile?.collection.map((c: OwnedCharacterChoiceSource) => c.character.id) ?? []);
+      const ownedCount = catalog.filter((c) => ownedIds.has(c.id)).length;
 
-      for (let i = 0; i < Math.min(catalog.length, 10); i += 1) {
-        const c = catalog[i];
-        const ownedSymbol = ownedIds.has(c.id) ? "✅ [Possuído]" : "🔒 [Não possuído]";
-        text += `• **${c.name}** (${c.anime}) — *${c.rarity.toUpperCase()}* | ${c.role.toUpperCase()} ${ownedSymbol}\n  ID: \`${c.id}\`\n`;
-      }
-
-      embed.addFields({
-        name: "Lista de Personagens",
-        value: text
-          ? text.slice(0, 1024)
-          : "Nenhum personagem encontrado com os filtros.",
+      // Ordenar: possuídos primeiro, depois por raridade
+      const rarityOrder: Record<string, number> = { mitico: 5, lendario: 4, epico: 3, raro: 2, comum: 1 };
+      const sorted = [...catalog].sort((a, b) => {
+        const aOwned = ownedIds.has(a.id) ? 1 : 0;
+        const bOwned = ownedIds.has(b.id) ? 1 : 0;
+        if (aOwned !== bOwned) return bOwned - aOwned; // Possuídos primeiro
+        return (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0); // Depois por raridade
       });
-      if (catalog.length > 0) {
-        applyEmbedImage(embed, catalog[0].imageUrl);
+
+      // Paginação: 6 por página
+      const perPage = 6;
+      const totalPages = Math.ceil(sorted.length / perPage);
+      const page = 0; // Primeira página
+
+      const start = page * perPage;
+      const end = start + perPage;
+      const pageCharacters = sorted.slice(start, end);
+
+      // Título e descrição
+      let filterText = "";
+      if (animeFilter) filterText += `📺 **${animeFilter}**`;
+      if (rarityFilter) filterText += (filterText ? " • " : "") + `${rarityEmojis[rarityFilter] || "⭐"} **${rarityFilter.toUpperCase()}**`;
+
+      const embed = new EmbedBuilder()
+        .setTitle("🎴 Catálogo de Personagens")
+        .setColor(rarityFilter === "mitico" ? 0xff0000 : rarityFilter === "lendario" ? 0xffd700 : rarityFilter === "epico" ? 0x9b59b6 : rarityFilter === "raro" ? 0x3498db : 0x95a5a6)
+        .setDescription(
+          `${filterText ? `**Filtros:** ${filterText}\n` : ""}` +
+          `📊 **Progresso:** ${ownedCount}/${catalog.length} personagens (${Math.round((ownedCount / catalog.length) * 100)}%)\n` +
+          `📖 Página ${page + 1}/${totalPages}`
+        );
+
+      // Cards de personagens
+      if (pageCharacters.length === 0) {
+        embed.addFields({
+          name: "❌ Nenhum personagem encontrado",
+          value: "Tente ajustar os filtros.",
+        });
+      } else {
+        for (const c of pageCharacters) {
+          const owned = ownedIds.has(c.id);
+          const rarityEmoji = rarityEmojis[c.rarity] || "⭐";
+          const roleEmoji = roleEmojis[c.role.toLowerCase()] || "❓";
+          
+          const ownedSymbol = owned ? "✅ **POSSUÍDO**" : "🔒 *Não possuído*";
+          
+          embed.addFields({
+            name: `${rarityEmoji} ${c.name} ${roleEmoji}`,
+            value:
+              `${ownedSymbol}\n` +
+              `📺 ${c.anime} • ${c.rarity.toUpperCase()} • ${c.role.toUpperCase()}\n` +
+              `💪 HP: ${c.baseHp} | ATK: ${c.baseAttack} | DEF: ${c.baseDefense} | SPD: ${c.baseSpeed}`,
+            inline: true,
+          });
+        }
       }
-      await interaction.editReply({ embeds: [embed] });
+
+      // Thumbnail da primeira personagem
+      if (pageCharacters.length > 0) {
+        applyEmbedImage(embed, pageCharacters[0].imageUrl);
+      }
+
+      // Footer com dica
+      embed.setFooter({ text: "💡 Use /personagem <nome> para ver detalhes completos" });
+
+      // Botões de navegação (se houver mais de 1 página)
+      if (totalPages > 1) {
+        const row = new ActionRowBuilder<any>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`chars_page:${page - 1}:${animeFilter || ""}:${rarityFilter || ""}`)
+            .setLabel("◀️ Anterior")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page === 0),
+          new ButtonBuilder()
+            .setCustomId(`chars_page:${page + 1}:${animeFilter || ""}:${rarityFilter || ""}`)
+            .setLabel("Próxima ▶️")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page >= totalPages - 1)
+        );
+
+        await interaction.editReply({ embeds: [embed], components: [row] });
+      } else {
+        await interaction.editReply({ embeds: [embed] });
+      }
       return;
     }
 
@@ -1181,6 +1279,17 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         
         await interaction.editReply({ embeds: [finalEmbed] });
         
+        // Atualizar progresso de missões e stats
+        if (isVictory) {
+          try {
+            await updateQuestProgress(discordId, "battle_win", 1);
+            const { incrementBattlesWon } = await import("../services/RankingService");
+            await incrementBattlesWon(discordId, 1);
+          } catch (err) {
+            console.error("[QUEST/STATS] Failed to update battle_win progress:", err);
+          }
+        }
+        
         // TODO: Aplicar recompensas ao jogador (integrar com EconomyService)
         console.log(`[ARENA] ${isVictory ? "VICTORY" : "DEFEAT"} - Rewards: ${battleResult.rewards.gold}G, ${battleResult.rewards.gems}💎, ${battleResult.rewards.xp}XP`);
         
@@ -1659,39 +1768,121 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     if (commandName === "missoes") {
       await interaction.deferReply();
       const category = (interaction.options.getString("categoria") ?? "daily") as "daily" | "weekly" | "story";
-      const action = interaction.options.getString("acao") ?? "ver";
-      const questId = interaction.options.getString("id");
-
-      if (action === "resgatar") {
-        if (!questId) {
-          await interaction.editReply("❌ Forneça o ID da missão que deseja resgatar.");
-          return;
-        }
-        const idempotencyKey = `bot_quest_${discordId}_${questId}_${Date.now()}`;
-        const res = await claimQuestReward(discordId, questId, idempotencyKey);
-        await interaction.editReply(
-          `🎉 **Recompensa Resgatada!**\n• Gold: +${res.rewards.gold}\n• Gemas: +${res.rewards.gems}\n• Tickets: +${res.rewards.tickets}`
-        );
-        return;
-      }
 
       const questsList = await getUserQuests(discordId, category);
-      const embed = new EmbedBuilder().setTitle(`📜 Missões (${category.toUpperCase()})`).setColor(0x3498db);
+      
+      // Emojis por categoria
+      const categoryEmojis: Record<string, string> = {
+        daily: "📅",
+        weekly: "📆",
+        story: "📖",
+        monthly: "🗓️",
+        event: "🎉",
+      };
 
-      if (!questsList.length) {
-        embed.setDescription("Nenhuma missão disponível nesta categoria.");
-      } else {
+      const categoryNames: Record<string, string> = {
+        daily: "Diárias",
+        weekly: "Semanais",
+        story: "História",
+        monthly: "Mensais",
+        event: "Eventos",
+      };
+
+      const categoryColors: Record<string, number> = {
+        daily: 0x3498db,    // Azul
+        weekly: 0x9b59b6,   // Roxo
+        story: 0xe67e22,    // Laranja
+        monthly: 0xe74c3c,  // Vermelho
+        event: 0xf1c40f,    // Amarelo
+      };
+
+      // Separar missões por status
+      const completed = questsList.filter((q) => q.userQuest.completed && !q.userQuest.claimedAt);
+      const claimed = questsList.filter((q) => q.userQuest.claimedAt);
+      const inProgress = questsList.filter((q) => !q.userQuest.completed);
+
+      const emoji = categoryEmojis[category] || "📜";
+      const categoryName = categoryNames[category] || category.toUpperCase();
+      const color = categoryColors[category] || 0x3498db;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${emoji} Missões ${categoryName}`)
+        .setColor(color)
+        .setDescription(
+          `📊 **Progresso:** ${completed.length + claimed.length}/${questsList.length} completas\n` +
+          `🎁 **Prontas:** ${completed.length} | ⏳ **Em progresso:** ${inProgress.length} | ✅ **Resgatadas:** ${claimed.length}`
+        );
+
+      // Missões prontas para resgatar
+      if (completed.length > 0) {
         let text = "";
-        for (const q of questsList) {
+        for (const q of completed.slice(0, 3)) { // Mostrar até 3
           const quest = q.quest;
-          const uq = q.userQuest;
-          const status = uq.completed ? (uq.claimedAt ? "✅ [Resgatado]" : "🎁 [Pronto p/ Resgate]") : "⏳ [Em Progresso]";
-          text += `• **${quest.title}** (${uq.progress}/${quest.requirementCount}) — ${status}\n  Descrição: ${quest.description}\n  ID: \`${quest.id}\`\n\n`;
+          const rewards = `💰 ${quest.rewardGold}G | 💎 ${quest.rewardGems} | 🎫 ${quest.rewardTickets}`;
+          text += `🎁 **${quest.title}**\n${quest.description}\n${rewards}\nID: \`${quest.id}\`\n\n`;
         }
-        embed.setDescription(text);
+        embed.addFields({ name: "🎁 Prontas para Resgatar", value: text || "Nenhuma" });
       }
 
-      await interaction.editReply({ embeds: [embed] });
+      // Missões em progresso
+      if (inProgress.length > 0) {
+        let text = "";
+        for (const q of inProgress.slice(0, 4)) { // Mostrar até 4
+          const quest = q.quest;
+          const uq = q.userQuest;
+          const percentage = Math.round((uq.progress / quest.requirementCount) * 100);
+          const progressBar = createProgressBar(uq.progress, quest.requirementCount);
+          text += `⏳ **${quest.title}** (${percentage}%)\n${progressBar} ${uq.progress}/${quest.requirementCount}\n`;
+        }
+        embed.addFields({ name: "⏳ Em Progresso", value: text || "Nenhuma" });
+      }
+
+      // Missões resgatadas (resumo)
+      if (claimed.length > 0) {
+        embed.addFields({ 
+          name: "✅ Resgatadas", 
+          value: `Você já resgatou ${claimed.length} missão(ões) nesta categoria!` 
+        });
+      }
+
+      if (questsList.length === 0) {
+        embed.setDescription("❌ Nenhuma missão disponível nesta categoria.");
+      }
+
+      embed.setFooter({ text: "💡 Use os botões abaixo para resgatar ou trocar de categoria" });
+
+      // Botões de categoria
+      const categoryRow = new ActionRowBuilder<any>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:daily`)
+          .setLabel("📅 Diárias")
+          .setStyle(category === "daily" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "daily"),
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:weekly`)
+          .setLabel("📆 Semanais")
+          .setStyle(category === "weekly" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "weekly"),
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:story`)
+          .setLabel("📖 História")
+          .setStyle(category === "story" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "story")
+      );
+
+      // Botão de resgatar todas (se houver prontas)
+      const components: any[] = [categoryRow];
+      if (completed.length > 0) {
+        const claimRow = new ActionRowBuilder<any>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`quests_claim_all:${category}`)
+            .setLabel(`🎁 Resgatar Todas (${completed.length})`)
+            .setStyle(ButtonStyle.Primary)
+        );
+        components.push(claimRow);
+      }
+
+      await interaction.editReply({ embeds: [embed], components });
       return;
     }
 
@@ -1731,22 +1922,152 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       await interaction.deferReply();
       const category = interaction.options.getString("categoria") ?? "gold";
 
-      let entries: any[] = [];
-      if (category === "gold" || category === "gems" || category === "tickets") {
-        entries = await getWealthLeaderboard(10);
-      } else if (category === "pve") {
-        entries = await getPveLeaderboard(10);
-      } else if (category === "collection") {
-        entries = await getCollectionLeaderboard(10);
-      } else {
-        entries = await getTeamPowerLeaderboard(10);
+      // Emojis e nomes por categoria
+      const categoryData: Record<string, { emoji: string; name: string; unit: string; color: number }> = {
+        gold: { emoji: "💰", name: "Ouro", unit: "G", color: 0xf1c40f },
+        gems: { emoji: "💎", name: "Gemas", unit: "💎", color: 0x9b59b6 },
+        power: { emoji: "⚔️", name: "Poder da Equipe", unit: "⚡", color: 0xe74c3c },
+        battles: { emoji: "🏆", name: "Batalhas Vencidas", unit: "vitórias", color: 0x2ecc71 },
+        summons: { emoji: "🎴", name: "Invocações", unit: "summons", color: 0x3498db },
+        collection: { emoji: "📚", name: "Coleção", unit: "personagens", color: 0xe67e22 },
+        pve: { emoji: "🗺️", name: "PvE Completado", unit: "fases", color: 0x1abc9c },
+      };
+
+      const data = categoryData[category] || categoryData.gold;
+
+      let entries: RankingEntry[] = [];
+      
+      switch (category) {
+        case "gold":
+          entries = await import("../services/RankingService").then(m => m.getGoldLeaderboard(10));
+          break;
+        case "gems":
+          entries = await import("../services/RankingService").then(m => m.getGemsLeaderboard(10));
+          break;
+        case "power":
+          entries = await getTeamPowerLeaderboard(10);
+          break;
+        case "battles":
+          entries = await import("../services/RankingService").then(m => m.getBattlesWonLeaderboard(10));
+          break;
+        case "summons":
+          entries = await import("../services/RankingService").then(m => m.getSummonsLeaderboard(10));
+          break;
+        case "collection":
+          entries = await getCollectionLeaderboard(10);
+          break;
+        case "pve":
+          entries = await getPveLeaderboard(10);
+          break;
+        default:
+          entries = await import("../services/RankingService").then(m => m.getGoldLeaderboard(10));
       }
 
-      const embed = createLeaderboardEmbed(
-        entries.map((e) => ({ username: e.username, gold: e.details?.gold ?? e.score, gems: e.details?.gems ?? 0, tickets: 0 })),
-        category
+      // Encontrar posição do usuário atual
+      let userRank = entries.findIndex(e => e.discordId === discordId) + 1;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${data.emoji} Ranking - ${data.name}`)
+        .setColor(data.color)
+        .setDescription(
+          `🏅 **Top 10 Jogadores**\n` +
+          (userRank > 0 ? `📍 **Sua posição:** #${userRank}\n` : `📍 Você ainda não está no ranking\n`) +
+          `━━━━━━━━━━━━━━━━━━━━`
+        );
+
+      if (entries.length === 0) {
+        embed.addFields({
+          name: "❌ Ranking Vazio",
+          value: "Ainda não há jogadores nesta categoria.",
+        });
+      } else {
+        let rankingText = "";
+        
+        for (const entry of entries) {
+          const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`;
+          const isCurrentUser = entry.discordId === discordId;
+          const highlight = isCurrentUser ? "**" : "";
+          
+          let scoreText = "";
+          switch (category) {
+            case "gold":
+              scoreText = `${entry.score.toLocaleString()} G`;
+              break;
+            case "gems":
+              scoreText = `${entry.score.toLocaleString()} 💎`;
+              break;
+            case "power":
+              scoreText = `${entry.score.toLocaleString()} ⚡`;
+              break;
+            case "battles":
+              scoreText = `${entry.score} vitórias`;
+              break;
+            case "summons":
+              scoreText = `${entry.score} summons`;
+              break;
+            case "collection":
+              scoreText = `${entry.score} personagens`;
+              break;
+            case "pve":
+              scoreText = `${entry.score} fases`;
+              break;
+          }
+          
+          rankingText += `${medal} ${highlight}${entry.username}${highlight}\n   ${data.emoji} ${scoreText}\n\n`;
+        }
+        
+        embed.addFields({
+          name: "🏆 Classificação",
+          value: rankingText || "Vazio",
+        });
+      }
+
+      embed.setFooter({ text: "💡 Use os botões para trocar de categoria" });
+
+      // Botões de categoria (row 1)
+      const categoryRow1 = new ActionRowBuilder<any>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`ranking:gold`)
+          .setLabel("💰 Ouro")
+          .setStyle(category === "gold" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "gold"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:gems`)
+          .setLabel("💎 Gemas")
+          .setStyle(category === "gems" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "gems"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:power`)
+          .setLabel("⚔️ Poder")
+          .setStyle(category === "power" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "power"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:battles`)
+          .setLabel("🏆 Vitórias")
+          .setStyle(category === "battles" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "battles")
       );
-      await interaction.editReply({ embeds: [embed] });
+
+      // Botões de categoria (row 2)
+      const categoryRow2 = new ActionRowBuilder<any>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`ranking:summons`)
+          .setLabel("🎴 Summons")
+          .setStyle(category === "summons" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "summons"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:collection`)
+          .setLabel("📚 Coleção")
+          .setStyle(category === "collection" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "collection"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:pve`)
+          .setLabel("🗺️ PvE")
+          .setStyle(category === "pve" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "pve")
+      );
+
+      await interaction.editReply({ embeds: [embed], components: [categoryRow1, categoryRow2] });
       return;
     }
 
@@ -1929,10 +2250,9 @@ export async function handleButtonInteraction(interaction: any) {
 
   console.log(`[BUTTON] CustomId: "${customId}"`);
 
-  // Botões que não são de raid são tratados por outros mecanismos (ex: awaitMessageComponent no arena)
-  // Não fazemos defer nem processamos aqui
-  if (!customId.startsWith("raid_")) {
-    console.log("[BUTTON] Non-raid button - ignoring (handled by awaitMessageComponent)");
+  // Botões que não são de raid/chars_page/quests/ranking são tratados por outros mecanismos
+  if (!customId.startsWith("raid_") && !customId.startsWith("chars_page:") && !customId.startsWith("quests_") && !customId.startsWith("ranking:")) {
+    console.log("[BUTTON] Non-managed button - ignoring (handled by awaitMessageComponent)");
     return;
   }
 
@@ -1958,6 +2278,489 @@ export async function handleButtonInteraction(interaction: any) {
   };
 
   try {
+    // ========================================
+    // RANKING HANDLERS
+    // ========================================
+    if (customId.startsWith("ranking:")) {
+      const category = customId.split(":")[1];
+
+      const categoryData: Record<string, { emoji: string; name: string; unit: string; color: number }> = {
+        gold: { emoji: "💰", name: "Ouro", unit: "G", color: 0xf1c40f },
+        gems: { emoji: "💎", name: "Gemas", unit: "💎", color: 0x9b59b6 },
+        power: { emoji: "⚔️", name: "Poder da Equipe", unit: "⚡", color: 0xe74c3c },
+        battles: { emoji: "🏆", name: "Batalhas Vencidas", unit: "vitórias", color: 0x2ecc71 },
+        summons: { emoji: "🎴", name: "Invocações", unit: "summons", color: 0x3498db },
+        collection: { emoji: "📚", name: "Coleção", unit: "personagens", color: 0xe67e22 },
+        pve: { emoji: "🗺️", name: "PvE Completado", unit: "fases", color: 0x1abc9c },
+      };
+
+      const data = categoryData[category] || categoryData.gold;
+
+      let entries: any[] = [];
+      
+      const RankingService = await import("../services/RankingService");
+      
+      switch (category) {
+        case "gold":
+          entries = await RankingService.getGoldLeaderboard(10);
+          break;
+        case "gems":
+          entries = await RankingService.getGemsLeaderboard(10);
+          break;
+        case "power":
+          entries = await RankingService.getTeamPowerLeaderboard(10);
+          break;
+        case "battles":
+          entries = await RankingService.getBattlesWonLeaderboard(10);
+          break;
+        case "summons":
+          entries = await RankingService.getSummonsLeaderboard(10);
+          break;
+        case "collection":
+          entries = await RankingService.getCollectionLeaderboard(10);
+          break;
+        case "pve":
+          entries = await RankingService.getPveLeaderboard(10);
+          break;
+      }
+
+      let userRank = entries.findIndex((e: any) => e.discordId === discordId) + 1;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${data.emoji} Ranking - ${data.name}`)
+        .setColor(data.color)
+        .setDescription(
+          `🏅 **Top 10 Jogadores**\n` +
+          (userRank > 0 ? `📍 **Sua posição:** #${userRank}\n` : `📍 Você ainda não está no ranking\n`) +
+          `━━━━━━━━━━━━━━━━━━━━`
+        );
+
+      if (entries.length === 0) {
+        embed.addFields({
+          name: "❌ Ranking Vazio",
+          value: "Ainda não há jogadores nesta categoria.",
+        });
+      } else {
+        let rankingText = "";
+        
+        for (const entry of entries) {
+          const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`;
+          const isCurrentUser = entry.discordId === discordId;
+          const highlight = isCurrentUser ? "**" : "";
+          
+          let scoreText = "";
+          switch (category) {
+            case "gold":
+              scoreText = `${entry.score.toLocaleString()} G`;
+              break;
+            case "gems":
+              scoreText = `${entry.score.toLocaleString()} 💎`;
+              break;
+            case "power":
+              scoreText = `${entry.score.toLocaleString()} ⚡`;
+              break;
+            case "battles":
+              scoreText = `${entry.score} vitórias`;
+              break;
+            case "summons":
+              scoreText = `${entry.score} summons`;
+              break;
+            case "collection":
+              scoreText = `${entry.score} personagens`;
+              break;
+            case "pve":
+              scoreText = `${entry.score} fases`;
+              break;
+          }
+          
+          rankingText += `${medal} ${highlight}${entry.username}${highlight}\n   ${data.emoji} ${scoreText}\n\n`;
+        }
+        
+        embed.addFields({
+          name: "🏆 Classificação",
+          value: rankingText || "Vazio",
+        });
+      }
+
+      embed.setFooter({ text: "💡 Use os botões para trocar de categoria" });
+
+      const categoryRow1 = new ActionRowBuilder<any>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`ranking:gold`)
+          .setLabel("💰 Ouro")
+          .setStyle(category === "gold" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "gold"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:gems`)
+          .setLabel("💎 Gemas")
+          .setStyle(category === "gems" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "gems"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:power`)
+          .setLabel("⚔️ Poder")
+          .setStyle(category === "power" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "power"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:battles`)
+          .setLabel("🏆 Vitórias")
+          .setStyle(category === "battles" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "battles")
+      );
+
+      const categoryRow2 = new ActionRowBuilder<any>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`ranking:summons`)
+          .setLabel("🎴 Summons")
+          .setStyle(category === "summons" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "summons"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:collection`)
+          .setLabel("📚 Coleção")
+          .setStyle(category === "collection" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "collection"),
+        new ButtonBuilder()
+          .setCustomId(`ranking:pve`)
+          .setLabel("🗺️ PvE")
+          .setStyle(category === "pve" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "pve")
+      );
+
+      await interaction.update({ embeds: [embed], components: [categoryRow1, categoryRow2] });
+      return;
+    }
+
+    // ========================================
+    // QUESTS HANDLERS
+    // ========================================
+    if (customId.startsWith("quests_cat:")) {
+      const category = customId.split(":")[1] as "daily" | "weekly" | "story";
+      
+      const questsList = await getUserQuests(discordId, category);
+      
+      const categoryEmojis: Record<string, string> = {
+        daily: "📅",
+        weekly: "📆",
+        story: "📖",
+        monthly: "🗓️",
+        event: "🎉",
+      };
+
+      const categoryNames: Record<string, string> = {
+        daily: "Diárias",
+        weekly: "Semanais",
+        story: "História",
+        monthly: "Mensais",
+        event: "Eventos",
+      };
+
+      const categoryColors: Record<string, number> = {
+        daily: 0x3498db,
+        weekly: 0x9b59b6,
+        story: 0xe67e22,
+        monthly: 0xe74c3c,
+        event: 0xf1c40f,
+      };
+
+      const completed = questsList.filter((q) => q.userQuest.completed && !q.userQuest.claimedAt);
+      const claimed = questsList.filter((q) => q.userQuest.claimedAt);
+      const inProgress = questsList.filter((q) => !q.userQuest.completed);
+
+      const emoji = categoryEmojis[category] || "📜";
+      const categoryName = categoryNames[category] || category.toUpperCase();
+      const color = categoryColors[category] || 0x3498db;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${emoji} Missões ${categoryName}`)
+        .setColor(color)
+        .setDescription(
+          `📊 **Progresso:** ${completed.length + claimed.length}/${questsList.length} completas\n` +
+          `🎁 **Prontas:** ${completed.length} | ⏳ **Em progresso:** ${inProgress.length} | ✅ **Resgatadas:** ${claimed.length}`
+        );
+
+      if (completed.length > 0) {
+        let text = "";
+        for (const q of completed.slice(0, 3)) {
+          const quest = q.quest;
+          const rewards = `💰 ${quest.rewardGold}G | 💎 ${quest.rewardGems} | 🎫 ${quest.rewardTickets}`;
+          text += `🎁 **${quest.title}**\n${quest.description}\n${rewards}\nID: \`${quest.id}\`\n\n`;
+        }
+        embed.addFields({ name: "🎁 Prontas para Resgatar", value: text || "Nenhuma" });
+      }
+
+      if (inProgress.length > 0) {
+        let text = "";
+        for (const q of inProgress.slice(0, 4)) {
+          const quest = q.quest;
+          const uq = q.userQuest;
+          const percentage = Math.round((uq.progress / quest.requirementCount) * 100);
+          const progressBar = createProgressBar(uq.progress, quest.requirementCount);
+          text += `⏳ **${quest.title}** (${percentage}%)\n${progressBar} ${uq.progress}/${quest.requirementCount}\n`;
+        }
+        embed.addFields({ name: "⏳ Em Progresso", value: text || "Nenhuma" });
+      }
+
+      if (claimed.length > 0) {
+        embed.addFields({ 
+          name: "✅ Resgatadas", 
+          value: `Você já resgatou ${claimed.length} missão(ões) nesta categoria!` 
+        });
+      }
+
+      if (questsList.length === 0) {
+        embed.setDescription("❌ Nenhuma missão disponível nesta categoria.");
+      }
+
+      embed.setFooter({ text: "💡 Use os botões abaixo para resgatar ou trocar de categoria" });
+
+      const categoryRow = new ActionRowBuilder<any>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:daily`)
+          .setLabel("📅 Diárias")
+          .setStyle(category === "daily" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "daily"),
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:weekly`)
+          .setLabel("📆 Semanais")
+          .setStyle(category === "weekly" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "weekly"),
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:story`)
+          .setLabel("📖 História")
+          .setStyle(category === "story" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "story")
+      );
+
+      const components: any[] = [categoryRow];
+      if (completed.length > 0) {
+        const claimRow = new ActionRowBuilder<any>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`quests_claim_all:${category}`)
+            .setLabel(`🎁 Resgatar Todas (${completed.length})`)
+            .setStyle(ButtonStyle.Primary)
+        );
+        components.push(claimRow);
+      }
+
+      await interaction.update({ embeds: [embed], components });
+      return;
+    }
+
+    if (customId.startsWith("quests_claim_all:")) {
+      const category = customId.split(":")[1] as "daily" | "weekly" | "story";
+      
+      const questsList = await getUserQuests(discordId, category);
+      const completed = questsList.filter((q) => q.userQuest.completed && !q.userQuest.claimedAt);
+
+      if (completed.length === 0) {
+        await respond({ content: "❌ Nenhuma missão pronta para resgatar!", ephemeral: true });
+        return;
+      }
+
+      let totalGold = 0;
+      let totalGems = 0;
+      let totalTickets = 0;
+      const claimedQuests: string[] = [];
+
+      for (const q of completed) {
+        try {
+          const idempotencyKey = `bot_quest_${discordId}_${q.quest.id}_${Date.now()}_${Math.random()}`;
+          const res = await claimQuestReward(discordId, q.quest.id, idempotencyKey);
+          
+          totalGold += res.rewards.gold;
+          totalGems += res.rewards.gems;
+          totalTickets += res.rewards.tickets;
+          claimedQuests.push(q.quest.title);
+        } catch (error: any) {
+          console.error(`Failed to claim quest ${q.quest.id}:`, error);
+        }
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle("🎉 Recompensas Resgatadas!")
+        .setColor(0x2ecc71)
+        .setDescription(
+          `Você resgatou **${claimedQuests.length}** missão(ões)!\n\n` +
+          `💰 **Gold:** +${totalGold}\n` +
+          `💎 **Gemas:** +${totalGems}\n` +
+          `🎫 **Tickets:** +${totalTickets}`
+        )
+        .addFields({
+          name: "📜 Missões Resgatadas",
+          value: claimedQuests.map((t) => `✅ ${t}`).join("\n") || "Nenhuma",
+        })
+        .setFooter({ text: "Continue completando missões para ganhar mais recompensas!" });
+
+      await respond({ embeds: [embed], ephemeral: true });
+      
+      // Atualizar embed original
+      const updatedQuestsList = await getUserQuests(discordId, category);
+      const updatedCompleted = updatedQuestsList.filter((q) => q.userQuest.completed && !q.userQuest.claimedAt);
+      const updatedClaimed = updatedQuestsList.filter((q) => q.userQuest.claimedAt);
+      const updatedInProgress = updatedQuestsList.filter((q) => !q.userQuest.completed);
+
+      const categoryEmojis: Record<string, string> = { daily: "📅", weekly: "📆", story: "📖" };
+      const categoryNames: Record<string, string> = { daily: "Diárias", weekly: "Semanais", story: "História" };
+      const categoryColors: Record<string, number> = { daily: 0x3498db, weekly: 0x9b59b6, story: 0xe67e22 };
+
+      const updatedEmbed = new EmbedBuilder()
+        .setTitle(`${categoryEmojis[category]} Missões ${categoryNames[category]}`)
+        .setColor(categoryColors[category])
+        .setDescription(
+          `📊 **Progresso:** ${updatedCompleted.length + updatedClaimed.length}/${updatedQuestsList.length} completas\n` +
+          `🎁 **Prontas:** ${updatedCompleted.length} | ⏳ **Em progresso:** ${updatedInProgress.length} | ✅ **Resgatadas:** ${updatedClaimed.length}`
+        );
+
+      if (updatedInProgress.length > 0) {
+        let text = "";
+        for (const q of updatedInProgress.slice(0, 4)) {
+          const quest = q.quest;
+          const uq = q.userQuest;
+          const percentage = Math.round((uq.progress / quest.requirementCount) * 100);
+          const progressBar = createProgressBar(uq.progress, quest.requirementCount);
+          text += `⏳ **${quest.title}** (${percentage}%)\n${progressBar} ${uq.progress}/${quest.requirementCount}\n`;
+        }
+        updatedEmbed.addFields({ name: "⏳ Em Progresso", value: text });
+      }
+
+      if (updatedClaimed.length > 0) {
+        updatedEmbed.addFields({ 
+          name: "✅ Resgatadas", 
+          value: `Você já resgatou ${updatedClaimed.length} missão(ões) nesta categoria!` 
+        });
+      }
+
+      const categoryRow = new ActionRowBuilder<any>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:daily`)
+          .setLabel("📅 Diárias")
+          .setStyle(category === "daily" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "daily"),
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:weekly`)
+          .setLabel("📆 Semanais")
+          .setStyle(category === "weekly" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "weekly"),
+        new ButtonBuilder()
+          .setCustomId(`quests_cat:story`)
+          .setLabel("📖 História")
+          .setStyle(category === "story" ? ButtonStyle.Success : ButtonStyle.Secondary)
+          .setDisabled(category === "story")
+      );
+
+      try {
+        await interaction.message.edit({ embeds: [updatedEmbed], components: [categoryRow] });
+      } catch (err) {
+        console.error("Failed to update quest message:", err);
+      }
+
+      return;
+    }
+
+    // ========================================
+    // CHARACTERS PAGINATION HANDLER
+    // ========================================
+    if (customId.startsWith("chars_page:")) {
+      const parts = customId.split(":");
+      const newPage = parseInt(parts[1], 10);
+      const animeFilter = parts[2] || undefined;
+      const rarityFilter = parts[3] || undefined;
+
+      const profile = await getProfile(discordId);
+      const catalog = await listCharacters({ anime: animeFilter, rarity: rarityFilter });
+
+      // Emojis
+      const rarityEmojis: Record<string, string> = {
+        comum: "⚪",
+        raro: "🔵",
+        epico: "🟣",
+        lendario: "🟡",
+        mitico: "🔴",
+      };
+
+      const roleEmojis: Record<string, string> = {
+        dps: "⚔️",
+        tank: "🛡️",
+        suporte: "💚",
+        support: "💚",
+        controle: "🎯",
+      };
+
+      const ownedIds = new Set(profile?.collection.map((c: OwnedCharacterChoiceSource) => c.character.id) ?? []);
+      const ownedCount = catalog.filter((c) => ownedIds.has(c.id)).length;
+
+      // Ordenar
+      const rarityOrder: Record<string, number> = { mitico: 5, lendario: 4, epico: 3, raro: 2, comum: 1 };
+      const sorted = [...catalog].sort((a, b) => {
+        const aOwned = ownedIds.has(a.id) ? 1 : 0;
+        const bOwned = ownedIds.has(b.id) ? 1 : 0;
+        if (aOwned !== bOwned) return bOwned - aOwned;
+        return (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+      });
+
+      // Paginação
+      const perPage = 6;
+      const totalPages = Math.ceil(sorted.length / perPage);
+      const page = Math.max(0, Math.min(newPage, totalPages - 1));
+
+      const start = page * perPage;
+      const end = start + perPage;
+      const pageCharacters = sorted.slice(start, end);
+
+      // Embed
+      let filterText = "";
+      if (animeFilter) filterText += `📺 **${animeFilter}**`;
+      if (rarityFilter) filterText += (filterText ? " • " : "") + `${rarityEmojis[rarityFilter] || "⭐"} **${rarityFilter.toUpperCase()}**`;
+
+      const embed = new EmbedBuilder()
+        .setTitle("🎴 Catálogo de Personagens")
+        .setColor(rarityFilter === "mitico" ? 0xff0000 : rarityFilter === "lendario" ? 0xffd700 : rarityFilter === "epico" ? 0x9b59b6 : rarityFilter === "raro" ? 0x3498db : 0x95a5a6)
+        .setDescription(
+          `${filterText ? `**Filtros:** ${filterText}\n` : ""}` +
+          `📊 **Progresso:** ${ownedCount}/${catalog.length} personagens (${Math.round((ownedCount / catalog.length) * 100)}%)\n` +
+          `📖 Página ${page + 1}/${totalPages}`
+        );
+
+      for (const c of pageCharacters) {
+        const owned = ownedIds.has(c.id);
+        const rarityEmoji = rarityEmojis[c.rarity] || "⭐";
+        const roleEmoji = roleEmojis[c.role.toLowerCase()] || "❓";
+        
+        const ownedSymbol = owned ? "✅ **POSSUÍDO**" : "🔒 *Não possuído*";
+        
+        embed.addFields({
+          name: `${rarityEmoji} ${c.name} ${roleEmoji}`,
+          value:
+            `${ownedSymbol}\n` +
+            `📺 ${c.anime} • ${c.rarity.toUpperCase()} • ${c.role.toUpperCase()}\n` +
+            `💪 HP: ${c.baseHp} | ATK: ${c.baseAttack} | DEF: ${c.baseDefense} | SPD: ${c.baseSpeed}`,
+          inline: true,
+        });
+      }
+
+      if (pageCharacters.length > 0) {
+        applyEmbedImage(embed, pageCharacters[0].imageUrl);
+      }
+
+      embed.setFooter({ text: "💡 Use /personagem <nome> para ver detalhes completos" });
+
+      // Botões
+      const row = new ActionRowBuilder<any>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`chars_page:${page - 1}:${animeFilter || ""}:${rarityFilter || ""}`)
+          .setLabel("◀️ Anterior")
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(page === 0),
+        new ButtonBuilder()
+          .setCustomId(`chars_page:${page + 1}:${animeFilter || ""}:${rarityFilter || ""}`)
+          .setLabel("Próxima ▶️")
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(page >= totalPages - 1)
+      );
+
+      await interaction.update({ embeds: [embed], components: [row] });
+      return;
+    }
+
     // ========================================
     // RAID BUTTON HANDLERS
     // ========================================
