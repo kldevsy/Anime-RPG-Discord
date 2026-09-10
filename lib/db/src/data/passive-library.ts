@@ -832,8 +832,93 @@ export const DARKNESS_VOID: PassiveAbility = {
 };
 
 /**
- * Catálogo completo de passivas
+ * ========================================
+ * PASSIVAS DOS 6 NOVOS PERSONAGENS
+ * ========================================
  */
+
+export const SIX_PATHS_OF_PAIN: PassiveAbility = {
+  id: "six_paths_of_pain",
+  name: "Seis Caminhos da Dor",
+  description: "Ao atacar, tem 50% de chance de invocar um Caminho adicional que ataca o mesmo alvo por 60% do dano. Ao matar um inimigo, ganha escudo de 200 e +20% de ATK por 3 turnos.",
+  trigger: "on_hit",
+  effects: [
+    { type: "bonus_attack", value: 60, chance: 50, target: "target" },
+    { type: "apply_status", statusType: "shield", value: 200, duration: 3, chance: 100, target: "self" },
+    { type: "apply_status", statusType: "attack_up", value: 20, duration: 3, chance: 100, target: "self" }
+  ],
+  conditions: [{ type: "on_kill" }],
+  maxActivationsPerRound: 3,
+};
+
+export const ANCIENT_MAGIC_CIRCLE: PassiveAbility = {
+  id: "ancient_magic_circle",
+  name: "Círculo Mágico Ancestral",
+  description: "Cada ataque acumula um fragmento de magia. A cada 3 ataques, dispara um feitiço concentrado que causa 150% de dano AoE e aplica queimadura (3 turnos) em todos os inimigos.",
+  trigger: "on_basic_attack",
+  effects: [
+    { type: "aoe_damage", value: 150, chance: 100, target: "enemies" },
+    { type: "apply_status", statusType: "burn", value: 45, duration: 3, chance: 100, target: "enemies" }
+  ],
+  stackCounter: 3,
+  stackLimit: 3,
+  maxActivationsPerBattle: 10,
+};
+
+export const PUPPET_MASTER: PassiveAbility = {
+  id: "puppet_master",
+  name: "Mestre das Marionetes",
+  description: "Ao acertar um inimigo, tem 35% de chance de envenenar por 3 turnos e reduzir a velocidade em 20%. Se o alvo já estiver envenenado, o veneno é amplificado em 50%.",
+  trigger: "on_hit",
+  effects: [
+    { type: "apply_status", statusType: "poison", value: 55, duration: 3, chance: 35, target: "target" },
+    { type: "apply_status", statusType: "speed_down", value: 20, duration: 2, chance: 35, target: "target" }
+  ],
+  conditionalEffects: [
+    { type: "amplify_poison", value: 50, condition: "target_has_poison" }
+  ],
+  maxActivationsPerRound: 2,
+};
+
+export const DEMON_BLOOD_THREADS: PassiveAbility = {
+  id: "demon_blood_threads",
+  name: "Fios de Sangue Demoníaco",
+  description: "Ao inicio de cada rodada, envolve todos os inimigos em fios invisíveis: aplica sangramento (2 turnos). Inimigos com sangramento sofrem 25% mais dano de todos os ataques.",
+  trigger: "on_round_start",
+  effects: [
+    { type: "apply_status", statusType: "bleed", value: 40, duration: 2, chance: 100, target: "enemies" },
+    { type: "increase_damage_vs_bleeding", value: 25, target: "self" }
+  ],
+  maxActivationsPerRound: 1,
+};
+
+export const FLAME_HASHIRA: PassiveAbility = {
+  id: "flame_hashira",
+  name: "Hashira das Chamas",
+  description: "Cada ataque tem 45% de chance de aplicar queimadura (3 turnos). Ao atacar um inimigo com queimadura, causa 30% de dano adicional. Ao matar um inimigo com chamas, cura 15% do HP máximo.",
+  trigger: "on_hit",
+  effects: [
+    { type: "apply_status", statusType: "burn", value: 50, duration: 3, chance: 45, target: "target" },
+    { type: "bonus_damage_vs_burning", value: 30, target: "self" },
+    { type: "heal_percent_on_kill", value: 15, target: "self" }
+  ],
+  maxActivationsPerRound: 3,
+};
+
+export const SAND_ARMOR: PassiveAbility = {
+  id: "sand_armor",
+  name: "Armadura de Areia",
+  description: "Ao receber dano, areia absorve 20% do impacto (escudo de 150 que se regenera a cada 2 turnos). Ao usar skill de suporte, cria um escudo de areia em todos os aliados por 2 turnos.",
+  trigger: "on_damaged",
+  effects: [
+    { type: "apply_status", statusType: "shield", value: 150, duration: 2, chance: 100, target: "self" }
+  ],
+  conditionalEffects: [
+    { type: "apply_status", statusType: "shield", value: 100, duration: 2, chance: 100, target: "allies", condition: "on_skill_use" }
+  ],
+  cooldownRounds: 2,
+  maxActivationsPerBattle: 10,
+};
 export const PASSIVE_LIBRARY: Record<string, PassiveAbility> = {
   // Ofensivas
   berserker_rage: BERSERKER_RAGE,
@@ -892,6 +977,14 @@ export const PASSIVE_LIBRARY: Record<string, PassiveAbility> = {
   moon_crescent_blade: MOON_CRESCENT_BLADE,
   serpent_rebirth: SERPENT_REBIRTH,
   darkness_void: DARKNESS_VOID,
+
+  // Madara, Frieren, Sasori, Rui, Rengoku, Gaara
+  six_paths_of_pain: SIX_PATHS_OF_PAIN,
+  ancient_magic_circle: ANCIENT_MAGIC_CIRCLE,
+  puppet_master: PUPPET_MASTER,
+  demon_blood_threads: DEMON_BLOOD_THREADS,
+  flame_hashira: FLAME_HASHIRA,
+  sand_armor: SAND_ARMOR,
 };
 
 /**

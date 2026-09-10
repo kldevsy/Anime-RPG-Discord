@@ -232,26 +232,134 @@ export function createProfileEmbed(user: any, collectionCount: number, teamCount
 }
 
 export function createBannersEmbed(bannersList: any[]) {
-  const embed = new EmbedBuilder()
-    .setTitle("✨ Banners de Invocação Ativos")
-    .setColor(0xe74c3c)
-    .setDescription("Invoque personagens poderosos e complete sua equipe!");
-
   if (!bannersList.length) {
-    embed.addFields({ name: "Nenhum banner ativo", value: "Aguarde novos eventos de invocação." });
-    return embed;
+    return new EmbedBuilder()
+      .setTitle("🌟 Invocação")
+      .setColor(0x2C2F33)
+      .setDescription(
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+        "❌ **Nenhum banner ativo no momento.**\n\n" +
+        "Aguarde novos eventos de invocação!\n" +
+        "━━━━━━━━━━━━━━━━━━━━━━━━"
+      )
+      .setFooter({ text: "Anime RPG • Fique ligado nos novos banners!" })
+      .setTimestamp();
   }
+
+  const embeds: EmbedBuilder[] = [];
 
   for (const b of bannersList) {
-    const singleCostStr = `${b.singleCost} ${b.costCurrency}`;
-    const tenCostStr = `${b.tenCost} ${b.costCurrency}`;
-    embed.addFields({
-      name: `🔥 ${b.name} (${b.type.toUpperCase()})`,
-      value: `• **ID:** \`${b.id}\`\n• **1 Invocação:** ${singleCostStr}\n• **10 Invocações:** ${tenCostStr}\n• **Soft Pity:** ${b.softPityStart} | **Hard Pity:** ${b.hardPity}`,
-    });
+    // Cores e temas por tipo de banner
+    const typeConfig: Record<string, { color: number; emoji: string; label: string; description: string }> = {
+      normal: {
+        color: 0x3498DB,
+        emoji: "🌀",
+        label: "Padrão",
+        description: "O banner padrão do jogo. Invoque personagens de todas as raridades!"
+      },
+      limited: {
+        color: 0xE91E8C,
+        emoji: "⭐",
+        label: "Limitado",
+        description: "Banner por tempo limitado! Melhores chances de lendários e míticos."
+      },
+      event: {
+        color: 0xFF6B00,
+        emoji: "🎉",
+        label: "Evento",
+        description: "Banner especial de evento com personagens exclusivos!"
+      },
+    };
+
+    const cfg = typeConfig[b.type] ?? typeConfig.normal;
+
+    // Moeda e emojis
+    const currencyEmoji: Record<string, string> = {
+      tickets: "🎟️",
+      gems: "💎",
+      gold: "🪙",
+    };
+    const currencyIcon = currencyEmoji[b.costCurrency] ?? "💰";
+    const singleCost = `${b.singleCost} ${currencyIcon}`;
+    const tenCost = `${b.tenCost} ${currencyIcon}`;
+    const discount = b.tenCost < b.singleCost * 10
+      ? ` _(economia de ${b.singleCost * 10 - b.tenCost} ${b.costCurrency})_`
+      : "";
+
+    // Probabilidades (converte se necessário)
+    const rates = b.rates ?? {};
+    const rateLines = [
+      rates.mythic   != null && `🔴 **Mítico:**     ${(rates.mythic * (rates.mythic <= 1 ? 100 : 1)).toFixed(2)}%`,
+      rates.legendary != null && `🟡 **Lendário:**   ${(rates.legendary * (rates.legendary <= 1 ? 100 : 1)).toFixed(2)}%`,
+      rates.epic      != null && `🟣 **Épico:**      ${(rates.epic * (rates.epic <= 1 ? 100 : 1)).toFixed(2)}%`,
+      rates.rare      != null && `🔵 **Raro:**       ${(rates.rare * (rates.rare <= 1 ? 100 : 1)).toFixed(2)}%`,
+      rates.uncommon  != null && `🟢 **Incomum:**    ${(rates.uncommon * (rates.uncommon <= 1 ? 100 : 1)).toFixed(2)}%`,
+      rates.common    != null && `⚪ **Comum:**      ${(rates.common * (rates.common <= 1 ? 100 : 1)).toFixed(2)}%`,
+    ].filter(Boolean).join("\n");
+
+    // Pity info
+    const pityText =
+      `⚡ Soft pity inicia em **${b.softPityStart}** invocações\n` +
+      `🔒 Hard pity garante lendário em **${b.hardPity}** invocações`;
+
+    // Como usar
+    const howToUse =
+      `\`/invocar banner:${b.id} quantidade:1\` — 1x\n` +
+      `\`/invocar banner:${b.id} quantidade:10\` — 10x`;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${cfg.emoji} ${b.name}`)
+      .setColor(cfg.color)
+      .setDescription(
+        `> ${cfg.description}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━`
+      )
+      .addFields(
+        {
+          name: `${currencyIcon} Custo de Invocação`,
+          value:
+            `▸ **1x:** ${singleCost}\n` +
+            `▸ **10x:** ${tenCost}${discount}`,
+          inline: true,
+        },
+        {
+          name: "🏷️ Tipo de Banner",
+          value: `${cfg.emoji} **${cfg.label.toUpperCase()}**\n🆔 \`${b.id.slice(0, 8)}...\``,
+          inline: true,
+        },
+        {
+          name: "\u200b",
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: "📊 Taxas de Raridade",
+          value: rateLines || "Não disponível",
+          inline: true,
+        },
+        {
+          name: "💫 Sistema de Pity",
+          value: pityText,
+          inline: true,
+        },
+        {
+          name: "\u200b",
+          value: "\u200b",
+          inline: true,
+        },
+        {
+          name: "📖 Como Invocar",
+          value: howToUse,
+          inline: false,
+        }
+      )
+      .setFooter({ text: `Anime RPG • Use /invocar para começar • Banner ${cfg.label}` })
+      .setTimestamp();
+
+    embeds.push(embed);
   }
 
-  return embed;
+  return embeds;
 }
 
 export function createSummonResultEmbed(username: string, results: SummonedCharacter[], currency: string, cost: number) {

@@ -42,6 +42,12 @@ import {
   MOON_CRESCENT_BLADE,
   SERPENT_REBIRTH,
   DARKNESS_VOID,
+  SIX_PATHS_OF_PAIN,
+  ANCIENT_MAGIC_CIRCLE,
+  PUPPET_MASTER,
+  DEMON_BLOOD_THREADS,
+  FLAME_HASHIRA,
+  SAND_ARMOR,
 } from "./passive-library.ts";
 
 /**
@@ -1767,6 +1773,254 @@ export const characterCatalog: CharacterCatalogEntry[] =
           {
             condition: "Inimigos que já estavam com velocidade reduzida",
             effect: "O efeito de slow acumula até 80% de redução máxima",
+          },
+        ],
+      },
+    },
+    // ══════════════════════════════════════════
+    // MADARA UCHIHA (MODO RIKUDOU) — MÍTICO DPS
+    // ══════════════════════════════════════════
+    {
+      anime: "Naruto",
+      name: "Madara Uchiha (Rikudou)",
+      rarity: "mythic",
+      role: "dps",
+      baseHp: 1550,
+      baseAttack: 265,
+      baseDefense: 130,
+      baseSpeed: 115,
+      passive: "Seis Caminhos da Dor: 50% de chance de invocar ataque adicional; ao matar ganha escudo e +20% ATK",
+      passiveAbility: SIX_PATHS_OF_PAIN,
+      ultimate: {
+        id: "madara_rikudou_truth_seeking_balls",
+        name: "Esferas da Busca da Verdade",
+        description: "Lança esferas de energia do Rikudou que devastam todos os inimigos, ignorando defesa e aplicando fraqueza.",
+        chargeRequired: 110,
+        chargeOnBasic: 20,
+        chargeOnDamageTaken: 15,
+        chargeOnCritical: 30,
+        type: "AOE",
+        targetType: "aoe_enemy",
+        multiplier: 2.8,
+        statusEffects: [
+          { type: "defense_down", chance: 100, duration: 3, value: 40 },
+          { type: "attack_down", chance: 80, duration: 2, value: 25 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Sempre",
+            effect: "Ignora 50% da defesa de todos os alvos",
+          },
+          {
+            condition: "Inimigo com HP abaixo de 40%",
+            effect: "Causa dano adicional de 60% e aplica stun por 1 turno",
+          },
+        ],
+      },
+    },
+    // ══════════════════════════════════════════
+    // FRIEREN — ÉPICO DPS
+    // ══════════════════════════════════════════
+    {
+      anime: "Frieren: Beyond Journey's End",
+      name: "Frieren",
+      rarity: "epic",
+      role: "dps",
+      baseHp: 880,
+      baseAttack: 195,
+      baseDefense: 95,
+      baseSpeed: 130,
+      passive: "Círculo Mágico Ancestral: a cada 3 ataques, dispara feitiço AoE com queimadura em todos os inimigos",
+      passiveAbility: ANCIENT_MAGIC_CIRCLE,
+      ultimate: {
+        id: "frieren_vollmond",
+        name: "Vollmond (Lua Cheia)",
+        description: "Invoca a magia ancestral da lua cheia, concentrando poder mágico ilimitado em um único feixe devastador.",
+        chargeRequired: 85,
+        chargeOnBasic: 28,
+        chargeOnDamageTaken: 10,
+        chargeOnCritical: 35,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 3.8,
+        statusEffects: [
+          { type: "burn", chance: 100, duration: 3, value: 55 },
+          { type: "speed_down", chance: 100, duration: 2, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Alvo com queimadura ativa",
+            effect: "Multiplica o dano em 1.5x e remove todos os buffs do alvo",
+          },
+          {
+            condition: "Passiva com 3 fragmentos acumulados",
+            effect: "Carga de ultimate +25 e próximo básico causa dano duplo",
+          },
+        ],
+      },
+    },
+    // ══════════════════════════════════════════
+    // SASORI — LENDÁRIO CONTROLE
+    // ══════════════════════════════════════════
+    {
+      anime: "Naruto",
+      name: "Sasori",
+      rarity: "legendary",
+      role: "control",
+      baseHp: 1020,
+      baseAttack: 185,
+      baseDefense: 125,
+      baseSpeed: 105,
+      passive: "Mestre das Marionetes: 35% de chance de envenenar ao acertar; veneno amplificado em 50% se alvo já envenenado",
+      passiveAbility: PUPPET_MASTER,
+      ultimate: {
+        id: "sasori_red_secret_technique",
+        name: "Técnica Secreta Vermelha: Milhares de Marionetes",
+        description: "Controla centenas de marionetes armadas com veneno mortal que atacam todos os inimigos simultaneamente.",
+        chargeRequired: 90,
+        chargeOnBasic: 25,
+        chargeOnDamageTaken: 15,
+        chargeOnCritical: 20,
+        type: "AOE",
+        targetType: "aoe_enemy",
+        multiplier: 2.2,
+        statusEffects: [
+          { type: "poison", chance: 100, duration: 4, value: 60 },
+          { type: "speed_down", chance: 100, duration: 3, value: 35 },
+          { type: "attack_down", chance: 70, duration: 2, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Inimigo já envenenado",
+            effect: "O veneno da ultimate acumula com o existente, triplicando o dano por turno",
+          },
+          {
+            condition: "Alvo com velocidade reduzida",
+            effect: "Aplica stun por 1 turno e causa 25% de dano bônus",
+          },
+        ],
+      },
+    },
+    // ══════════════════════════════════════════
+    // RUI — LENDÁRIO CONTROLE
+    // ══════════════════════════════════════════
+    {
+      anime: "Demon Slayer",
+      name: "Rui",
+      rarity: "legendary",
+      role: "control",
+      baseHp: 1080,
+      baseAttack: 190,
+      baseDefense: 135,
+      baseSpeed: 118,
+      passive: "Fios de Sangue Demoníaco: início de rodada aplica sangramento AoE; inimigos com sangramento sofrem 25% mais dano",
+      passiveAbility: DEMON_BLOOD_THREADS,
+      ultimate: {
+        id: "rui_spider_web_prison",
+        name: "Prisão de Teia de Aranha Demoníaca",
+        description: "Envolve todos os inimigos em uma teia de sangue demoníaco inquebrável, prendendo-os e drenando sua vitalidade.",
+        chargeRequired: 90,
+        chargeOnBasic: 25,
+        chargeOnDamageTaken: 18,
+        chargeOnCritical: 22,
+        type: "AOE",
+        targetType: "aoe_enemy",
+        multiplier: 1.8,
+        statusEffects: [
+          { type: "bleed", chance: 100, duration: 4, value: 70 },
+          { type: "stun", chance: 60, duration: 1, value: 0 },
+          { type: "defense_down", chance: 100, duration: 3, value: 35 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Inimigo já com sangramento",
+            effect: "Sangramento se amplifica: causa dano dobrado por turno e reduz HP máximo em 10%",
+          },
+          {
+            condition: "Após stun",
+            effect: "O próximo ataque de qualquer aliado nesse alvo causa 40% de dano adicional",
+          },
+        ],
+      },
+    },
+    // ══════════════════════════════════════════
+    // RENGOKU — ÉPICO DPS
+    // ══════════════════════════════════════════
+    {
+      anime: "Demon Slayer",
+      name: "Kyojuro Rengoku",
+      rarity: "epic",
+      role: "dps",
+      baseHp: 1000,
+      baseAttack: 200,
+      baseDefense: 110,
+      baseSpeed: 120,
+      passive: "Hashira das Chamas: 45% de chance de queimar ao atacar; dano bônus vs queimados; cura ao matar com chamas",
+      passiveAbility: FLAME_HASHIRA,
+      ultimate: {
+        id: "rengoku_ninth_form_rengoku",
+        name: "Respiração das Chamas — Nona Forma: Rengoku",
+        description: "A forma mais poderosa da Respiração das Chamas, um corte ascendente devastador que incendeia tudo ao redor.",
+        chargeRequired: 90,
+        chargeOnBasic: 30,
+        chargeOnDamageTaken: 12,
+        chargeOnCritical: 28,
+        type: "DAMAGE",
+        targetType: "single_enemy",
+        multiplier: 3.6,
+        statusEffects: [
+          { type: "burn", chance: 100, duration: 4, value: 65 },
+          { type: "attack_down", chance: 80, duration: 2, value: 30 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Alvo já com queimadura",
+            effect: "Dano aumenta 50% e a queimadura explode causando dano AoE a todos os inimigos adjacentes",
+          },
+          {
+            condition: "Rengoku abaixo de 50% HP",
+            effect: "Entra em estado de Determinação Total: ganha +40% ATK e ignora 30% da defesa neste turno",
+          },
+        ],
+      },
+    },
+    // ══════════════════════════════════════════
+    // GAARA — RARO SUPORTE
+    // ══════════════════════════════════════════
+    {
+      anime: "Naruto",
+      name: "Gaara",
+      rarity: "rare",
+      role: "support",
+      baseHp: 1100,
+      baseAttack: 135,
+      baseDefense: 175,
+      baseSpeed: 95,
+      passive: "Armadura de Areia: absorve 20% do dano recebido; ao usar skill de suporte, escudo de areia protege todos os aliados",
+      passiveAbility: SAND_ARMOR,
+      ultimate: {
+        id: "gaara_sand_tsunami",
+        name: "Tsunâmi de Areia: Proteção Absoluta",
+        description: "Convoca uma onda colossal de areia que envolve todos os aliados em proteção e enterra os inimigos.",
+        chargeRequired: 80,
+        chargeOnBasic: 20,
+        chargeOnDamageTaken: 20,
+        chargeOnCritical: 15,
+        type: "SHIELD",
+        targetType: "aoe_ally",
+        multiplier: 0,
+        statusEffects: [
+          { type: "shield", chance: 100, duration: 3, value: 350 },
+          { type: "defense_up", chance: 100, duration: 3, value: 40 },
+        ],
+        conditionalRules: [
+          {
+            condition: "Aliado com HP abaixo de 40%",
+            effect: "O escudo é 50% maior e o aliado recebe cura de 20% do HP máximo",
+          },
+          {
+            condition: "Gaara com armadura de areia ativa",
+            effect: "O escudo de todos os aliados absorve 30% a mais de dano e dura 1 turno extra",
           },
         ],
       },

@@ -364,8 +364,10 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     // 3. /banner
     if (commandName === "banner") {
       const activeBanners = await listActiveBanners();
-      const embed = createBannersEmbed(activeBanners);
-      await interaction.editReply({ embeds: [embed] });
+      const result = createBannersEmbed(activeBanners);
+      // createBannersEmbed retorna um array de embeds ou um único embed (sem banners)
+      const embeds = Array.isArray(result) ? result : [result];
+      await interaction.editReply({ embeds });
       return;
     }
 
@@ -2114,7 +2116,7 @@ export async function handleButtonInteraction(interaction: any) {
 
           let battleMessage: any = null;
           let lastUpdate = 0;
-          const ANIMATION_DELAY = 1500; // ms entre updates
+          const ANIMATION_DELAY = 1400; // ms entre updates — igual ao modo lento do arena
 
           // Busca o channel antes de iniciar a batalha (garante que está disponível)
           const channel = interaction.channel
@@ -2134,10 +2136,16 @@ export async function handleButtonInteraction(interaction: any) {
             );
 
             const now = Date.now();
-            if (now - lastUpdate < ANIMATION_DELAY && snap.phase !== "VICTORY" && snap.phase !== "DEFEAT" && snap.phase !== "DRAW") {
-              return;
+
+            // Aguarda o delay igual ao arena — cria animação suave
+            if (lastUpdate > 0 && snap.phase !== "VICTORY" && snap.phase !== "DEFEAT" && snap.phase !== "DRAW") {
+              const elapsed = now - lastUpdate;
+              if (elapsed < ANIMATION_DELAY) {
+                await new Promise(resolve => setTimeout(resolve, ANIMATION_DELAY - elapsed));
+              }
             }
-            lastUpdate = now;
+
+            lastUpdate = Date.now();
 
             try {
               if (!battleMessage) {
