@@ -2440,27 +2440,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "raid_team_members_raid_character_unique": {
-          "name": "raid_team_members_raid_character_unique",
-          "columns": [
-            {
-              "expression": "raid_instance_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "user_character_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {

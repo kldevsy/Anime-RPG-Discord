@@ -473,7 +473,6 @@ export const raidTeamMembers = pgTable("raid_team_members", {
   damageDone: integer("damage_done").notNull().default(0),
 }, (table) => [
   uniqueIndex("raid_team_members_raid_position_unique").on(table.raidInstanceId, table.position),
-  uniqueIndex("raid_team_members_raid_character_unique").on(table.raidInstanceId, table.userCharacterId),
 ]);
 
 // Raid Completions - History of cleared raids

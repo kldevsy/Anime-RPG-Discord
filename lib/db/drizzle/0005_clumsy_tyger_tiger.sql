@@ -34,5 +34,4 @@ ALTER TABLE "raid_completions" ADD CONSTRAINT "raid_completions_raid_instance_id
 ALTER TABLE "raid_first_clears" ADD CONSTRAINT "raid_first_clears_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "raid_leaderboard" ADD CONSTRAINT "raid_leaderboard_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "raid_first_clears_user_map_difficulty_unique" ON "raid_first_clears" USING btree ("user_id","raid_map_id","difficulty");--> statement-breakpoint
-CREATE UNIQUE INDEX "raid_leaderboard_map_difficulty_user_unique" ON "raid_leaderboard" USING btree ("raid_map_id","difficulty","user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "raid_team_members_raid_character_unique" ON "raid_team_members" USING btree ("raid_instance_id","user_character_id");
+CREATE UNIQUE INDEX "raid_leaderboard_map_difficulty_user_unique" ON "raid_leaderboard" USING btree ("raid_map_id","difficulty","user_id");
