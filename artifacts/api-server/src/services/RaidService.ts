@@ -298,6 +298,31 @@ class RaidService {
   async addCharacter(options: AddCharacterOptions) {
     const { raidInstanceId, userId, userCharacterId } = options;
 
+    // Tenta até 3 vezes para lidar com conflitos de posição
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await this._addCharacterAttempt(options);
+      } catch (error: any) {
+        const isPositionConflict =
+          error?.code === "23505" ||
+          error?.cause?.code === "23505" ||
+          (error?.message && error.message.includes("raid_team_members_raid_position_unique"));
+
+        if (isPositionConflict && attempt < 3) {
+          // Espera um pouco e tenta novamente com posição diferente
+          await new Promise(r => setTimeout(r, 50 * attempt));
+          logger.warn(`[RAID] Position conflict on attempt ${attempt}, retrying...`);
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error("Não foi possível alocar posição. Tente novamente.");
+  }
+
+  private async _addCharacterAttempt(options: AddCharacterOptions) {
+    const { raidInstanceId, userId, userCharacterId } = options;
+
     return await db.transaction(async (tx) => {
       // 1. Buscar raid
       const [raidInstance] = await tx
@@ -376,48 +401,16 @@ class RaidService {
 
       logger.info(`[RAID] Inserting ${userChar.char.name} at position ${position}, HP: ${currentHp}`);
 
-      // 10. Inserir
-      try {
-        await tx.insert(raidTeamMembers).values({
-          raidInstanceId,
-          participantId: participant.id,
-          userCharacterId,
-          position,
-          isAlive: true,
-          currentHp,
-          damageDone: 0,
-        });
-      } catch (insertError: any) {
-        // Se constraint de posição violada, tentar próxima posição livre
-        const isPositionConflict = insertError?.code === "23505" ||
-          insertError?.cause?.code === "23505" ||
-          insertError?.message?.includes("raid_team_members_raid_position_unique");
-
-        if (isPositionConflict) {
-          // Buscar posições realmente usadas agora e tentar de novo
-          const currentMembers = await tx
-            .select()
-            .from(raidTeamMembers)
-            .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId));
-
-          const takenNow = new Set(currentMembers.map(m => m.position));
-          const newPosition = [1, 2, 3, 4].find(p => !takenNow.has(p));
-
-          if (!newPosition) throw new Error("Equipe já está completa! (4/4 personagens)");
-
-          await tx.insert(raidTeamMembers).values({
-            raidInstanceId,
-            participantId: participant.id,
-            userCharacterId,
-            position: newPosition,
-            isAlive: true,
-            currentHp,
-            damageDone: 0,
-          });
-        } else {
-          throw insertError;
-        }
-      }
+      // 10. Inserir simples — erros de constraint sobem para o retry externo
+      await tx.insert(raidTeamMembers).values({
+        raidInstanceId,
+        participantId: participant.id,
+        userCharacterId,
+        position,
+        isAlive: true,
+        currentHp,
+        damageDone: 0,
+      });
 
       await tx
         .update(raidInstanceParticipants)
