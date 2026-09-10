@@ -21,9 +21,6 @@ import { RaidBattleEngine, createRaidFighterFromCharacter } from "./RaidBattleEn
 type RaidDifficulty = "normal" | "hard" | "nightmare";
 type RaidStatus = "waiting" | "in_progress" | "completed" | "failed" | "expired";
 
-// Lock system to prevent duplicate character additions
-const addCharacterLocks = new Map<string, Promise<any>>();
-
 interface CreateRaidOptions {
   leaderId: string;
   raidMapId: string;
@@ -300,201 +297,132 @@ class RaidService {
    */
   async addCharacter(options: AddCharacterOptions) {
     const { raidInstanceId, userId, userCharacterId } = options;
-    
-    // Create unique lock key for this operation
-    const lockKey = `${raidInstanceId}:${userId}:${userCharacterId}`;
-    
-    // Check if already processing this exact operation
-    if (addCharacterLocks.has(lockKey)) {
-      logger.warn(`[RAID] Duplicate addCharacter call blocked: ${lockKey}`);
-      throw new Error("Já está adicionando este personagem. Aguarde...");
+    const maxPositionRetries = 3;
+
+    for (let attempt = 1; attempt <= maxPositionRetries; attempt++) {
+      try {
+        return await db.transaction(async (tx) => {
+          const [raidInstance] = await tx
+            .select()
+            .from(raidInstances)
+            .where(eq(raidInstances.id, raidInstanceId))
+            .limit(1);
+
+          if (!raidInstance) throw new Error("Raid não encontrada!");
+          if (raidInstance.status !== "waiting") {
+            throw new Error("Não é possível adicionar personagens após iniciar!");
+          }
+
+          const [user] = await tx
+            .select()
+            .from(users)
+            .where(eq(users.discordId, userId))
+            .limit(1);
+
+          if (!user) throw new Error("Usuário não encontrado!");
+
+          const [participant] = await tx
+            .select()
+            .from(raidInstanceParticipants)
+            .where(and(
+              eq(raidInstanceParticipants.raidInstanceId, raidInstanceId),
+              eq(raidInstanceParticipants.userId, user.id)
+            ))
+            .limit(1);
+
+          if (!participant) throw new Error("Você não está nesta raid!");
+
+          const [userChar] = await tx
+            .select({ userChar: userCharacters, char: characters })
+            .from(userCharacters)
+            .innerJoin(characters, eq(userCharacters.characterId, characters.id))
+            .where(eq(userCharacters.id, userCharacterId))
+            .limit(1);
+
+          if (!userChar || userChar.userChar.userId !== user.id) {
+            throw new Error("Personagem não encontrado ou não pertence a você!");
+          }
+
+          const teamMembers = await tx
+            .select()
+            .from(raidTeamMembers)
+            .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId))
+            .orderBy(asc(raidTeamMembers.position));
+
+          if (teamMembers.length >= 4) {
+            throw new Error("Equipe já está completa! (4/4 personagens)");
+          }
+
+          const usedPositions = new Set(teamMembers.map(member => member.position));
+          const position = [1, 2, 3, 4].find(candidate => !usedPositions.has(candidate));
+
+          if (!position) throw new Error("Todas as posições estão ocupadas!");
+
+          const baseHp = userChar.char.baseHp;
+          const level = userChar.userChar.level;
+          const masteryLevel = userChar.userChar.masteryLevel || 1;
+
+          if (!baseHp || baseHp <= 0) throw new Error(`HP base inválido: ${baseHp}`);
+          if (!level || level <= 0) throw new Error(`Level inválido: ${level}`);
+
+          const masteryBoost = Math.floor(baseHp * ((masteryLevel - 1) * 0.05));
+          const currentHp = baseHp + (level * 10) + masteryBoost;
+
+          await tx.insert(raidTeamMembers).values({
+            raidInstanceId,
+            participantId: participant.id,
+            userCharacterId,
+            position,
+            isAlive: true,
+            currentHp,
+            damageDone: 0,
+          });
+
+          await tx
+            .update(raidInstanceParticipants)
+            .set({ contribution: sql`${raidInstanceParticipants.contribution} + 1` })
+            .where(eq(raidInstanceParticipants.id, participant.id));
+
+          logger.info(`[RAID] Added character ${userChar.char.name} to raid ${raidInstance.roomCode}`);
+
+          return {
+            character: userChar.char,
+            position,
+            currentTeamSize: teamMembers.length + 1,
+          };
+        });
+      } catch (error) {
+        if (this.isRaidCharacterUniqueViolation(error)) {
+          throw new Error("Este personagem já está na equipe!");
+        }
+
+        if (this.isRaidPositionUniqueViolation(error) && attempt < maxPositionRetries) {
+          continue;
+        }
+
+        throw error;
+      }
     }
-    
-    // Create promise for this operation
-    const operationPromise = this._addCharacterInternal(options);
-    addCharacterLocks.set(lockKey, operationPromise);
-    
-    // Keep lock for at least 2 seconds to prevent rapid duplicates
-    const minLockTime = new Promise(resolve => setTimeout(resolve, 2000));
-    
-    try {
-      const result = await operationPromise;
-      await minLockTime; // Wait for minimum lock time
-      return result;
-    } finally {
-      // Always release lock
-      addCharacterLocks.delete(lockKey);
-    }
+
+    throw new Error("Não foi possível alocar uma posição na equipe. Tente novamente.");
   }
 
-  private async _addCharacterInternal(options: AddCharacterOptions) {
-    const { raidInstanceId, userId, userCharacterId } = options;
-    
-    // Buscar raid
-    const [raidInstance] = await db
-      .select()
-      .from(raidInstances)
-      .where(eq(raidInstances.id, raidInstanceId))
-      .limit(1);
-    
-    if (!raidInstance) {
-      throw new Error("Raid não encontrada!");
-    }
-    
-    if (raidInstance.status !== "waiting") {
-      throw new Error("Não é possível adicionar personagens após iniciar!");
-    }
-    
-    // Buscar usuário
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.discordId, userId))
-      .limit(1);
-    
-    if (!user) {
-      throw new Error("Usuário não encontrado!");
-    }
-    
-    // Verificar se é participante
-    const [participant] = await db
-      .select()
-      .from(raidInstanceParticipants)
-      .where(
-        and(
-          eq(raidInstanceParticipants.raidInstanceId, raidInstanceId),
-          eq(raidInstanceParticipants.userId, user.id)
-        )
-      )
-      .limit(1);
-    
-    if (!participant) {
-      throw new Error("Você não está nesta raid!");
-    }
-    
-    logger.info(`[RAID] Found participant - ID: ${participant.id}, UserId: ${participant.userId}`);
-    
-    // Buscar personagem do usuário
-    const [userChar] = await db
-      .select({
-        userChar: userCharacters,
-        char: characters,
-      })
-      .from(userCharacters)
-      .innerJoin(characters, eq(userCharacters.characterId, characters.id))
-      .where(eq(userCharacters.id, userCharacterId))
-      .limit(1);
-    
-    if (!userChar || userChar.userChar.userId !== user.id) {
-      throw new Error("Personagem não encontrado ou não pertence a você!");
-    }
-    
-    logger.info(`[RAID] Found character - CharId: ${userCharacterId}, Name: ${userChar.char.name}, UserId: ${userChar.userChar.userId}`);
-    
-    // Verificar se personagem já está na raid (with retry)
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const [existing] = await db
-        .select()
-        .from(raidTeamMembers)
-        .where(
-          and(
-            eq(raidTeamMembers.raidInstanceId, raidInstanceId),
-            eq(raidTeamMembers.userCharacterId, userCharacterId)
-          )
-        )
-        .limit(1);
-      
-      if (existing) {
-        throw new Error("Este personagem já está na equipe!");
-      }
-      
-      // Small delay to avoid race condition
-      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 50));
-    }
-    
-    // Contar personagens atuais
-    const teamMembers = await db
-      .select()
-      .from(raidTeamMembers)
-      .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId))
-      .orderBy(asc(raidTeamMembers.position));
-    
-    if (teamMembers.length >= 4) {
-      throw new Error("Equipe já está completa! (4/4 personagens)");
-    }
-    
-    // Calcular HP atual (base + level + maestria)
-    const baseHp = userChar.char.baseHp;
-    const level = userChar.userChar.level;
-    const masteryLevel = userChar.userChar.masteryLevel || 1;
-    
-    // Validar valores antes de calcular
-    if (!baseHp || baseHp <= 0) {
-      throw new Error(`HP base inválido: ${baseHp}`);
-    }
-    
-    if (!level || level <= 0) {
-      throw new Error(`Level inválido: ${level}`);
-    }
-    
-    // Formula: base + (level * 10) + (maestria boost)
-    const masteryBoost = Math.floor(baseHp * ((masteryLevel - 1) * 0.05));
-    const currentHp = baseHp + (level * 10) + masteryBoost;
-    
-    logger.info(`[RAID] HP Calculation - Base: ${baseHp}, Level: ${level}, Mastery: ${masteryLevel}, Final: ${currentHp}`);
-    
-    // Encontrar próxima posição disponível (1-4)
-    const usedPositions = new Set(teamMembers.map(m => m.position));
-    let position = 1;
-    while (usedPositions.has(position) && position <= 4) {
-      position++;
-    }
-    
-    if (position > 4) {
-      throw new Error("Todas as posições estão ocupadas!");
-    }
-    
-    // Validar dados antes de inserir
-    if (!participant.id) {
-      throw new Error("Participant ID inválido!");
-    }
-    
-    if (!userCharacterId) {
-      throw new Error("User Character ID inválido!");
-    }
-    
-    logger.info(`[RAID] Inserting character - RaidId: ${raidInstanceId}, ParticipantId: ${participant.id}, CharId: ${userCharacterId}, Position: ${position}, HP: ${currentHp}`);
-    
-    try {
-      await db.insert(raidTeamMembers).values({
-        raidInstanceId,
-        participantId: participant.id,
-        userCharacterId,
-        position,
-        isAlive: true,
-        currentHp,
-        damageDone: 0,
-      });
-    } catch (insertError: any) {
-      logger.error(`[RAID] Insert failed:`, insertError);
-      throw new Error(`Erro ao adicionar personagem: ${insertError.message}`);
-    }
-    
-    // Atualizar contribuição do participante
-    await db
-      .update(raidInstanceParticipants)
-      .set({
-        contribution: sql`${raidInstanceParticipants.contribution} + 1`,
-      })
-      .where(eq(raidInstanceParticipants.id, participant.id));
-    
-    logger.info(`[RAID] Added character ${userChar.char.name} to raid ${raidInstance.roomCode}`);
-    
-    return {
-      character: userChar.char,
-      position,
-      currentTeamSize: teamMembers.length + 1,
-    };
+  private isUniqueViolation(error: unknown, indexName: string): boolean {
+    const databaseError = error as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } };
+    const cause = databaseError?.cause;
+
+    return (
+      (databaseError?.code === "23505" && databaseError.constraint === indexName) ||
+      (cause?.code === "23505" && cause.constraint === indexName)
+    );
+  }
+
+  private isRaidCharacterUniqueViolation(error: unknown): boolean {
+    return this.isUniqueViolation(error, "raid_team_members_raid_character_unique");
+  }
+
+  private isRaidPositionUniqueViolation(error: unknown): boolean {
+    return this.isUniqueViolation(error, "raid_team_members_raid_position_unique");
   }
 
   /**
