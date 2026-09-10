@@ -13,7 +13,7 @@ import {
   equipment,
   userEquipment,
 } from "@workspace/db/schema";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql } from "drizzle-orm";
 import { RAID_CATALOG, getRaidById, type RaidMap } from "@workspace/db/data/raid-catalog";
 import { logger } from "../lib/logger";
 import { RaidBattleEngine, createRaidFighterFromCharacter } from "./RaidBattleEngine";
@@ -842,7 +842,7 @@ class RaidService {
    * INICIAR BATALHA DA RAID
    * ========================================
    */
-  async startRaidBattle(raidInstanceId: string) {
+  async startRaidBattle(raidInstanceId: string, initiatorId: string) {
     const [raidInstance] = await db
       .select()
       .from(raidInstances)
@@ -852,7 +852,44 @@ class RaidService {
     if (!raidInstance) {
       throw new Error("Raid não encontrada!");
     }
-    
+
+    // Aceita tanto o Discord ID quanto o ID interno para que esta regra seja
+    // aplicada também fora dos handlers do bot.
+    const [initiator] = await db
+      .select()
+      .from(users)
+      .where(
+        or(
+          eq(users.discordId, initiatorId),
+          eq(users.id, initiatorId)
+        )
+      )
+      .limit(1);
+
+    if (!initiator) {
+      const supportContext = `sala: ${raidInstance.roomCode}; líder registrado: ${raidInstance.leaderId}`;
+      logger.warn(
+        { raidInstanceId, roomCode: raidInstance.roomCode, leaderId: raidInstance.leaderId, initiatorId },
+        "[RAID] Start denied because the initiating user was not found"
+      );
+      throw new Error(`Usuário não encontrado! (${supportContext})`);
+    }
+
+    if (raidInstance.leaderId !== initiator.id) {
+      const supportContext = `sala: ${raidInstance.roomCode}; líder registrado: ${raidInstance.leaderId}`;
+      logger.warn(
+        {
+          raidInstanceId,
+          roomCode: raidInstance.roomCode,
+          leaderId: raidInstance.leaderId,
+          initiatorId,
+          initiatorUserId: initiator.id,
+        },
+        "[RAID] Start denied because the initiator is not the stored leader"
+      );
+      throw new Error(`Apenas o líder pode iniciar a raid! (${supportContext})`);
+    }
+
     if (raidInstance.status !== "waiting") {
       throw new Error("Raid já foi iniciada ou finalizada!");
     }
