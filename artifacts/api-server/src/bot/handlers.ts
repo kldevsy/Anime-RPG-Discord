@@ -1922,17 +1922,9 @@ export async function handleButtonInteraction(interaction: any) {
     deferred = true;
   } catch (deferError: any) {
     console.error(`[BUTTON] Failed to defer:`, deferError.message);
-    if (deferError.code === 40060) {
-      // Já foi acknowledged = interação duplicada, abortar
-      console.log(`[BUTTON] Already acknowledged - aborting duplicate`);
-      return;
-    }
-    // 10062 = interaction expirou
-    if (deferError.code === 10062) {
-      console.log(`[BUTTON] Interaction expired - processing silently`);
-    } else {
-      return;
-    }
+    // Qualquer erro no defer = interação inválida/duplicada → abortar
+    console.log(`[BUTTON] Aborting - interaction invalid (${deferError.code})`);
+    return;
   }
 
   // Helper para responder (usa followUp se defer funcionou, senão ignora)
@@ -2118,19 +2110,24 @@ export async function handleButtonInteraction(interaction: any) {
           // Importar embed do arena
           const { createBattleProgressEmbed } = await import("./embeds");
 
-          // Enviar mensagem inicial da batalha no canal (pública)
-          const raidName = `RAID: ${raidMap.name}`;
+          // Responder imediatamente (antes de iniciar a batalha, que pode demorar muito)
+          await respond({ content: `⚔️ **Iniciando a raid ${raidMap.name}...** Acompanhe a batalha no canal!`, ephemeral: true });
+
           let battleMessage: any = null;
           let lastUpdate = 0;
           const ANIMATION_DELAY = 1500; // ms entre updates
 
+          // Busca o channel antes de iniciar a batalha (garante que está disponível)
+          const channel = interaction.channel
+            ?? (await interaction.client.channels.fetch(interaction.channelId).catch(() => null));
+
           // Função que envia/edita a embed a cada snapshot
           const onWaveSnapshot = async (waveNum: number, totalWaves: number, snap: any, isBoss: boolean) => {
+            if (!channel || !(channel as any).isTextBased?.()) return;
             const waveLabel = isBoss
               ? `💀 ${raidMap.name} — Boss`
               : `⚔️ ${raidMap.name} — Wave ${waveNum}/${totalWaves - 1}`;
 
-            // Monta um snapshot-like com os dados da raid (time + inimigos)
             const embed = createBattleProgressEmbed(
               `Raid Cooperativa`,
               waveLabel,
@@ -2145,12 +2142,12 @@ export async function handleButtonInteraction(interaction: any) {
 
             try {
               if (!battleMessage) {
-                battleMessage = await interaction.channel.send({ embeds: [embed] });
+                battleMessage = await (channel as any).send({ embeds: [embed] });
               } else {
                 await battleMessage.edit({ embeds: [embed] });
               }
-            } catch {
-              // ignora erros de edição
+            } catch (err: any) {
+              console.error(`[RAID] Failed to update battle embed:`, err?.message ?? err);
             }
           };
 
@@ -2162,17 +2159,17 @@ export async function handleButtonInteraction(interaction: any) {
           const survivorText = result.survivors.filter((s: any) => s.alive).map((s: any) => `• ${s.name} (${s.hp} HP)`).join("\n") || "Nenhum";
           const casualtyText = result.casualties.length > 0 ? result.casualties.join(", ") : "Nenhuma";
 
-          // Mensagem final de resultado
-          await interaction.channel.send({
-            content:
-              `${victoryEmoji} **RAID ${victoryText}** — ${raidMap.name}\n\n` +
-              `⏱️ Tempo: ${result.timeElapsed}s | 🗺️ Wave alcançada: ${result.waveReached}/${result.totalWaves}\n\n` +
-              `✅ **Sobreviventes:**\n${survivorText}\n` +
-              (result.casualties.length > 0 ? `\n💀 **Baixas:** ${casualtyText}\n` : "") +
-              (result.victory ? `\n🏆 Recompensas distribuídas!` : `\n❌ Tente novamente com personagens mais fortes!`),
-          });
-
-          await respond({ content: "✅ Raid concluída!", ephemeral: true });
+          // Mensagem final de resultado no canal
+          if (channel && (channel as any).isTextBased?.()) {
+            await (channel as any).send({
+              content:
+                `${victoryEmoji} **RAID ${victoryText}** — ${raidMap.name}\n\n` +
+                `⏱️ Tempo: ${result.timeElapsed}s | 🗺️ Wave alcançada: ${result.waveReached}/${result.totalWaves}\n\n` +
+                `✅ **Sobreviventes:**\n${survivorText}\n` +
+                (result.casualties.length > 0 ? `\n💀 **Baixas:** ${casualtyText}\n` : "") +
+                (result.victory ? `\n🏆 Recompensas distribuídas!` : `\n❌ Tente novamente com personagens mais fortes!`),
+            }).catch((err: any) => console.error(`[RAID] Result message error:`, err?.message));
+          }
         } catch (error: any) {
           await respond({ content: `❌ Erro ao iniciar raid: ${error.message}`, ephemeral: true });
         }
@@ -2255,19 +2252,10 @@ export async function handleSelectMenuInteraction(interaction: any) {
     deferred = true;
   } catch (deferError: any) {
     console.error(`[SELECT MENU] Failed to defer:`, deferError.message);
-    if (deferError.code === 40060) {
-      // Já foi acknowledged = interação duplicada, abortar
-      console.log(`[SELECT MENU] Already acknowledged - aborting duplicate`);
-      interactionLocks.delete(lockKey);
-      return;
-    }
-    // 10062 = interaction expirou, mas ainda podemos processar silenciosamente
-    if (deferError.code === 10062) {
-      console.log(`[SELECT MENU] Interaction expired - processing silently`);
-    } else {
-      interactionLocks.delete(lockKey);
-      return;
-    }
+    // Qualquer erro no defer = interação inválida/duplicada → abortar
+    console.log(`[SELECT MENU] Aborting - interaction invalid (${deferError.code})`);
+    interactionLocks.delete(lockKey);
+    return;
   }
 
   // Helper para responder (usa followUp se defer funcionou, senão ignora)

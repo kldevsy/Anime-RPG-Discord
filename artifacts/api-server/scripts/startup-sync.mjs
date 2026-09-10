@@ -118,3 +118,24 @@ if (seedEquipment.code !== 0) {
 }
 
 process.stdout.write("[startup-sync] Equipment catalog synchronized successfully.\n");
+
+// Sincronizar banners
+process.stdout.write("[startup-sync] Synchronizing banners...\n");
+
+let seedBanners;
+try {
+  seedBanners = await runCommand(
+    "node",
+    ["../../lib/db/scripts/seed-banners.mjs"],
+  );
+} catch (error) {
+  // Banners sync failure is non-fatal
+  process.stderr.write(`[startup-sync] Banners sync failed: ${error.message}\n`);
+}
+
+if (seedBanners?.code === 0) {
+  process.stdout.write("[startup-sync] Banners synchronized successfully.\n");
+} else if (seedBanners) {
+  printCommandOutput("Banners sync", `${seedBanners.stdout}${seedBanners.stderr}`);
+  process.stdout.write("[startup-sync] Banners sync skipped (non-fatal).\n");
+}
