@@ -2107,7 +2107,7 @@ export async function handleButtonInteraction(interaction: any) {
 
         try {
           // Iniciar batalha da raid
-          const result = await raidService.startRaidBattle(raidInstance.id);
+          const result = await raidService.startRaidBattle(raidInstance.id, discordId);
 
           await respond({
             content:
