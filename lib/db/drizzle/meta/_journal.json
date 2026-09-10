@@ -43,6 +43,13 @@
       "when": 1789011256027,
       "tag": "0005_clumsy_tyger_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789020000000,
+      "tag": "0006_add_user_stats",
+      "breakpoints": true
     }
   ]
 }
