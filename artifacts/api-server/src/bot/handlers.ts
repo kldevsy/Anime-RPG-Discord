@@ -2332,7 +2332,7 @@ export async function handleSelectMenuInteraction(interaction: any) {
           );
           
           // Atualizar botões
-          const canStart = status.teamMembers.length === 4 && status.raidInstance.status === "waiting";
+          const canStart = status.teamMembers.length >= 1 && status.raidInstance.status === "waiting";
           
           const row = new ActionRowBuilder<any>().addComponents(
             new ButtonBuilder()
@@ -2355,20 +2355,19 @@ export async function handleSelectMenuInteraction(interaction: any) {
               .setStyle(ButtonStyle.Danger)
           );
           
-          // Atualizar mensagem da raid no canal
-          // Só envia mensagem pública se não conseguimos responder com followUp
-          // (quando defer falhou, enviamos no canal; quando defer funcionou, só ephemeral)
-          if (!deferred) {
-            try {
-              // Envia mensagem atualizada no canal
-              await interaction.channel.send({
-                content: `🔄 **Equipe Atualizada!** ${status.teamMembers.length}/4 personagens`,
+          // Sempre atualiza a embed da sala no canal (independente do defer)
+          try {
+            const channel = interaction.channel
+              ?? (await interaction.client.channels.fetch(interaction.channelId).catch(() => null));
+
+            if (channel && (channel as any).isTextBased?.()) {
+              await (channel as any).send({
                 embeds: [updatedEmbed],
                 components: [row]
               });
-            } catch (updateError) {
-              console.error("Erro ao enviar atualização:", updateError);
             }
+          } catch (updateError) {
+            console.error("Erro ao enviar atualização da sala:", updateError);
           }
         }
 
