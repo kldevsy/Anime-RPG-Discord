@@ -2,605 +2,451 @@
  * ========================================
  * RAID BATTLE ENGINE
  * ========================================
- * 
- * Sistema de batalha para raids cooperativas.
- * Adaptado do BattleEngine da arena para suportar:
- * - Waves progressivas de inimigos
- * - Bosses com fases e mecânicas especiais
- * - 4 jogadores vs múltiplos inimigos
- * - Efeitos de ambiente
- * - Sistema de adds dinâmicos
- * 
- * Baseado em: battle/BattleEngine.ts
+ *
+ * Motor de batalha para raids cooperativas.
+ * Usa o BattleEngine do arena como base para CADA wave/boss,
+ * garantindo o mesmo sistema de dano, status, passivas e IA.
+ *
+ * Fluxo:
+ *  1. Waves de inimigos (usando BattleEngine)
+ *  2. Recuperação parcial entre waves (30% HP)
+ *  3. Batalha contra o Boss (usando BattleEngine com boss como inimigo especial)
+ *
+ * Cada wave/boss roda `new BattleEngine(playerTeam, enemyTeam).run()`.
+ * O time do jogador carrega HP/status entre waves (persistência de estado).
  */
 
 import { BattleEngine } from "../battle/BattleEngine";
-import { BattleState } from "../battle/BattleState";
+import { SkillManager } from "../battle/SkillManager";
+import type { Combatant } from "../battle/BattleState";
 import type { RaidMap, RaidWave } from "@workspace/db/data/raid-catalog";
 import { logger } from "../lib/logger";
 
-interface RaidFighter {
-  id: string;
+// ──────────────────────────────────────────────────────────────────────────────
+// Tipos públicos
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface RaidFighterInput {
+  id: string;           // userCharacterId
   name: string;
-  hp: number;
   maxHp: number;
+  currentHp: number;    // HP atual (pode diferir de maxHp)
   attack: number;
   defense: number;
   speed: number;
-  role: string;
-  team: "player" | "enemy";
-  isAlive: boolean;
-  ultimateCharge: number;
-  statusEffects: any[];
-  skills: any;
-  passive?: any;
+  critChance: number;
+  critDamage: number;
+  role: "tank" | "dps" | "support" | "healer" | "control";
+  ultimate?: any | null;
+  passiveAbility?: any | null;
+  passive?: string | null;
 }
 
-interface RaidBattleResult {
+export interface RaidBattleResult {
   victory: boolean;
-  currentWave: number;
+  waveReached: number;
   totalWaves: number;
   battleLog: string[];
-  survivors: RaidFighter[];
+  survivors: Array<{ id: string; name: string; hp: number; alive: boolean }>;
   casualties: string[];
   damageByCharacter: Record<string, number>;
-  timeElapsed: number;
-  bossPhaseReached?: number;
+  timeElapsed: number;  // segundos
 }
 
-/**
- * Classe principal do motor de batalha de raid
- */
+// ──────────────────────────────────────────────────────────────────────────────
+// Helper: converter RaidFighterInput → Combatant
+// ──────────────────────────────────────────────────────────────────────────────
+
+function toPlayerCombatant(fighter: RaidFighterInput, currentHp?: number): Combatant {
+  return SkillManager.createCombatant({
+    id: fighter.id,
+    name: fighter.name,
+    role: fighter.role,
+    maxHp: fighter.maxHp,
+    hp: currentHp ?? fighter.currentHp,
+    attack: fighter.attack,
+    defense: fighter.defense,
+    speed: fighter.speed,
+    critChance: fighter.critChance,
+    critDamage: fighter.critDamage,
+    ultimate: fighter.ultimate ?? null,
+    passive: fighter.passive ?? undefined,
+    passiveAbility: fighter.passiveAbility ?? undefined,
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Helper: criar inimigo (wave enemy / boss) como Combatant
+// ──────────────────────────────────────────────────────────────────────────────
+
+function toEnemyCombatant(
+  id: string,
+  data: { name: string; hp: number; attack: number; defense: number; speed: number; role?: string },
+  isBoss = false,
+  bossPhases?: number,
+  enrageRound?: number,
+): Combatant {
+  const role = (data.role ?? "dps") as Combatant["role"];
+  return SkillManager.createCombatant({
+    id,
+    name: data.name,
+    role,
+    maxHp: data.hp,
+    hp: data.hp,
+    attack: data.attack,
+    defense: data.defense,
+    speed: data.speed,
+    critChance: 10,
+    critDamage: 1.5,
+    isBoss,
+    maxPhases: bossPhases,
+    enrageRound: enrageRound ?? 8,
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Multiplicadores de dificuldade
+// ──────────────────────────────────────────────────────────────────────────────
+
+const DIFFICULTY_MULT: Record<string, { hp: number; attack: number; defense: number }> = {
+  normal:    { hp: 1.0, attack: 1.0, defense: 1.0 },
+  hard:      { hp: 1.6, attack: 1.4, defense: 1.3 },
+  nightmare: { hp: 2.5, attack: 1.9, defense: 1.7 },
+};
+
+function applyDifficultyMult(
+  data: { hp: number; attack: number; defense: number; speed: number; name: string; role?: string },
+  difficulty: string,
+): typeof data {
+  const m = DIFFICULTY_MULT[difficulty] ?? DIFFICULTY_MULT.normal;
+  return {
+    ...data,
+    hp: Math.floor(data.hp * m.hp),
+    attack: Math.floor(data.attack * m.attack),
+    defense: Math.floor(data.defense * m.defense),
+  };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Classe Principal
+// ──────────────────────────────────────────────────────────────────────────────
+
 export class RaidBattleEngine {
-  private raidMap: RaidMap;
-  private difficulty: "normal" | "hard" | "nightmare";
-  private playerTeam: RaidFighter[];
-  private currentWave: number = 0;
   private battleLog: string[] = [];
   private damageByCharacter: Record<string, number> = {};
-  private startTime: number = Date.now();
-  private bossPhaseReached: number = 0;
+  private startTime = Date.now();
+
+  // Estado dos personagens (persiste entre waves)
+  private playerCombatants: Combatant[];
 
   constructor(
-    raidMap: RaidMap,
-    difficulty: "normal" | "hard" | "nightmare",
-    playerTeam: RaidFighter[]
+    private readonly raidMap: RaidMap,
+    private readonly difficulty: "normal" | "hard" | "nightmare",
+    fighters: RaidFighterInput[],
   ) {
-    this.raidMap = raidMap;
-    this.difficulty = difficulty;
-    this.playerTeam = playerTeam;
-
-    // Inicializar tracking de dano
-    for (const fighter of playerTeam) {
-      this.damageByCharacter[fighter.id] = 0;
+    this.playerCombatants = fighters.map(f => toPlayerCombatant(f));
+    for (const f of fighters) {
+      this.damageByCharacter[f.id] = 0;
     }
   }
 
-  /**
-   * Aplicar multiplicadores de dificuldade
-   */
-  private applyDifficultyMultipliers(enemy: RaidFighter): RaidFighter {
-    const multipliers = {
-      normal: { hp: 1.0, attack: 1.0, defense: 1.0 },
-      hard: { hp: 1.5, attack: 1.3, defense: 1.3 },
-      nightmare: { hp: 2.5, attack: 1.8, defense: 1.8 },
-    };
+  // ────────────────────────────────────────────────────────────────────────────
+  // Entrada pública
+  // ────────────────────────────────────────────────────────────────────────────
 
-    const mult = multipliers[this.difficulty];
-
-    return {
-      ...enemy,
-      hp: Math.floor(enemy.hp * mult.hp),
-      maxHp: Math.floor(enemy.maxHp * mult.hp),
-      attack: Math.floor(enemy.attack * mult.attack),
-      defense: Math.floor(enemy.defense * mult.defense),
-    };
-  }
-
-  /**
-   * Criar inimigo a partir de dados da wave
-   */
-  private createEnemyFromWaveData(enemyData: any, index: number): RaidFighter {
-    const enemy: RaidFighter = {
-      id: `enemy_${this.currentWave}_${index}`,
-      name: enemyData.name,
-      hp: enemyData.hp,
-      maxHp: enemyData.hp,
-      attack: enemyData.attack,
-      defense: enemyData.defense,
-      speed: enemyData.speed,
-      role: enemyData.role,
-      team: "enemy",
-      isAlive: true,
-      ultimateCharge: 0,
-      statusEffects: [],
-      skills: {
-        ultimate: {
-          name: "Ataque Especial",
-          chargeRequired: 100,
-          type: "DAMAGE",
-          targetType: "single_enemy",
-          multiplier: 2.0,
-        },
-      },
-      passive: enemyData.passive ? { description: enemyData.passive } : undefined,
-    };
-
-    return this.applyDifficultyMultipliers(enemy);
-  }
-
-  /**
-   * Criar boss a partir de dados do raid map
-   */
-  private createBoss(): RaidFighter {
-    const bossData = this.raidMap.boss;
-
-    const boss: RaidFighter = {
-      id: "boss",
-      name: bossData.name,
-      hp: bossData.hp,
-      maxHp: bossData.hp,
-      attack: bossData.attack,
-      defense: bossData.defense,
-      speed: bossData.speed,
-      role: "tank",
-      team: "enemy",
-      isAlive: true,
-      ultimateCharge: 50, // Boss começa com carga
-      statusEffects: [],
-      skills: {
-        ultimate: {
-          name: bossData.ultimate.name,
-          description: bossData.ultimate.description,
-          chargeRequired: 100,
-          type: "DAMAGE",
-          targetType: "aoe_enemy",
-          multiplier: bossData.ultimate.multiplier,
-          effects: bossData.ultimate.effects,
-        },
-      },
-      passive: { description: bossData.passive },
-    };
-
-    return this.applyDifficultyMultipliers(boss);
-  }
-
-  /**
-   * Criar adds (inimigos invocados pelo boss)
-   */
-  private createAdds(count: number, phase: number): RaidFighter[] {
-    const adds: RaidFighter[] = [];
-    
-    // Usar inimigos da primeira wave como base para adds
-    const baseEnemies = this.raidMap.waves[0].enemies;
-
-    for (let i = 0; i < count; i++) {
-      const baseEnemy = baseEnemies[i % baseEnemies.length];
-      
-      const add: RaidFighter = {
-        id: `add_phase${phase}_${i}`,
-        name: `${baseEnemy.name} (Add)`,
-        hp: Math.floor(baseEnemy.hp * 0.7), // Adds tem menos HP
-        maxHp: Math.floor(baseEnemy.hp * 0.7),
-        attack: baseEnemy.attack,
-        defense: baseEnemy.defense,
-        speed: baseEnemy.speed,
-        role: baseEnemy.role,
-        team: "enemy",
-        isAlive: true,
-        ultimateCharge: 0,
-        statusEffects: [],
-        skills: {
-          ultimate: {
-            name: "Ataque Rápido",
-            chargeRequired: 100,
-            type: "DAMAGE",
-            targetType: "single_enemy",
-            multiplier: 1.5,
-          },
-        },
-      };
-
-      adds.push(this.applyDifficultyMultipliers(add));
-    }
-
-    return adds;
-  }
-
-  /**
-   * Verificar fases do boss e aplicar mecânicas
-   */
-  private checkBossPhases(boss: RaidFighter, enemyTeam: RaidFighter[]): RaidFighter[] {
-    const hpPercent = (boss.hp / boss.maxHp) * 100;
-
-    for (const phase of this.raidMap.boss.phases) {
-      if (hpPercent <= phase.hpThreshold && this.bossPhaseReached < phase.hpThreshold) {
-        this.bossPhaseReached = phase.hpThreshold;
-        
-        this.battleLog.push(
-          `\n🔥 **FASE DO BOSS ATIVADA!** 🔥\n` +
-          `**${boss.name}**: ${phase.effect}\n`
-        );
-
-        // Aplicar efeitos da fase
-        if (phase.effect.includes("+") && phase.effect.includes("ATK")) {
-          const match = phase.effect.match(/\+(\d+)%\s+ATK/);
-          if (match) {
-            const bonus = parseInt(match[1]);
-            boss.attack = Math.floor(boss.attack * (1 + bonus / 100));
-          }
-        }
-
-        if (phase.effect.includes("+") && phase.effect.includes("DEF")) {
-          const match = phase.effect.match(/\+(\d+)%\s+DEF/);
-          if (match) {
-            const bonus = parseInt(match[1]);
-            boss.defense = Math.floor(boss.defense * (1 + bonus / 100));
-          }
-        }
-
-        if (phase.effect.includes("+") && phase.effect.includes("SPD")) {
-          const match = phase.effect.match(/\+(\d+)\s+SPD/);
-          if (match) {
-            const bonus = parseInt(match[1]);
-            boss.speed += bonus;
-          }
-        }
-
-        // Invocar adds
-        if (phase.addsToSpawn && phase.addsToSpawn > 0) {
-          const adds = this.createAdds(phase.addsToSpawn, phase.hpThreshold);
-          enemyTeam.push(...adds);
-          
-          this.battleLog.push(
-            `👹 **${boss.name}** invocou ${phase.addsToSpawn} aliados!\n`
-          );
-        }
-
-        // Curar boss se especificado
-        if (phase.effect.includes("Recupera") && phase.effect.includes("HP")) {
-          const match = phase.effect.match(/Recupera (\d+) HP/);
-          if (match) {
-            const healAmount = parseInt(match[1]);
-            boss.hp = Math.min(boss.hp + healAmount, boss.maxHp);
-            
-            this.battleLog.push(
-              `💚 **${boss.name}** recuperou ${healAmount} HP!\n`
-            );
-          }
-        }
-      }
-    }
-
-    return enemyTeam;
-  }
-
-  /**
-   * Executar uma wave de batalha
-   */
-  private async executeWaveBattle(wave: RaidWave): Promise<boolean> {
-    this.battleLog.push(
-      `\n━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `⚔️ **WAVE ${wave.wave}/${this.raidMap.waves.length}** ⚔️\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━\n`
-    );
-
-    // Criar inimigos da wave
-    let enemyTeam: RaidFighter[] = wave.enemies.map((enemy, index) =>
-      this.createEnemyFromWaveData(enemy, index)
-    );
-
-    // Aplicar efeito de ambiente se houver
-    if (wave.environmentEffect) {
-      this.battleLog.push(
-        `🌍 **Efeito Ambiental:** ${wave.environmentEffect.description}\n\n`
-      );
-    }
-
-    // Simular batalha usando BattleEngine existente
-    // (simplificado - na prática, usar o BattleEngine completo)
-    let round = 0;
-    const maxRounds = 50;
-
-    while (round < maxRounds) {
-      round++;
-
-      // Verificar vivos
-      const alivePlayers = this.playerTeam.filter((f) => f.isAlive);
-      const aliveEnemies = enemyTeam.filter((f) => f.isAlive);
-
-      if (alivePlayers.length === 0) {
-        this.battleLog.push(`\n💀 **DERROTA!** Time eliminado!\n`);
-        return false;
-      }
-
-      if (aliveEnemies.length === 0) {
-        this.battleLog.push(
-          `\n✅ **Wave ${wave.wave} Concluída!**\n` +
-          `Sobreviventes: ${alivePlayers.length}/4\n`
-        );
-        
-        // Curar 20% após cada wave
-        for (const fighter of alivePlayers) {
-          const healAmount = Math.floor(fighter.maxHp * 0.2);
-          fighter.hp = Math.min(fighter.hp + healAmount, fighter.maxHp);
-        }
-        
-        return true;
-      }
-
-      // Ordenar por velocidade
-      const allFighters = [...alivePlayers, ...aliveEnemies].sort(
-        (a, b) => b.speed - a.speed
-      );
-
-      // Executar turno de cada fighter
-      for (const fighter of allFighters) {
-        if (!fighter.isAlive) continue;
-
-        const targets = fighter.team === "player" ? aliveEnemies : alivePlayers;
-        if (targets.length === 0) break;
-
-        // Ataque básico simplificado
-        const target = targets[Math.floor(Math.random() * targets.length)];
-        const damage = Math.max(
-          1,
-          Math.floor(fighter.attack * 0.8 - target.defense * 0.3)
-        );
-
-        target.hp -= damage;
-
-        if (fighter.team === "player") {
-          this.damageByCharacter[fighter.id] =
-            (this.damageByCharacter[fighter.id] || 0) + damage;
-        }
-
-        if (target.hp <= 0) {
-          target.hp = 0;
-          target.isAlive = false;
-        }
-      }
-
-      // Aplicar efeito de ambiente
-      if (wave.environmentEffect) {
-        if (wave.environmentEffect.type === "burn") {
-          for (const fighter of alivePlayers) {
-            fighter.hp = Math.max(0, fighter.hp - wave.environmentEffect.value);
-            if (fighter.hp === 0) {
-              fighter.isAlive = false;
-            }
-          }
-        }
-      }
-    }
-
-    // Timeout
-    this.battleLog.push(`\n⏰ **TEMPO ESGOTADO!** Batalha muito longa.\n`);
-    return false;
-  }
-
-  /**
-   * Executar batalha contra o boss
-   */
-  private async executeBossBattle(): Promise<boolean> {
-    this.battleLog.push(
-      `\n━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `💀 **BOSS BATTLE** 💀\n` +
-      `${this.raidMap.boss.name} - ${this.raidMap.boss.title}\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━\n`
-    );
-
-    let boss = this.createBoss();
-    let enemyTeam: RaidFighter[] = [boss];
-
-    let round = 0;
-    const maxRounds = 100; // Boss battles podem ser longas
-
-    while (round < maxRounds) {
-      round++;
-
-      // Verificar vivos
-      const alivePlayers = this.playerTeam.filter((f) => f.isAlive);
-      const aliveEnemies = enemyTeam.filter((f) => f.isAlive);
-
-      if (alivePlayers.length === 0) {
-        this.battleLog.push(`\n💀 **DERROTA!** Time eliminado pelo boss!\n`);
-        return false;
-      }
-
-      if (aliveEnemies.length === 0) {
-        this.battleLog.push(
-          `\n🎉 **VITÓRIA!** ${this.raidMap.boss.name} foi derrotado!\n`
-        );
-        return true;
-      }
-
-      // Verificar fases do boss
-      if (boss.isAlive) {
-        enemyTeam = this.checkBossPhases(boss, enemyTeam);
-      }
-
-      // Ordenar por velocidade
-      const allFighters = [...alivePlayers, ...aliveEnemies].sort(
-        (a, b) => b.speed - a.speed
-      );
-
-      // Executar turno
-      for (const fighter of allFighters) {
-        if (!fighter.isAlive) continue;
-
-        const targets = fighter.team === "player" ? aliveEnemies : alivePlayers;
-        if (targets.length === 0) break;
-
-        const target = targets[Math.floor(Math.random() * targets.length)];
-        const damage = Math.max(
-          1,
-          Math.floor(fighter.attack - target.defense * 0.4)
-        );
-
-        target.hp -= damage;
-
-        if (fighter.team === "player") {
-          this.damageByCharacter[fighter.id] =
-            (this.damageByCharacter[fighter.id] || 0) + damage;
-        }
-
-        if (target.hp <= 0) {
-          target.hp = 0;
-          target.isAlive = false;
-
-          if (target.id === "boss") {
-            this.battleLog.push(
-              `\n💥 **${target.name}** foi derrotado!\n`
-            );
-          }
-        }
-      }
-
-      // Boss ultimate a cada X turnos
-      if (round % 5 === 0 && boss.isAlive) {
-        this.battleLog.push(
-          `\n✨ **${boss.name}** usou **${boss.skills.ultimate.name}**!\n`
-        );
-        
-        // Dano AoE no time
-        for (const fighter of this.playerTeam) {
-          if (fighter.isAlive) {
-            const damage = Math.floor(boss.attack * boss.skills.ultimate.multiplier);
-            fighter.hp = Math.max(0, fighter.hp - damage);
-            
-            if (fighter.hp === 0) {
-              fighter.isAlive = false;
-            }
-          }
-        }
-      }
-    }
-
-    this.battleLog.push(`\n⏰ **TEMPO ESGOTADO!** Boss muito forte.\n`);
-    return false;
-  }
-
-  /**
-   * Executar raid completa
-   */
   async executeRaid(): Promise<RaidBattleResult> {
-    logger.info(
-      `[RAID BATTLE] Starting raid: ${this.raidMap.name} (${this.difficulty})`
-    );
+    logger.info(`[RAID BATTLE] Starting raid: ${this.raidMap.name} (${this.difficulty})`);
 
-    this.battleLog.push(
-      `🏰 **RAID: ${this.raidMap.name}** 🏰\n` +
-      `${this.difficulty === "normal" ? "🟢" : this.difficulty === "hard" ? "🟡" : "🔴"} ${this.difficulty.toUpperCase()}\n\n` +
-      `👥 **Time:**\n`
-    );
-
-    for (const fighter of this.playerTeam) {
-      this.battleLog.push(`   • ${fighter.name} (${fighter.hp} HP)\n`);
-    }
-
-    this.battleLog.push(`\n━━━━━━━━━━━━━━━━━━━━━━\n`);
-
-    // Executar waves
+    // Waves
     for (let i = 0; i < this.raidMap.waves.length; i++) {
-      this.currentWave = i + 1;
       const wave = this.raidMap.waves[i];
 
-      const waveVictory = await this.executeWaveBattle(wave);
+      this.log(`\n━━━━━━━━━━━━━━━━━━━━━━`);
+      this.log(`⚔️ **WAVE ${wave.wave}/${this.raidMap.waves.length}**`);
+      if (wave.environmentEffect) {
+        this.log(`🌍 Efeito: ${wave.environmentEffect.description}`);
+      }
+      this.log(`━━━━━━━━━━━━━━━━━━━━━━`);
 
-      if (!waveVictory) {
-        // Derrota
-        return {
-          victory: false,
-          currentWave: this.currentWave,
-          totalWaves: this.raidMap.waves.length + 1,
-          battleLog: this.battleLog,
-          survivors: this.playerTeam.filter((f) => f.isAlive),
-          casualties: this.playerTeam
-            .filter((f) => !f.isAlive)
-            .map((f) => f.name),
-          damageByCharacter: this.damageByCharacter,
-          timeElapsed: Math.floor((Date.now() - this.startTime) / 1000),
-        };
+      const survived = await this.runWave(wave, i);
+      if (!survived) {
+        logger.info(`[RAID BATTLE] Defeat at wave ${wave.wave}`);
+        return this.buildResult(false, wave.wave);
+      }
+
+      // Recuperação entre waves (30% HP)
+      if (i < this.raidMap.waves.length - 1) {
+        for (const p of this.playerCombatants) {
+          if (p.alive) {
+            const heal = Math.floor(p.maxHp * 0.30);
+            p.hp = Math.min(p.maxHp, p.hp + heal);
+          }
+        }
+        this.log(`\n💚 Time recuperou 30% HP entre waves.`);
       }
     }
 
-    // Boss battle
-    this.currentWave = this.raidMap.waves.length + 1;
-    const bossVictory = await this.executeBossBattle();
+    // Boss
+    this.log(`\n━━━━━━━━━━━━━━━━━━━━━━`);
+    this.log(`💀 **BOSS BATTLE: ${this.raidMap.boss.name}** — ${this.raidMap.boss.title}`);
+    this.log(`━━━━━━━━━━━━━━━━━━━━━━`);
 
-    const timeElapsed = Math.floor((Date.now() - this.startTime) / 1000);
-
-    if (bossVictory) {
-      logger.info(
-        `[RAID BATTLE] Victory! Time: ${timeElapsed}s, Waves: ${this.currentWave}`
-      );
-    } else {
-      logger.info(`[RAID BATTLE] Defeat at wave ${this.currentWave}`);
+    const bossVictory = await this.runBoss();
+    if (!bossVictory) {
+      return this.buildResult(false, this.raidMap.waves.length + 1);
     }
 
+    this.log(`\n🎉 **${this.raidMap.boss.name} derrotado! RAID COMPLETA!** 🎉`);
+    return this.buildResult(true, this.raidMap.waves.length + 1);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Executar uma wave usando BattleEngine real
+  // ────────────────────────────────────────────────────────────────────────────
+
+  private async runWave(wave: RaidWave, waveIndex: number): Promise<boolean> {
+    // Criar inimigos da wave
+    const enemyTeam: Combatant[] = wave.enemies.map((e, idx) => {
+      const scaled = applyDifficultyMult(e, this.difficulty);
+      return toEnemyCombatant(`wave${wave.wave}_enemy${idx}`, scaled);
+    });
+
+    // Snapshot dos jogadores vivos (para o engine desta wave)
+    const activePlayers = this.playerCombatants.filter(p => p.alive);
+    if (activePlayers.length === 0) return false;
+
+    // Rodar batalha
+    const engine = new BattleEngine(activePlayers, enemyTeam);
+    const result = engine.run(60);
+
+    // Aplicar efeito de ambiente (DoT/debuff pós-batalha)
+    if (wave.environmentEffect) {
+      this.applyEnvironmentEffect(wave.environmentEffect);
+    }
+
+    // Sincronizar HP/alive de volta para playerCombatants
+    this.syncPlayerStateAfterBattle(result.playerTeam);
+
+    // Acumular dano
+    this.accumulateDamage(result.actions, activePlayers);
+
+    const victoryWave = result.phase === "VICTORY";
+
+    if (victoryWave) {
+      const alive = this.playerCombatants.filter(p => p.alive).length;
+      this.log(`✅ Wave ${wave.wave} concluída! Sobreviventes: ${alive}/${this.playerCombatants.length}`);
+    } else {
+      this.log(`💀 Derrota na wave ${wave.wave}!`);
+    }
+
+    return victoryWave;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Executar o boss usando BattleEngine real
+  // ────────────────────────────────────────────────────────────────────────────
+
+  private async runBoss(): Promise<boolean> {
+    const bossData = this.raidMap.boss;
+    const scaledBoss = applyDifficultyMult(
+      {
+        hp: bossData.hp,
+        attack: bossData.attack,
+        defense: bossData.defense,
+        speed: (bossData as any).speed ?? 95,
+        name: bossData.name,
+        role: "dps",
+      },
+      this.difficulty,
+    );
+
+    const boss = toEnemyCombatant(
+      "boss_main",
+      scaledBoss,
+      true,                           // isBoss = true  → ativa enrage
+      bossData.phases?.length ?? 0,
+      (bossData as any).enrageRound ?? 8,
+    );
+
+    // Adds iniciais do boss (se houver)
+    const enemyTeam: Combatant[] = [boss];
+    if (bossData.phases) {
+      // Fases cujas mecânicas são adds na fase inicial (hpThreshold === 100)
+      for (const phase of bossData.phases) {
+        if (phase.hpThreshold >= 100 && phase.addsToSpawn) {
+          for (let i = 0; i < phase.addsToSpawn; i++) {
+            const add = applyDifficultyMult(
+              { hp: Math.floor(bossData.hp * 0.3), attack: Math.floor(bossData.attack * 0.5), defense: Math.floor(bossData.defense * 0.5), speed: 80, name: `Servo de ${bossData.name}`, role: "dps" },
+              this.difficulty,
+            );
+            enemyTeam.push(toEnemyCombatant(`boss_add_${i}`, add));
+          }
+        }
+      }
+    }
+
+    const activePlayers = this.playerCombatants.filter(p => p.alive);
+    if (activePlayers.length === 0) return false;
+
+    // Boss battle: mais rodadas para acomodar mecânicas
+    const engine = new BattleEngine(activePlayers, enemyTeam);
+    const result = engine.run(120);
+
+    // Aplicar fases do boss manualmente pós-resultado (log narrativo)
+    if (bossData.phases) {
+      for (const phase of bossData.phases) {
+        const phaseName = phase.effect ?? `Fase ${phase.hpThreshold}%`;
+        this.log(`🔥 Boss ativou fase aos ${phase.hpThreshold}% HP: ${phaseName}`);
+      }
+    }
+
+    // Sincronizar estado
+    this.syncPlayerStateAfterBattle(result.playerTeam);
+    this.accumulateDamage(result.actions, activePlayers);
+
+    const bossVictory = result.phase === "VICTORY";
+
+    if (bossVictory) {
+      const alive = this.playerCombatants.filter(p => p.alive).length;
+      this.log(`🎉 Boss derrotado! Sobreviventes: ${alive}/${this.playerCombatants.length}`);
+    } else {
+      this.log(`💀 Time eliminado pelo boss!`);
+    }
+
+    return bossVictory;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Helpers internos
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /** Sincroniza hp/alive de volta ao playerCombatants persistente após um BattleEngine.run() */
+  private syncPlayerStateAfterBattle(resultTeam: Combatant[]): void {
+    for (const updated of resultTeam) {
+      const persistent = this.playerCombatants.find(p => p.id === updated.id);
+      if (persistent) {
+        persistent.hp = updated.hp;
+        persistent.alive = updated.alive;
+        // Mantém status effects entre waves
+        persistent.statusEffects = updated.statusEffects;
+        persistent.ultimateCharge = updated.ultimateCharge;
+      }
+    }
+  }
+
+  /** Acumula dano infligido por cada jogador a partir das BattleActions */
+  private accumulateDamage(actions: import("../battle/BattleState").BattleAction[], activePlayers: Combatant[]): void {
+    const playerIds = new Set(activePlayers.map(p => p.id));
+    for (const action of actions) {
+      if (!playerIds.has(action.actorId)) continue;
+      if (
+        action.type === "basic_attack" ||
+        action.type === "skill1" ||
+        action.type === "skill2" ||
+        action.type === "ultimate"
+      ) {
+        const dmg = action.amount ?? 0;
+        this.damageByCharacter[action.actorId] = (this.damageByCharacter[action.actorId] ?? 0) + dmg;
+      }
+    }
+  }
+
+  /** Aplica efeito ambiental da wave sobre jogadores vivos */
+  private applyEnvironmentEffect(effect: { type: string; value: number; description: string }): void {
+    if (!effect) return;
+    for (const p of this.playerCombatants) {
+      if (!p.alive) continue;
+      if (effect.type === "burn" || effect.type === "poison" || effect.type === "damage") {
+        p.hp = Math.max(1, p.hp - effect.value);
+        if (p.hp <= 1) {
+          this.log(`⚠️ ${p.name} quase morreu pelo efeito ambiental!`);
+        }
+      }
+    }
+  }
+
+  private log(msg: string): void {
+    this.battleLog.push(msg);
+  }
+
+  private buildResult(victory: boolean, waveReached: number): RaidBattleResult {
+    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+    const survivors = this.playerCombatants.map(p => ({
+      id: p.id,
+      name: p.name,
+      hp: p.hp,
+      alive: p.alive,
+    }));
+    const casualties = this.playerCombatants
+      .filter(p => !p.alive)
+      .map(p => p.name);
+
     return {
-      victory: bossVictory,
-      currentWave: this.currentWave,
-      totalWaves: this.raidMap.waves.length + 1,
+      victory,
+      waveReached,
+      totalWaves: this.raidMap.waves.length + 1, // +1 pelo boss
       battleLog: this.battleLog,
-      survivors: this.playerTeam.filter((f) => f.isAlive),
-      casualties: this.playerTeam.filter((f) => !f.isAlive).map((f) => f.name),
+      survivors,
+      casualties,
       damageByCharacter: this.damageByCharacter,
-      timeElapsed,
-      bossPhaseReached: this.bossPhaseReached,
+      timeElapsed: elapsed,
     };
   }
 }
 
-/**
- * Helper: Criar fighter a partir de personagem do usuário
- */
+// ──────────────────────────────────────────────────────────────────────────────
+// Factory: converter dados do DB → RaidFighterInput
+// ──────────────────────────────────────────────────────────────────────────────
+
 export function createRaidFighterFromCharacter(
-  userChar: any,
-  char: any,
-  equipment: any
-): RaidFighter {
-  // Calcular stats com level, maestria e equipamento
-  const level = userChar.level;
-  const masteryLevel = userChar.masteryLevel || 1;
-  const masteryBoost = (masteryLevel - 1) * 0.05; // 5% por nível
+  userChar: {
+    id: string;
+    level: number;
+    masteryLevel?: number | null;
+  },
+  char: {
+    name: string;
+    baseHp: number;
+    baseAttack: number;
+    baseDefense: number;
+    baseSpeed: number;
+    baseCritChance?: number | null;
+    baseCritDamage?: number | null;
+    role: string;
+    passiveAbility?: any;
+    ultimates?: any[];
+  },
+  equippedItem?: { attackBonus?: number | null; defenseBonus?: number | null; hpBonus?: number | null; speedBonus?: number | null } | null,
+): RaidFighterInput {
+  const level = userChar.level ?? 1;
+  const mastery = userChar.masteryLevel ?? 1;
+  const masteryMult = 1 + (mastery - 1) * 0.05;
 
-  let hp = Math.floor(char.baseHp * (1 + masteryBoost)) + level * 10;
-  let attack = Math.floor(char.baseAttack * (1 + masteryBoost)) + level * 2;
-  let defense = Math.floor(char.baseDefense * (1 + masteryBoost)) + level * 2;
-  let speed = char.baseSpeed + Math.floor(level * 0.5);
+  const baseHp = char.baseHp + level * 10;
+  const baseAtk = char.baseAttack + level * 5;
+  const baseDef = char.baseDefense + level * 3;
+  const baseSpd = char.baseSpeed + Math.floor(level * 0.5);
 
-  // Aplicar bônus de equipamento
-  if (equipment) {
-    hp += equipment.bonusHp || 0;
-    attack += equipment.bonusAttack || 0;
-    defense += equipment.bonusDefense || 0;
-    speed += equipment.bonusSpeed || 0;
-  }
+  const equipHp  = equippedItem?.hpBonus  ?? 0;
+  const equipAtk = equippedItem?.attackBonus  ?? 0;
+  const equipDef = equippedItem?.defenseBonus ?? 0;
+  const equipSpd = equippedItem?.speedBonus   ?? 0;
+
+  const ultimate = char.ultimates?.[0] ?? null;
 
   return {
     id: userChar.id,
     name: char.name,
-    hp,
-    maxHp: hp,
-    attack,
-    defense,
-    speed,
-    role: char.role,
-    team: "player",
-    isAlive: true,
-    ultimateCharge: 0,
-    statusEffects: [],
-    skills: char.ultimate || {
-      ultimate: {
-        name: "Ultimate",
-        chargeRequired: 100,
-        type: "DAMAGE",
-        targetType: "single_enemy",
-        multiplier: 2.5,
-      },
-    },
-    passive: char.passiveAbility,
+    maxHp: Math.floor((baseHp + equipHp) * masteryMult),
+    currentHp: Math.floor((baseHp + equipHp) * masteryMult),
+    attack: Math.floor((baseAtk + equipAtk) * masteryMult),
+    defense: Math.floor((baseDef + equipDef) * masteryMult),
+    speed: Math.floor((baseSpd + equipSpd) * masteryMult),
+    critChance: char.baseCritChance ?? 15,
+    critDamage: char.baseCritDamage ?? 1.5,
+    role: (char.role ?? "dps") as RaidFighterInput["role"],
+    ultimate,
+    passiveAbility: char.passiveAbility ?? null,
+    passive: char.passiveAbility?.name ?? null,
   };
 }

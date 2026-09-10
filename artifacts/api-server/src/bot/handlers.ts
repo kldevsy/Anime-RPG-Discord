@@ -2092,14 +2092,11 @@ export async function handleButtonInteraction(interaction: any) {
           return;
         }
 
-        // Verificar se tem 4 personagens
+        // Verificar se tem pelo menos 1 personagem
         const status = await raidService.getRaidStatus(raidInstance.roomCode);
-        if (status.teamMembers.length < 4) {
+        if (status.teamMembers.length < 1) {
           await respond({
-            content:
-              `❌ A raid precisa de 4 personagens!\n\n` +
-              `**Atual:** ${status.teamMembers.length}/4\n\n` +
-              `Peça aos jogadores para adicionar mais personagens.`,
+            content: `❌ Adicione pelo menos 1 personagem antes de iniciar!`,
             ephemeral: true,
           });
           return;
@@ -2109,12 +2106,20 @@ export async function handleButtonInteraction(interaction: any) {
           // Iniciar batalha da raid
           const result = await raidService.startRaidBattle(raidInstance.id, discordId);
 
+          const victoryEmoji = result.victory ? "🎉" : "💀";
+          const victoryText = result.victory ? "VITÓRIA!" : "DERROTA!";
+          const survivorText = result.survivors.filter(s => s.alive).map(s => `• ${s.name} (${s.hp} HP)`).join("\n") || "Nenhum";
+          const casualtyText = result.casualties.length > 0 ? result.casualties.join(", ") : "Nenhuma";
+
           await respond({
             content:
-              `🚀 **RAID INICIADA!**\n\n` +
-              `⚔️ A batalha está acontecendo...\n\n` +
-              `Use \`/raid acao:Status codigo:${raidInstance.roomCode}\` para ver o resultado!`,
-            ephemeral: true,
+              `${victoryEmoji} **RAID ${victoryText}**\n\n` +
+              `⏱️ Tempo: ${result.timeElapsed}s\n` +
+              `🗺️ Wave alcançada: ${result.waveReached}/${result.totalWaves}\n\n` +
+              `✅ **Sobreviventes:**\n${survivorText}\n\n` +
+              (result.casualties.length > 0 ? `💀 **Baixas:** ${casualtyText}\n\n` : "") +
+              (result.victory ? `🏆 Recompensas distribuídas! Verifique seu inventário.` : `❌ Tente novamente com personagens mais fortes!`),
+            ephemeral: false,
           });
         } catch (error: any) {
           await respond({ content: `❌ Erro ao iniciar raid: ${error.message}`, ephemeral: true });
