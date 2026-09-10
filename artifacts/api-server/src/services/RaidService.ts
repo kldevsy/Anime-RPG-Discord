@@ -377,15 +377,47 @@ class RaidService {
       logger.info(`[RAID] Inserting ${userChar.char.name} at position ${position}, HP: ${currentHp}`);
 
       // 10. Inserir
-      await tx.insert(raidTeamMembers).values({
-        raidInstanceId,
-        participantId: participant.id,
-        userCharacterId,
-        position,
-        isAlive: true,
-        currentHp,
-        damageDone: 0,
-      });
+      try {
+        await tx.insert(raidTeamMembers).values({
+          raidInstanceId,
+          participantId: participant.id,
+          userCharacterId,
+          position,
+          isAlive: true,
+          currentHp,
+          damageDone: 0,
+        });
+      } catch (insertError: any) {
+        // Se constraint de posição violada, tentar próxima posição livre
+        const isPositionConflict = insertError?.code === "23505" ||
+          insertError?.cause?.code === "23505" ||
+          insertError?.message?.includes("raid_team_members_raid_position_unique");
+
+        if (isPositionConflict) {
+          // Buscar posições realmente usadas agora e tentar de novo
+          const currentMembers = await tx
+            .select()
+            .from(raidTeamMembers)
+            .where(eq(raidTeamMembers.raidInstanceId, raidInstanceId));
+
+          const takenNow = new Set(currentMembers.map(m => m.position));
+          const newPosition = [1, 2, 3, 4].find(p => !takenNow.has(p));
+
+          if (!newPosition) throw new Error("Equipe já está completa! (4/4 personagens)");
+
+          await tx.insert(raidTeamMembers).values({
+            raidInstanceId,
+            participantId: participant.id,
+            userCharacterId,
+            position: newPosition,
+            isAlive: true,
+            currentHp,
+            damageDone: 0,
+          });
+        } else {
+          throw insertError;
+        }
+      }
 
       await tx
         .update(raidInstanceParticipants)
