@@ -130,7 +130,24 @@ class WaveBattleEngine {
     this.triggerAll("on_battle_start");
   }
 
-  run(maxRounds = 80): BattleSnapshot {
+  async run(maxRounds = 80, onSnapshot?: (snap: BattleSnapshot) => Promise<void>): Promise<BattleSnapshot> {
+    if (onSnapshot) {
+      // Animated mode — envia snapshot a cada mudança de ação
+      let lastActionCount = -1;
+      for (let s = 0; s < maxRounds * 30 && !this.isFinished(); s++) {
+        this.step();
+        const snap = this.snapshot();
+        if (snap.actions.length !== lastActionCount || this.isFinished()) {
+          lastActionCount = snap.actions.length;
+          await onSnapshot(snap);
+        }
+      }
+      if (this.isFinished()) this.phase = this.resultPhase();
+      else this.phase = "DRAW";
+      await onSnapshot(this.snapshot());
+      return this.snapshot();
+    }
+    // Sync mode (sem Discord)
     for (let s = 0; s < maxRounds * 30 && !this.isFinished(); s++) this.step();
     if (this.isFinished()) this.phase = this.resultPhase();
     else this.phase = "DRAW";
@@ -421,7 +438,9 @@ export class RaidBattleEngine {
     for (const f of fighters) this.dmg[f.id] = 0;
   }
 
-  async executeRaid(): Promise<RaidBattleResult> {
+  async executeRaid(
+    onWaveSnapshot?: (waveNum: number, totalWaves: number, snap: BattleSnapshot, isBoss: boolean) => Promise<void>
+  ): Promise<RaidBattleResult> {
     logger.info(`[RAID BATTLE] Starting raid: ${this.raidMap.name} (${this.difficulty})`);
 
     // ── Waves ──────────────────────────────────────────────────────────────
@@ -441,7 +460,10 @@ export class RaidBattleEngine {
 
       // Rodar batalha da wave
       const engine = new WaveBattleEngine(alive, enemies);
-      const snap = engine.run(60);
+      const snap = await engine.run(60, onWaveSnapshot
+        ? (s) => onWaveSnapshot(wave.wave, this.raidMap.waves.length, s, false)
+        : undefined
+      );
 
       // Aplicar efeito de ambiente nos sobreviventes
       if (wave.environmentEffect && (wave.environmentEffect.type === "burn" || wave.environmentEffect.type === "poison")) {
@@ -488,7 +510,10 @@ export class RaidBattleEngine {
     if (aliveForBoss.length === 0) return this.result(false, this.raidMap.waves.length + 1);
 
     const bossEngine = new WaveBattleEngine(aliveForBoss, [bossCombatant]);
-    const bossSnap = bossEngine.run(120);
+    const bossSnap = await bossEngine.run(120, onWaveSnapshot
+      ? (s) => onWaveSnapshot(this.raidMap.waves.length + 1, this.raidMap.waves.length + 1, s, true)
+      : undefined
+    );
 
     this.syncPlayers(bossEngine.getPlayerState());
     for (const [id, d] of Object.entries(bossEngine.getDamageByPlayer())) this.dmg[id] = (this.dmg[id] ?? 0) + d;

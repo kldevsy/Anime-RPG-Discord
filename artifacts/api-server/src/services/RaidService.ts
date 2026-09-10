@@ -833,7 +833,11 @@ class RaidService {
    * INICIAR BATALHA DA RAID
    * ========================================
    */
-  async startRaidBattle(raidInstanceId: string, userId: string) {
+  async startRaidBattle(
+    raidInstanceId: string,
+    userId: string,
+    onWaveSnapshot?: (waveNum: number, totalWaves: number, snap: any, isBoss: boolean) => Promise<void>
+  ) {
     const [raidInstance] = await db
       .select()
       .from(raidInstances)
@@ -924,7 +928,7 @@ class RaidService {
     
     // Executar raid
     logger.info(`[RAID] Starting battle for raid ${raidInstance.roomCode}`);
-    const result = await battleEngine.executeRaid();
+    const result = await battleEngine.executeRaid(onWaveSnapshot);
     
     // Atualizar estado dos personagens
     for (const survivor of result.survivors) {

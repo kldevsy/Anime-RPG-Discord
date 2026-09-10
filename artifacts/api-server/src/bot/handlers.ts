@@ -2066,6 +2066,7 @@ export async function handleButtonInteraction(interaction: any) {
         const { db } = await import("@workspace/db");
         const { raidInstances, users } = await import("@workspace/db/schema");
         const { eq } = await import("drizzle-orm");
+        const { getRaidById } = await import("@workspace/db/data/raid-catalog");
 
         const [raidInstance] = await db
           .select()
@@ -2075,6 +2076,13 @@ export async function handleButtonInteraction(interaction: any) {
 
         if (!raidInstance) {
           await respond({ content: "❌ Raid não encontrada!", ephemeral: true });
+          return;
+        }
+
+        // Buscar raid map para ter o nome
+        const raidMap = getRaidById(raidInstance.raidMapId);
+        if (!raidMap) {
+          await respond({ content: "❌ Mapa da raid não encontrado!", ephemeral: true });
           return;
         }
 
@@ -2107,24 +2115,64 @@ export async function handleButtonInteraction(interaction: any) {
         }
 
         try {
-          // Iniciar batalha da raid
-          const result = await raidService.startRaidBattle(raidInstance.id, discordId);
+          // Importar embed do arena
+          const { createBattleProgressEmbed } = await import("./embeds");
+
+          // Enviar mensagem inicial da batalha no canal (pública)
+          const raidName = `RAID: ${raidMap.name}`;
+          let battleMessage: any = null;
+          let lastUpdate = 0;
+          const ANIMATION_DELAY = 1500; // ms entre updates
+
+          // Função que envia/edita a embed a cada snapshot
+          const onWaveSnapshot = async (waveNum: number, totalWaves: number, snap: any, isBoss: boolean) => {
+            const waveLabel = isBoss
+              ? `💀 ${raidMap.name} — Boss`
+              : `⚔️ ${raidMap.name} — Wave ${waveNum}/${totalWaves - 1}`;
+
+            // Monta um snapshot-like com os dados da raid (time + inimigos)
+            const embed = createBattleProgressEmbed(
+              `Raid Cooperativa`,
+              waveLabel,
+              snap,
+            );
+
+            const now = Date.now();
+            if (now - lastUpdate < ANIMATION_DELAY && snap.phase !== "VICTORY" && snap.phase !== "DEFEAT" && snap.phase !== "DRAW") {
+              return;
+            }
+            lastUpdate = now;
+
+            try {
+              if (!battleMessage) {
+                battleMessage = await interaction.channel.send({ embeds: [embed] });
+              } else {
+                await battleMessage.edit({ embeds: [embed] });
+              }
+            } catch {
+              // ignora erros de edição
+            }
+          };
+
+          // Iniciar batalha com callback animado
+          const result = await raidService.startRaidBattle(raidInstance.id, discordId, onWaveSnapshot);
 
           const victoryEmoji = result.victory ? "🎉" : "💀";
           const victoryText = result.victory ? "VITÓRIA!" : "DERROTA!";
-          const survivorText = result.survivors.filter(s => s.alive).map(s => `• ${s.name} (${s.hp} HP)`).join("\n") || "Nenhum";
+          const survivorText = result.survivors.filter((s: any) => s.alive).map((s: any) => `• ${s.name} (${s.hp} HP)`).join("\n") || "Nenhum";
           const casualtyText = result.casualties.length > 0 ? result.casualties.join(", ") : "Nenhuma";
 
-          await respond({
+          // Mensagem final de resultado
+          await interaction.channel.send({
             content:
-              `${victoryEmoji} **RAID ${victoryText}**\n\n` +
-              `⏱️ Tempo: ${result.timeElapsed}s\n` +
-              `🗺️ Wave alcançada: ${result.waveReached}/${result.totalWaves}\n\n` +
-              `✅ **Sobreviventes:**\n${survivorText}\n\n` +
-              (result.casualties.length > 0 ? `💀 **Baixas:** ${casualtyText}\n\n` : "") +
-              (result.victory ? `🏆 Recompensas distribuídas! Verifique seu inventário.` : `❌ Tente novamente com personagens mais fortes!`),
-            ephemeral: false,
+              `${victoryEmoji} **RAID ${victoryText}** — ${raidMap.name}\n\n` +
+              `⏱️ Tempo: ${result.timeElapsed}s | 🗺️ Wave alcançada: ${result.waveReached}/${result.totalWaves}\n\n` +
+              `✅ **Sobreviventes:**\n${survivorText}\n` +
+              (result.casualties.length > 0 ? `\n💀 **Baixas:** ${casualtyText}\n` : "") +
+              (result.victory ? `\n🏆 Recompensas distribuídas!` : `\n❌ Tente novamente com personagens mais fortes!`),
           });
+
+          await respond({ content: "✅ Raid concluída!", ephemeral: true });
         } catch (error: any) {
           await respond({ content: `❌ Erro ao iniciar raid: ${error.message}`, ephemeral: true });
         }
