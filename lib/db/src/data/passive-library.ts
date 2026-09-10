@@ -874,9 +874,6 @@ export const PUPPET_MASTER: PassiveAbility = {
     { type: "apply_status", statusType: "poison", value: 55, duration: 3, chance: 35, target: "target" },
     { type: "apply_status", statusType: "speed_down", value: 20, duration: 2, chance: 35, target: "target" }
   ],
-  conditionalEffects: [
-    { type: "amplify_poison", value: 50, condition: "target_has_poison" }
-  ],
   maxActivationsPerRound: 2,
 };
 
@@ -912,9 +909,6 @@ export const SAND_ARMOR: PassiveAbility = {
   trigger: "on_damaged",
   effects: [
     { type: "apply_status", statusType: "shield", value: 150, duration: 2, chance: 100, target: "self" }
-  ],
-  conditionalEffects: [
-    { type: "apply_status", statusType: "shield", value: 100, duration: 2, chance: 100, target: "allies", condition: "on_skill_use" }
   ],
   cooldownRounds: 2,
   maxActivationsPerBattle: 10,
