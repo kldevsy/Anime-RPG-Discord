@@ -1922,11 +1922,15 @@ export async function handleButtonInteraction(interaction: any) {
     deferred = true;
   } catch (deferError: any) {
     console.error(`[BUTTON] Failed to defer:`, deferError.message);
-    // Se erro 10062 (Unknown interaction) ou 40060 (Already acknowledged), não é fatal
-    if (deferError.code === 10062 || deferError.code === 40060) {
-      console.log(`[BUTTON] Continuing despite defer error`);
+    if (deferError.code === 40060) {
+      // Já foi acknowledged = interação duplicada, abortar
+      console.log(`[BUTTON] Already acknowledged - aborting duplicate`);
+      return;
+    }
+    // 10062 = interaction expirou
+    if (deferError.code === 10062) {
+      console.log(`[BUTTON] Interaction expired - processing silently`);
     } else {
-      // Outro erro, aborta
       return;
     }
   }
@@ -2203,11 +2207,16 @@ export async function handleSelectMenuInteraction(interaction: any) {
     deferred = true;
   } catch (deferError: any) {
     console.error(`[SELECT MENU] Failed to defer:`, deferError.message);
-    // Se erro 10062 (Unknown interaction) ou 40060 (Already acknowledged), não é fatal
-    if (deferError.code === 10062 || deferError.code === 40060) {
-      console.log(`[SELECT MENU] Continuing despite defer error`);
+    if (deferError.code === 40060) {
+      // Já foi acknowledged = interação duplicada, abortar
+      console.log(`[SELECT MENU] Already acknowledged - aborting duplicate`);
+      interactionLocks.delete(lockKey);
+      return;
+    }
+    // 10062 = interaction expirou, mas ainda podemos processar silenciosamente
+    if (deferError.code === 10062) {
+      console.log(`[SELECT MENU] Interaction expired - processing silently`);
     } else {
-      // Outro erro, aborta
       interactionLocks.delete(lockKey);
       return;
     }
