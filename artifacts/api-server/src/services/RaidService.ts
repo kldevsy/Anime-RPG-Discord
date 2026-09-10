@@ -842,7 +842,7 @@ class RaidService {
    * INICIAR BATALHA DA RAID
    * ========================================
    */
-  async startRaidBattle(raidInstanceId: string) {
+  async startRaidBattle(raidInstanceId: string, userId: string) {
     const [raidInstance] = await db
       .select()
       .from(raidInstances)
@@ -851,6 +851,20 @@ class RaidService {
     
     if (!raidInstance) {
       throw new Error("Raid não encontrada!");
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.discordId, userId))
+      .limit(1);
+
+    if (!user) {
+      throw new Error("Usuário não encontrado!");
+    }
+
+    if (raidInstance.leaderId !== user.id) {
+      throw new Error("Apenas o líder pode iniciar a raid!");
     }
     
     if (raidInstance.status !== "waiting") {
