@@ -5,7 +5,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { BattleEngine } from "../battle/BattleEngine";
 import { SkillManager } from "../battle/SkillManager";
 import type { Combatant, BattleSnapshot, UltimateDecisionProvider } from "../battle/BattleState";
-import { applyTeamEquipment } from "./EquipmentService";
+import { applyTeamEquipment } from "./EquipmentBattleIntegration";
 
 // =============================================
 // TIPOS
