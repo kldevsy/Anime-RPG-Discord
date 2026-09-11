@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { users, userProfiles, userBattleStats, characterUsageStats, userCharacters, characters, battles } from "@workspace/db/schema";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 
 // =============================================
 // TIPOS
@@ -110,7 +110,7 @@ export async function getEnhancedProfile(discordId: string): Promise<EnhancedPro
   }
 
   // 4. Buscar showcase characters
-  const showcaseIds = [profile.showcaseSlot1, profile.showcaseSlot2, profile.showcaseSlot3].filter(Boolean);
+  const showcaseIds = [profile.showcaseSlot1, profile.showcaseSlot2, profile.showcaseSlot3].filter(Boolean) as string[];
   const showcaseChars = showcaseIds.length > 0
     ? await db
         .select({
@@ -123,7 +123,7 @@ export async function getEnhancedProfile(discordId: string): Promise<EnhancedPro
         })
         .from(userCharacters)
         .innerJoin(characters, eq(userCharacters.characterId, characters.id))
-        .where(sql`${userCharacters.id} = ANY(${showcaseIds})`)
+        .where(inArray(userCharacters.id, showcaseIds))
     : [];
 
   // 5. Buscar banner character
