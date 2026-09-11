@@ -1,5 +1,5 @@
-import { getDb } from "@db";
-import { users, userProfiles, userBattleStats, characterUsageStats, userCharacters, characters, battles } from "@db/schema";
+import { getDb } from "@workspace/db";
+import { users, userProfiles, userBattleStats, characterUsageStats, userCharacters, characters, battles } from "@workspace/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 
 // =============================================

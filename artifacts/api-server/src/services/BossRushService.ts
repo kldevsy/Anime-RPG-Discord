@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { getDb } from "@db";
-import { users, teams, teamMembers, userCharacters, characters, bossRushSeasons, bossRushRuns, bossRushLeaderboard } from "@db/schema";
+import { getDb } from "@workspace/db";
+import { users, teams, teamMembers, userCharacters, characters, bossRushSeasons, bossRushRuns, bossRushLeaderboard } from "@workspace/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { BattleEngine } from "../battle/BattleEngine";
 import { SkillManager } from "../battle/SkillManager";

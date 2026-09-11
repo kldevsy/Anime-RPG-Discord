@@ -592,7 +592,6 @@ export const bossRushLeaderboard = pgTable("boss_rush_leaderboard", {
 }, (table) => [
   uniqueIndex("boss_rush_leaderboard_season_user_unique").on(table.seasonId, table.userId),
 ]);
-qq
 
 // =============================================
 // ENHANCED PROFILE TABLES

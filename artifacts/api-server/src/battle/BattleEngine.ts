@@ -4,6 +4,7 @@ import { calculateDamage } from "./DamageCalculator";
 import { StatusManager } from "./StatusManager";
 import { PassiveManager } from "./PassiveManager";
 import * as PassiveStackManager from "./PassiveStackManager";
+import { getModifierEmoji } from "../services/FormationService";
 import type { BattleAction, BattlePhase, BattleSnapshot, Combatant, UltimateDecision, UltimateDecisionProvider } from "./BattleState";
 import type { PassiveContext } from "./PassiveTypes";
 
@@ -342,7 +343,6 @@ export class BattleEngine {
         if (dmgResult.modifierDescription && dmgResult.modifierDescription.length > 0) {
           this.logger.log(`🎯 Modificadores: ${dmgResult.modifierDescription.join(' | ')}`);
           if (dmgResult.formationModifier && dmgResult.formationModifier !== 1.0) {
-            const { getModifierEmoji } = await import("../services/FormationService");
             this.logger.log(`${getModifierEmoji(dmgResult.formationModifier)} Multiplicador Total: ${(dmgResult.formationModifier * 100).toFixed(0)}%`);
           }
         }
