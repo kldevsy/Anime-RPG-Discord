@@ -170,11 +170,14 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
       const focused = interaction.options.getFocused(true);
       const discordId = interaction.user.id;
 
+      console.log(`[PERFIL AUTOCOMPLETE] Field: ${focused.name}, Value: ${focused.value}`);
+
       try {
         // Autocomplete para showcase (personagens possuídos)
         if (focused.name.startsWith("slot")) {
           const profile = await getProfile(discordId);
           if (!profile) {
+            console.log(`[PERFIL AUTOCOMPLETE] No profile found for ${discordId}`);
             await respondToAutocomplete(interaction, []);
             return;
           }
@@ -184,6 +187,7 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
             value: item.ownedId,
           }));
 
+          console.log(`[PERFIL AUTOCOMPLETE] Returning ${choices.length} showcase choices`);
           await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
           return;
         }
@@ -198,6 +202,7 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
               value: char.id,
             }));
 
+          console.log(`[PERFIL AUTOCOMPLETE] Returning ${choices.length} banner choices`);
           await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
           return;
         }
