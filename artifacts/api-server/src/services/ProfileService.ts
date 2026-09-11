@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { users, userProfiles, userBattleStats, characterUsageStats, userCharacters, characters, battles } from "@workspace/db/schema";
+import { users, userProfiles, userBattleStats, characterUsageStats, userCharacters, characters, battles, teams, teamMembers } from "@workspace/db/schema";
 import { eq, desc, and, sql, inArray } from "drizzle-orm";
 
 // =============================================
@@ -81,7 +81,68 @@ export async function getEnhancedProfile(discordId: string): Promise<EnhancedPro
     throw new Error("Usuário não encontrado");
   }
 
-  // 2. Buscar/Criar profile
+  // 2. Buscar coleção completa (para contagem e top 3)
+  const collection = await db
+    .select({
+      ownedId: userCharacters.id,
+      level: userCharacters.level,
+      character: characters,
+    })
+    .from(userCharacters)
+    .innerJoin(characters, eq(userCharacters.characterId, characters.id))
+    .where(eq(userCharacters.userId, user.id));
+
+  // Calcular rarities
+  const rarityCounts: Record<string, number> = {};
+  for (const item of collection) {
+    const rarity = item.character.rarity;
+    rarityCounts[rarity] = (rarityCounts[rarity] || 0) + 1;
+  }
+
+  // Top 3 personagens mais fortes
+  const top3 = [...collection]
+    .sort((a, b) => {
+      const powerA = (a.character.baseAttack * 2) + a.character.baseHp + (a.level * 10);
+      const powerB = (b.character.baseAttack * 2) + b.character.baseHp + (b.level * 10);
+      return powerB - powerA;
+    })
+    .slice(0, 3)
+    .map(item => ({
+      name: item.character.name,
+      anime: item.character.anime,
+      rarity: item.character.rarity,
+      level: item.level,
+    }));
+
+  // Poder total
+  const totalPower = collection.reduce((sum, item) => {
+    return sum + (item.character.baseAttack * 2) + item.character.baseHp + (item.level * 10);
+  }, 0);
+
+  // 3. Buscar equipe atual
+  const [team] = await db
+    .select()
+    .from(teams)
+    .where(eq(teams.userId, user.id))
+    .limit(1);
+
+  let teamMembers: any[] = [];
+  if (team) {
+    teamMembers = await db
+      .select({
+        name: characters.name,
+        anime: characters.anime,
+        rarity: characters.rarity,
+        level: userCharacters.level,
+      })
+      .from(teamMembers)
+      .innerJoin(userCharacters, eq(teamMembers.userCharacterId, userCharacters.id))
+      .innerJoin(characters, eq(userCharacters.characterId, characters.id))
+      .where(eq(teamMembers.teamId, team.id))
+      .orderBy(teamMembers.position);
+  }
+
+  // 4. Buscar/Criar profile
   let [profile] = await db
     .select()
     .from(userProfiles)
@@ -208,6 +269,12 @@ export async function getEnhancedProfile(discordId: string): Promise<EnhancedPro
       showcase: showcaseChars,
       bannerCharacter: bannerChar,
       profileColor: profile.profileColor || "#7289DA",
+      collectionSize: collection.length,
+      teamSize: teamMembers.length,
+      totalPower,
+      rarityCounts,
+      top3,
+      teamMembers,
     },
     stats: {
       totalBattles: battleStats.totalBattles,

@@ -1705,14 +1705,14 @@ export function createRaidLeaderboardEmbed(
 
 
 // =============================================
-// ENHANCED PROFILE EMBED
+// ENHANCED PROFILE EMBED (COMPLETO)
 // =============================================
 
 export function createEnhancedProfileEmbed(profile: any) {
   const { user, profile: profileData, stats, mostUsedCharacters, recentBattles } = profile;
 
   const embed = new EmbedBuilder()
-    .setTitle(`${user.username}`)
+    .setTitle(`📋 ${user.username}`)
     .setColor(parseInt(profileData.profileColor.replace("#", ""), 16))
     .setTimestamp();
 
@@ -1722,10 +1722,18 @@ export function createEnhancedProfileEmbed(profile: any) {
   }
 
   // Bio
+  let description = "";
   if (profileData.bio) {
-    embed.setDescription(`*"${profileData.bio}"*`);
+    description += `*"${profileData.bio}"*\n\n`;
   }
+  
+  // ID Discord
+  description += `🆔 **ID:** ${user.discordId}\n`;
+  
+  embed.setDescription(description || null);
 
+  // ============= LINHA 1: RECURSOS + COLEÇÃO =============
+  
   // Recursos
   embed.addFields({
     name: "💰 Recursos",
@@ -1733,6 +1741,17 @@ export function createEnhancedProfileEmbed(profile: any) {
     inline: true,
   });
 
+  // Coleção (adicionar contagem)
+  const collectionSize = profileData.collectionSize || 0;
+  const teamSize = profileData.teamSize || 0;
+  embed.addFields({
+    name: "📚 Coleção",
+    value: `**Total:** ${collectionSize} personagens\n**Equipe:** ${teamSize}/5 slots\n**Poder:** ${profileData.totalPower?.toLocaleString() || 0}`,
+    inline: true,
+  });
+
+  // ============= LINHA 2: STATS GERAIS + DANO =============
+  
   // Estatísticas gerais
   embed.addFields({
     name: "📊 Estatísticas Gerais",
@@ -1754,7 +1773,30 @@ export function createEnhancedProfileEmbed(profile: any) {
     inline: true,
   });
 
-  // Estatísticas por modo
+  // ============= RARIDADES NA COLEÇÃO =============
+  if (profileData.rarityCounts) {
+    const rarityEmojis: Record<string, string> = {
+      mythic: "🔴",
+      legendary: "🟡",
+      epic: "🟣",
+      rare: "🔵",
+      uncommon: "🟢",
+      common: "⚪",
+    };
+
+    const rarityLine = ["mythic", "legendary", "epic", "rare", "uncommon", "common"]
+      .filter(r => profileData.rarityCounts[r])
+      .map(r => `${rarityEmojis[r]} ${profileData.rarityCounts[r]}`)
+      .join("  ") || "Nenhum personagem";
+
+    embed.addFields({
+      name: "🎨 Raridades na Coleção",
+      value: rarityLine,
+      inline: false,
+    });
+  }
+
+  // ============= ESTATÍSTICAS POR MODO =============
   let modeStats = "";
   if (stats.arenaBattles > 0) {
     modeStats += `**⚔️ Arena:** ${stats.arenaBattles} batalhas | ${stats.arenaWinRate.toFixed(1)}% WR\n`;
@@ -1777,18 +1819,43 @@ export function createEnhancedProfileEmbed(profile: any) {
     });
   }
 
-  // Showcase (3 personagens favoritos)
+  // ============= TOP 3 PERSONAGENS (COLEÇÃO) =============
+  if (profileData.top3 && profileData.top3.length > 0) {
+    const rarityEmojis: Record<string, string> = {
+      mythic: "🔴",
+      legendary: "🟡",
+      epic: "🟣",
+      rare: "🔵",
+      uncommon: "🟢",
+      common: "⚪",
+    };
+
+    const top3Text = profileData.top3.map((char: any, i: number) => {
+      const medals = ["🥇", "🥈", "🥉"];
+      const emoji = rarityEmojis[char.rarity] || "⚪";
+      return `${medals[i]} **${char.name}** ${emoji} Nv.${char.level}`;
+    }).join("\n");
+
+    embed.addFields({
+      name: "💎 Top 3 Personagens (Mais Fortes)",
+      value: top3Text,
+      inline: false,
+    });
+  }
+
+  // ============= SHOWCASE (FAVORITOS) =============
   if (profileData.showcase.length > 0) {
+    const rarityEmojis: Record<string, string> = {
+      mythic: "🔴",
+      legendary: "🟡",
+      epic: "🟣",
+      rare: "🔵",
+      uncommon: "🟢",
+      common: "⚪",
+    };
+
     const showcaseText = profileData.showcase
       .map((char: any) => {
-        const rarityEmojis: Record<string, string> = {
-          mythic: "🔴",
-          legendary: "🟡",
-          epic: "🟣",
-          rare: "🔵",
-          uncommon: "🟢",
-          common: "⚪",
-        };
         const emoji = rarityEmojis[char.rarity] || "⚪";
         return `${emoji} **${char.name}** (${char.anime}) - Nv.${char.level}`;
       })
@@ -1801,13 +1868,13 @@ export function createEnhancedProfileEmbed(profile: any) {
     });
   }
 
-  // Most Used Characters
+  // ============= PERSONAGENS MAIS USADOS =============
   if (mostUsedCharacters.length > 0) {
     const mostUsedText = mostUsedCharacters
       .slice(0, 3)
       .map((char: any, i: number) => {
         const medals = ["🥇", "🥈", "🥉"];
-        return `${medals[i]} **${char.name}** - ${char.timesUsed} usos | ${char.winRate.toFixed(1)}% WR | ${char.totalDamage.toLocaleString()} dmg`;
+        return `${medals[i]} **${char.name}** - ${char.timesUsed} usos | ${char.winRate.toFixed(1)}% WR`;
       })
       .join("\n");
 
@@ -1818,7 +1885,30 @@ export function createEnhancedProfileEmbed(profile: any) {
     });
   }
 
-  // Recent Battles
+  // ============= EQUIPE ATUAL =============
+  if (profileData.teamMembers && profileData.teamMembers.length > 0) {
+    const rarityEmojis: Record<string, string> = {
+      mythic: "🔴",
+      legendary: "🟡",
+      epic: "🟣",
+      rare: "🔵",
+      uncommon: "🟢",
+      common: "⚪",
+    };
+
+    const teamText = profileData.teamMembers.map((member: any) => {
+      const emoji = rarityEmojis[member.rarity] || "⚪";
+      return `${emoji} **${member.name}**`;
+    }).join("\n");
+
+    embed.addFields({
+      name: "⚔️ Equipe Atual",
+      value: teamText,
+      inline: false,
+    });
+  }
+
+  // ============= HISTÓRICO RECENTE =============
   if (recentBattles.length > 0) {
     const recentText = recentBattles
       .slice(0, 5)
@@ -1837,7 +1927,7 @@ export function createEnhancedProfileEmbed(profile: any) {
     });
   }
 
-  // Anime favorito
+  // Anime favorito no footer
   if (profileData.favoriteAnime) {
     embed.setFooter({ text: `Anime Favorito: ${profileData.favoriteAnime}` });
   }
