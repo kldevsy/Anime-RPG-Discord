@@ -4,7 +4,70 @@ export const commandDefinitions = [
   // 1. /perfil
   new SlashCommandBuilder()
     .setName("perfil")
-    .setDescription("Exibe o seu perfil de jogador do Anime RPG, estatísticas e recursos."),
+    .setDescription("Exibe o seu perfil de jogador do Anime RPG, estatísticas e recursos.")
+    .addSubcommand((sub) =>
+      sub.setName("ver").setDescription("Visualiza seu perfil completo com estatísticas")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("bio")
+        .setDescription("Define uma bio/descrição para seu perfil")
+        .addStringOption((opt) =>
+          opt.setName("texto").setDescription("Sua bio (máx. 200 caracteres)").setRequired(true).setMaxLength(200)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("anime")
+        .setDescription("Define seu anime favorito")
+        .addStringOption((opt) =>
+          opt.setName("nome").setDescription("Nome do anime favorito").setRequired(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("cor")
+        .setDescription("Define a cor do seu perfil")
+        .addStringOption((opt) =>
+          opt
+            .setName("cor")
+            .setDescription("Escolha uma cor")
+            .setRequired(true)
+            .addChoices(
+              { name: "🔴 Vermelho", value: "#FF0000" },
+              { name: "🔵 Azul", value: "#0000FF" },
+              { name: "🟢 Verde", value: "#00FF00" },
+              { name: "🟡 Amarelo", value: "#FFD700" },
+              { name: "🟣 Roxo", value: "#9B59B6" },
+              { name: "🟠 Laranja", value: "#FF8C00" },
+              { name: "🩷 Rosa", value: "#FF69B4" },
+              { name: "🤍 Branco", value: "#FFFFFF" },
+              { name: "🖤 Preto", value: "#000000" }
+            )
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("showcase")
+        .setDescription("Define seus 3 personagens favoritos para exibir no perfil")
+        .addStringOption((opt) =>
+          opt.setName("slot1").setDescription("Personagem favorito #1").setRequired(true).setAutocomplete(true)
+        )
+        .addStringOption((opt) =>
+          opt.setName("slot2").setDescription("Personagem favorito #2").setRequired(false).setAutocomplete(true)
+        )
+        .addStringOption((opt) =>
+          opt.setName("slot3").setDescription("Personagem favorito #3").setRequired(false).setAutocomplete(true)
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("banner")
+        .setDescription("Define a imagem de fundo do perfil (personagem)")
+        .addStringOption((opt) =>
+          opt.setName("personagem").setDescription("Personagem para usar como banner").setRequired(true).setAutocomplete(true)
+        )
+    ),
 
   // 2. /invocar
   new SlashCommandBuilder()

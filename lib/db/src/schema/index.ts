@@ -592,3 +592,54 @@ export const bossRushLeaderboard = pgTable("boss_rush_leaderboard", {
 }, (table) => [
   uniqueIndex("boss_rush_leaderboard_season_user_unique").on(table.seasonId, table.userId),
 ]);
+qq
+
+// =============================================
+// ENHANCED PROFILE TABLES
+// =============================================
+
+export const userProfiles = pgTable("user_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  bio: text("bio"),
+  favoriteAnime: text("favorite_anime"),
+  showcaseSlot1: uuid("showcase_slot_1").references(() => userCharacters.id, { onDelete: "set null" }),
+  showcaseSlot2: uuid("showcase_slot_2").references(() => userCharacters.id, { onDelete: "set null" }),
+  showcaseSlot3: uuid("showcase_slot_3").references(() => userCharacters.id, { onDelete: "set null" }),
+  bannerCharacterId: uuid("banner_character_id").references(() => characters.id, { onDelete: "set null" }),
+  profileColor: text("profile_color").default("#7289DA"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userBattleStats = pgTable("user_battle_stats", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  totalBattles: integer("total_battles").notNull().default(0),
+  totalVictories: integer("total_victories").notNull().default(0),
+  totalDefeats: integer("total_defeats").notNull().default(0),
+  arenaBattles: integer("arena_battles").notNull().default(0),
+  arenaVictories: integer("arena_victories").notNull().default(0),
+  pveBattles: integer("pve_battles").notNull().default(0),
+  pveVictories: integer("pve_victories").notNull().default(0),
+  raidBattles: integer("raid_battles").notNull().default(0),
+  raidVictories: integer("raid_victories").notNull().default(0),
+  bossRushBattles: integer("boss_rush_battles").notNull().default(0),
+  bossRushVictories: integer("boss_rush_victories").notNull().default(0),
+  highestDamageDealt: integer("highest_damage_dealt").notNull().default(0),
+  totalDamageDealt: integer("total_damage_dealt").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const characterUsageStats = pgTable("character_usage_stats", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userCharacterId: uuid("user_character_id").notNull().references(() => userCharacters.id, { onDelete: "cascade" }),
+  timesUsed: integer("times_used").notNull().default(0),
+  battlesWon: integer("battles_won").notNull().default(0),
+  battlesLost: integer("battles_lost").notNull().default(0),
+  totalDamageDealt: integer("total_damage_dealt").notNull().default(0),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("character_usage_user_char_unique").on(table.userId, table.userCharacterId),
+]);

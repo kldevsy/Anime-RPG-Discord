@@ -39,6 +39,7 @@ import { equipmentService } from "../services/EquipmentService";
 import { handleRaidCommand } from "./raid-handlers";
 import { raidService } from "../services/RaidService";
 import * as BossRushService from "../services/BossRushService";
+import * as ProfileService from "../services/ProfileService";
 import { getRaidById } from "@workspace/db/data/raid-catalog";
 import { db } from "@workspace/db";
 import { raidInstances, users, raidInstanceParticipants } from "@workspace/db/schema";
@@ -52,6 +53,7 @@ import {
   createInventoryEmbed,
   createLeaderboardEmbed,
   createProfileEmbed,
+  createEnhancedProfileEmbed,
   createSummonResultEmbed,
   createSummonResultEmbeds,
   createTeamEmbed,
@@ -159,6 +161,50 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
         await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
         return;
       }
+      await respondToAutocomplete(interaction, []);
+      return;
+    }
+
+    // Autocomplete para /perfil showcase e banner
+    if (interaction.commandName === "perfil") {
+      const focused = interaction.options.getFocused(true);
+      const discordId = interaction.user.id;
+
+      try {
+        // Autocomplete para showcase (personagens possuídos)
+        if (focused.name.startsWith("slot")) {
+          const profile = await getProfile(discordId);
+          if (!profile) {
+            await respondToAutocomplete(interaction, []);
+            return;
+          }
+
+          const choices = profile.collection.map((item: any) => ({
+            name: `${item.character.name} (${item.character.anime}) Nv.${item.level}`,
+            value: item.ownedId,
+          }));
+
+          await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
+          return;
+        }
+
+        // Autocomplete para banner (personagens do catálogo)
+        if (focused.name === "personagem") {
+          const allCharacters = await listCharacters();
+          const choices = allCharacters
+            .filter((char) => char.imageUrl) // Só personagens com imagem
+            .map((char) => ({
+              name: `${char.name} (${char.anime})`,
+              value: char.id,
+            }));
+
+          await respondToAutocomplete(interaction, filterChoicesByFocusedValue(choices, String(focused.value)));
+          return;
+        }
+      } catch (error) {
+        console.error("[PERFIL AUTOCOMPLETE ERROR]", error);
+      }
+
       await respondToAutocomplete(interaction, []);
       return;
     }
@@ -565,22 +611,71 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
     // 1. /perfil
     if (commandName === "perfil") {
-      const profile = (await getProfile(discordId)) ?? { user: await getOrCreateUser(discordId, username), collection: [] };
-      
-      console.log(`[PERFIL] User ${discordId} - Collection size: ${profile.collection?.length ?? 0}`);
-      if (profile.collection && profile.collection.length > 0) {
-        console.log(`[PERFIL] Characters: ${profile.collection.map((c: any) => c.character?.name || 'unknown').join(', ')}`);
+      const subcommand = interaction.options.getSubcommand(false);
+
+      // /perfil ver (ou sem subcomando - default)
+      if (!subcommand || subcommand === "ver") {
+        try {
+          const enhancedProfile = await ProfileService.getEnhancedProfile(discordId);
+          const embed = createEnhancedProfileEmbed(enhancedProfile);
+          await interaction.editReply({ embeds: [embed] });
+        } catch (error: any) {
+          console.error("[PERFIL] Error:", error);
+          await interaction.editReply(`❌ Erro ao carregar perfil: ${error.message}`);
+        }
+        return;
       }
-      
-      const teamData = await getTeam(discordId);
-      const embed = createProfileEmbed(
-        profile.user,
-        profile.collection.length,
-        teamData?.members?.length ?? 0,
-        profile.collection,
-        teamData?.members
-      );
-      await interaction.editReply({ embeds: [embed] });
+
+      // /perfil bio
+      if (subcommand === "bio") {
+        const bio = interaction.options.getString("texto", true);
+        await ProfileService.updateProfileCustomization(discordId, { bio });
+        await interaction.editReply("✅ Bio atualizada com sucesso!");
+        return;
+      }
+
+      // /perfil anime
+      if (subcommand === "anime") {
+        const favoriteAnime = interaction.options.getString("nome", true);
+        await ProfileService.updateProfileCustomization(discordId, { favoriteAnime });
+        await interaction.editReply(`✅ Anime favorito definido: **${favoriteAnime}**`);
+        return;
+      }
+
+      // /perfil cor
+      if (subcommand === "cor") {
+        const profileColor = interaction.options.getString("cor", true);
+        await ProfileService.updateProfileCustomization(discordId, { profileColor });
+        await interaction.editReply("✅ Cor do perfil atualizada!");
+        return;
+      }
+
+      // /perfil showcase
+      if (subcommand === "showcase") {
+        const slot1 = interaction.options.getString("slot1", true);
+        const slot2 = interaction.options.getString("slot2");
+        const slot3 = interaction.options.getString("slot3");
+
+        await ProfileService.updateProfileCustomization(discordId, {
+          showcaseSlot1: slot1,
+          showcaseSlot2: slot2,
+          showcaseSlot3: slot3,
+        });
+
+        await interaction.editReply("✅ Showcase atualizado! Seus personagens favoritos agora aparecem no perfil.");
+        return;
+      }
+
+      // /perfil banner
+      if (subcommand === "banner") {
+        const characterId = interaction.options.getString("personagem", true);
+        await ProfileService.updateProfileCustomization(discordId, {
+          bannerCharacterId: characterId,
+        });
+        await interaction.editReply("✅ Banner do perfil atualizado! A imagem do personagem agora aparece no seu perfil.");
+        return;
+      }
+
       return;
     }
 

@@ -1702,3 +1702,145 @@ export function createRaidLeaderboardEmbed(
 
   return embed;
 }
+
+
+// =============================================
+// ENHANCED PROFILE EMBED
+// =============================================
+
+export function createEnhancedProfileEmbed(profile: any) {
+  const { user, profile: profileData, stats, mostUsedCharacters, recentBattles } = profile;
+
+  const embed = new EmbedBuilder()
+    .setTitle(`${user.username}`)
+    .setColor(parseInt(profileData.profileColor.replace("#", ""), 16))
+    .setTimestamp();
+
+  // Banner/Background (usar imagem do personagem favorito)
+  if (profileData.bannerCharacter?.imageUrl) {
+    embed.setImage(profileData.bannerCharacter.imageUrl);
+  }
+
+  // Bio
+  if (profileData.bio) {
+    embed.setDescription(`*"${profileData.bio}"*`);
+  }
+
+  // Recursos
+  embed.addFields({
+    name: "💰 Recursos",
+    value: `**Gold:** ${user.gold.toLocaleString()} 💰\n**Gemas:** ${user.gems.toLocaleString()} 💎\n**Tickets:** ${user.tickets} 🎫`,
+    inline: true,
+  });
+
+  // Estatísticas gerais
+  embed.addFields({
+    name: "📊 Estatísticas Gerais",
+    value:
+      `**Batalhas:** ${stats.totalBattles}\n` +
+      `**Vitórias:** ${stats.totalVictories} ✅\n` +
+      `**Derrotas:** ${stats.totalDefeats} ❌\n` +
+      `**Win Rate:** ${stats.winRate.toFixed(1)}%`,
+    inline: true,
+  });
+
+  // Dano
+  embed.addFields({
+    name: "⚔️ Dano",
+    value:
+      `**Total:** ${stats.totalDamageDealt.toLocaleString()}\n` +
+      `**Maior:** ${stats.highestDamageDealt.toLocaleString()}\n` +
+      `**Média:** ${stats.averageDamage.toLocaleString()}/batalha`,
+    inline: true,
+  });
+
+  // Estatísticas por modo
+  let modeStats = "";
+  if (stats.arenaBattles > 0) {
+    modeStats += `**⚔️ Arena:** ${stats.arenaBattles} batalhas | ${stats.arenaWinRate.toFixed(1)}% WR\n`;
+  }
+  if (stats.pveBattles > 0) {
+    modeStats += `**🗺️ PvE:** ${stats.pveBattles} batalhas | ${stats.pveWinRate.toFixed(1)}% WR\n`;
+  }
+  if (stats.raidBattles > 0) {
+    modeStats += `**🐉 Raids:** ${stats.raidBattles} batalhas | ${stats.raidWinRate.toFixed(1)}% WR\n`;
+  }
+  if (stats.bossRushBattles > 0) {
+    modeStats += `**🔥 Boss Rush:** ${stats.bossRushBattles} batalhas | ${stats.bossRushWinRate.toFixed(1)}% WR\n`;
+  }
+
+  if (modeStats) {
+    embed.addFields({
+      name: "🎮 Estatísticas por Modo",
+      value: modeStats,
+      inline: false,
+    });
+  }
+
+  // Showcase (3 personagens favoritos)
+  if (profileData.showcase.length > 0) {
+    const showcaseText = profileData.showcase
+      .map((char: any) => {
+        const rarityEmojis: Record<string, string> = {
+          mythic: "🔴",
+          legendary: "🟡",
+          epic: "🟣",
+          rare: "🔵",
+          uncommon: "🟢",
+          common: "⚪",
+        };
+        const emoji = rarityEmojis[char.rarity] || "⚪";
+        return `${emoji} **${char.name}** (${char.anime}) - Nv.${char.level}`;
+      })
+      .join("\n");
+
+    embed.addFields({
+      name: "⭐ Showcase (Personagens Favoritos)",
+      value: showcaseText,
+      inline: false,
+    });
+  }
+
+  // Most Used Characters
+  if (mostUsedCharacters.length > 0) {
+    const mostUsedText = mostUsedCharacters
+      .slice(0, 3)
+      .map((char: any, i: number) => {
+        const medals = ["🥇", "🥈", "🥉"];
+        return `${medals[i]} **${char.name}** - ${char.timesUsed} usos | ${char.winRate.toFixed(1)}% WR | ${char.totalDamage.toLocaleString()} dmg`;
+      })
+      .join("\n");
+
+    embed.addFields({
+      name: "🏆 Personagens Mais Usados",
+      value: mostUsedText,
+      inline: false,
+    });
+  }
+
+  // Recent Battles
+  if (recentBattles.length > 0) {
+    const recentText = recentBattles
+      .slice(0, 5)
+      .map((battle: any) => {
+        const resultEmoji = battle.result === "Vitória" ? "✅" : battle.result === "Derrota" ? "❌" : "➖";
+        const date = new Date(battle.date);
+        const timeStr = `<t:${Math.floor(date.getTime() / 1000)}:R>`;
+        return `${resultEmoji} **${battle.result}** - ${timeStr}`;
+      })
+      .join("\n");
+
+    embed.addFields({
+      name: "📜 Histórico Recente",
+      value: recentText,
+      inline: false,
+    });
+  }
+
+  // Anime favorito
+  if (profileData.favoriteAnime) {
+    embed.setFooter({ text: `Anime Favorito: ${profileData.favoriteAnime}` });
+  }
+
+  return embed;
+}
