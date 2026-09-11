@@ -149,7 +149,14 @@ function createProgressBar(current: number, max: number, length: number = 10): s
   const percentage = Math.min(current / max, 1);
   const filled = Math.round(percentage * length);
   const empty = length - filled;
-  return `[${"█".repeat(filled)}${"░".repeat(empty)}]`;
+  const bar = `[${"█".repeat(filled)}${"░".repeat(empty)}]`;
+  
+  // Se length for 10, adiciona o contador (usado no tutorial)
+  if (length === 10) {
+    return `${bar} ${current}/${max}`;
+  }
+  
+  return bar;
 }
 
 export async function handleAutocompleteInteraction(interaction: AutocompleteInteraction): Promise<void> {
@@ -4039,15 +4046,6 @@ function createTutorialStepEmbed(step: TutorialService.TutorialStep, currentStep
   }
 
   return embed;
-}
-
-/**
- * Cria barra de progresso visual
- */
-function createProgressBar(current: number, total: number): string {
-  const filled = Math.floor((current / total) * 10);
-  const empty = 10 - filled;
-  return `[${"█".repeat(filled)}${"░".repeat(empty)}] ${current}/${total}`;
 }
 
 /**
