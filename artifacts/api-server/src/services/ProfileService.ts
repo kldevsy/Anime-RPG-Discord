@@ -1,4 +1,4 @@
-import { getDb } from "@workspace/db";
+import { db } from "@workspace/db";
 import { users, userProfiles, userBattleStats, characterUsageStats, userCharacters, characters, battles } from "@workspace/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 
@@ -70,8 +70,6 @@ export interface EnhancedProfile {
 // =============================================
 
 export async function getEnhancedProfile(discordId: string): Promise<EnhancedProfile> {
-  const db = getDb();
-
   // 1. Buscar usuário
   const [user] = await db
     .select()
@@ -249,8 +247,6 @@ export async function updateProfileCustomization(
     profileColor?: string;
   }
 ) {
-  const db = getDb();
-
   const [user] = await db
     .select()
     .from(users)
@@ -279,8 +275,6 @@ export async function trackBattleResult(
   result: "victory" | "defeat",
   damageDealt: number
 ) {
-  const db = getDb();
-
   const [user] = await db
     .select()
     .from(users)
@@ -340,8 +334,6 @@ export async function trackCharacterUsage(
   result: "victory" | "defeat",
   damageDealt: number
 ) {
-  const db = getDb();
-
   const [user] = await db
     .select()
     .from(users)

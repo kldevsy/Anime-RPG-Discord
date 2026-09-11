@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getDb } from "@workspace/db";
+import { db } from "@workspace/db";
 import { users, teams, teamMembers, userCharacters, characters, bossRushSeasons, bossRushRuns, bossRushLeaderboard } from "@workspace/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { BattleEngine } from "../battle/BattleEngine";
@@ -91,7 +91,6 @@ function generateBosses(): BossRushBoss[] {
 // =============================================
 
 export async function getActiveSeason() {
-  const db = getDb();
   const now = new Date();
 
   const [season] = await db
@@ -110,7 +109,6 @@ export async function getActiveSeason() {
 }
 
 export async function createNewSeason() {
-  const db = getDb();
   const now = new Date();
   const endDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 dias
 
@@ -143,8 +141,6 @@ export async function startBossRush(discordId: string): Promise<{
   playerTeam: Combatant[];
   seasonId: string;
 }> {
-  const db = getDb();
-
   // 1. Verificar temporada ativa
   let season = await getActiveSeason();
   if (!season) {
@@ -299,8 +295,6 @@ export async function completeBossRush(
   totalDamageDealt: number,
   completionTime: number
 ): Promise<BossRushResult> {
-  const db = getDb();
-
   // Calcular recompensas baseadas em bosses derrotados
   const baseGold = 500;
   const baseGems = 50;
@@ -361,8 +355,6 @@ async function updateLeaderboard(
   completionTime: number,
   totalDamageDealt: number
 ) {
-  const db = getDb();
-
   // Upsert no leaderboard
   await db
     .insert(bossRushLeaderboard)
@@ -411,8 +403,6 @@ async function updateLeaderboard(
 }
 
 export async function getLeaderboard(seasonId: string, limit = 20) {
-  const db = getDb();
-
   const leaderboard = await db
     .select({
       rank: bossRushLeaderboard.rank,
@@ -431,8 +421,6 @@ export async function getLeaderboard(seasonId: string, limit = 20) {
 }
 
 async function getUserRank(seasonId: string, userId: string): Promise<number | undefined> {
-  const db = getDb();
-
   const [entry] = await db
     .select({ rank: bossRushLeaderboard.rank })
     .from(bossRushLeaderboard)
@@ -443,8 +431,6 @@ async function getUserRank(seasonId: string, userId: string): Promise<number | u
 }
 
 export async function getUserBestRun(discordId: string, seasonId: string) {
-  const db = getDb();
-
   const [user] = await db.select().from(users).where(eq(users.discordId, discordId)).limit(1);
   if (!user) return null;
 
