@@ -12,7 +12,8 @@
     "start": "node lib/db/scripts/apply-all-migrations.mjs && cd artifacts/api-server && node build.mjs && node --enable-source-maps ./dist/bot/index.mjs",
     "start:quick": "cd artifacts/api-server && node --enable-source-maps ./dist/bot/index.mjs",
     "migrate": "node lib/db/scripts/apply-all-migrations.mjs",
-    "seed": "cd lib/db && pnpm run seed"
+    "seed": "cd lib/db && pnpm run seed",
+    "prepare": "cd artifacts/api-server && node build.mjs"
   },
   "private": true,
   "dependencies": {
