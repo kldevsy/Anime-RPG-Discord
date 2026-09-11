@@ -226,16 +226,25 @@ export class SkillManager {
     }
   }
 
-  static createCombatant(partial: Partial<Combatant> & { id: string; name: string; role: CombatantRole; ultimate?: CharacterUltimate | null }): Combatant {
+  static createCombatant(partial: Partial<Combatant> & { id: string; name: string; role: CombatantRole; ultimate?: CharacterUltimate | null; element?: string; position?: string }): Combatant {
     const maxHp = partial.maxHp ?? 500;
     const defaultSkills = SkillManager.createDefaultSkills(partial.role, partial.name);
     const skills = partial.skills ?? { ...defaultSkills, ultimate: partial.ultimate ? toUltimateSkill(partial.ultimate) : defaultSkills.ultimate };
     const ultimate = partial.ultimate;
 
+    // Posição padrão baseada no role se não especificada
+    let defaultPosition = partial.position || "mid";
+    if (!partial.position) {
+      if (partial.role === "tank") defaultPosition = "front";
+      else if (partial.role === "support" || partial.role === "healer") defaultPosition = "back";
+    }
+
     return {
       id: partial.id,
       name: partial.name,
       role: partial.role,
+      element: partial.element || "neutral", // ← NOVO
+      position: defaultPosition, // ← NOVO
       maxHp,
       hp: partial.hp ?? maxHp,
       attack: partial.attack ?? 100,

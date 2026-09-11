@@ -1,5 +1,6 @@
 import { StatusManager } from "./StatusManager";
 import type { Combatant, Skill } from "./BattleState";
+import { calculateDamageModifiers, applyDamageModifiers, getModifierEmoji, type ElementType, type PositionType } from "../services/FormationService";
 
 export interface DamageResult {
   rawDamage: number;
@@ -7,6 +8,8 @@ export interface DamageResult {
   absorbedByShield: number;
   critical: boolean;
   isExecute: boolean;
+  formationModifier?: number;
+  modifierDescription?: string[];
 }
 
 export function calculateDamage(
@@ -43,13 +46,36 @@ export function calculateDamage(
 
   const rawDamage = Math.max(1, Math.floor(base * damageMultiplier));
 
-  const { remainingDamage, absorbed } = StatusManager.absorbDamageWithShield(defender, rawDamage);
+  // ===== FORMATION & COUNTER SYSTEM =====
+  // Apply formation modifiers (element, role counter, position)
+  let finalRawDamage = rawDamage;
+  let formationModifier = 1.0;
+  let modifierDescription: string[] = [];
+
+  if (attacker.element && defender.element && attacker.role && defender.role && attacker.position && defender.position) {
+    const modifiers = calculateDamageModifiers(
+      attacker.element as ElementType,
+      defender.element as ElementType,
+      attacker.role as any,
+      defender.role as any,
+      attacker.position as PositionType,
+      defender.position as PositionType
+    );
+
+    finalRawDamage = applyDamageModifiers(rawDamage, modifiers);
+    formationModifier = modifiers.total;
+    modifierDescription = modifiers.description;
+  }
+
+  const { remainingDamage, absorbed } = StatusManager.absorbDamageWithShield(defender, finalRawDamage);
 
   return {
-    rawDamage,
+    rawDamage: finalRawDamage,
     finalDamage: remainingDamage,
     absorbedByShield: absorbed,
     critical,
     isExecute,
+    formationModifier,
+    modifierDescription,
   };
 }

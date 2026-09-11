@@ -31,6 +31,8 @@ export const characterRoles = [
   "control",
 ] as const;
 export const roleEnum = pgEnum("character_role", characterRoles);
+export const elementEnum = pgEnum("element_type", ["fire", "water", "electric", "earth", "wind", "light", "dark", "neutral"]);
+export const positionEnum = pgEnum("position_type", ["front", "mid", "back"]);
 export const bannerTypeEnum = pgEnum("banner_type", ["normal", "limited", "event"]);
 export const currencyEnum = pgEnum("currency", ["gold", "gems", "tickets"]);
 export const battleStatusEnum = pgEnum("battle_status", ["running", "victory", "defeat", "draw"]);
@@ -60,6 +62,8 @@ export const characters = pgTable("characters", {
   name: text("name").notNull(),
   rarity: rarityEnum("rarity").notNull(),
   role: roleEnum("role").notNull(),
+  element: elementEnum("element").notNull().default("neutral"),
+  defaultPosition: positionEnum("default_position").notNull().default("mid"),
   level: integer("level").notNull().default(1),
   baseHp: integer("base_hp").notNull(),
   baseAttack: integer("base_attack").notNull(),
@@ -104,6 +108,7 @@ export const teamMembers = pgTable("team_members", {
   teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
   userCharacterId: uuid("user_character_id").notNull().references(() => userCharacters.id, { onDelete: "cascade" }),
   position: integer("position").notNull(),
+  battlePosition: positionEnum("battle_position").notNull().default("mid"),
 }, (table) => [
   primaryKey({ columns: [table.teamId, table.userCharacterId] }),
   uniqueIndex("team_members_team_position_unique").on(table.teamId, table.position),
@@ -546,3 +551,44 @@ export type RaidTeamMember = typeof raidTeamMembers.$inferSelect;
 export type RaidCompletion = typeof raidCompletions.$inferSelect;
 export type RaidLeaderboard = typeof raidLeaderboard.$inferSelect;
 export type RaidFirstClear = typeof raidFirstClears.$inferSelect;
+
+// =============================================
+// BOSS RUSH TABLES
+// =============================================
+
+export const bossRushSeasons = pgTable("boss_rush_seasons", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+  endDate: timestamp("end_date", { withTimezone: true }).notNull(),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const bossRushRuns = pgTable("boss_rush_runs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seasonId: uuid("season_id").notNull().references(() => bossRushSeasons.id, { onDelete: "cascade" }),
+  bossesDefeated: integer("bosses_defeated").notNull().default(0),
+  totalDamageDealt: integer("total_damage_dealt").notNull().default(0),
+  completionTime: integer("completion_time").notNull().default(0), // em segundos
+  rewardGold: integer("reward_gold").notNull().default(0),
+  rewardGems: integer("reward_gems").notNull().default(0),
+  teamSnapshot: jsonb("team_snapshot").$type<Array<{ name: string; hp: number; maxHp: number }>>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("boss_rush_runs_user_season_unique").on(table.userId, table.seasonId),
+]);
+
+export const bossRushLeaderboard = pgTable("boss_rush_leaderboard", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  seasonId: uuid("season_id").notNull().references(() => bossRushSeasons.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  bossesDefeated: integer("bosses_defeated").notNull(),
+  completionTime: integer("completion_time").notNull(),
+  totalDamageDealt: integer("total_damage_dealt").notNull(),
+  rank: integer("rank").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("boss_rush_leaderboard_season_user_unique").on(table.seasonId, table.userId),
+]);

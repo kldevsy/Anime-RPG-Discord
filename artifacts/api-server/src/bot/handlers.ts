@@ -38,6 +38,7 @@ import { lootBoxService } from "../services/LootBoxService";
 import { equipmentService } from "../services/EquipmentService";
 import { handleRaidCommand } from "./raid-handlers";
 import { raidService } from "../services/RaidService";
+import * as BossRushService from "../services/BossRushService";
 import { getRaidById } from "@workspace/db/data/raid-catalog";
 import { db } from "@workspace/db";
 import { raidInstances, users, raidInstanceParticipants } from "@workspace/db/schema";
@@ -291,6 +292,257 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
   }
 }
 
+/**
+ * ========================================
+ * BOSS RUSH HANDLER
+ * ========================================
+ */
+async function handleBossRushCommand(interaction: ChatInputCommandInteraction, discordId: string) {
+  const subcommand = interaction.options.getSubcommand();
+
+  // /bossrush ranking
+  if (subcommand === "ranking") {
+    await interaction.deferReply();
+    
+    const season = await BossRushService.getActiveSeason();
+    if (!season) {
+      await interaction.editReply("❌ Nenhuma temporada ativa no momento.");
+      return;
+    }
+
+    const leaderboard = await BossRushService.getLeaderboard(season.id, 20);
+
+    if (leaderboard.length === 0) {
+      await interaction.editReply("🏆 **Boss Rush - Ranking Semanal**\n\nAinda não há participantes nesta temporada!");
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle("🏆 Boss Rush - Ranking Semanal")
+      .setDescription(`**Temporada:** ${season.name}\n**Termina:** <t:${Math.floor(new Date(season.endDate).getTime() / 1000)}:R>`)
+      .setColor(0xFFD700);
+
+    let description = "";
+    for (const entry of leaderboard) {
+      const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`;
+      const time = entry.completionTime > 0 ? `${Math.floor(entry.completionTime / 60)}m ${entry.completionTime % 60}s` : "N/A";
+      description += `${medal} **${entry.username}** - ${entry.bossesDefeated}/5 bosses | ${time} | ${entry.totalDamageDealt.toLocaleString()} dmg\n`;
+    }
+
+    embed.addFields({ name: "📊 Top 20", value: description || "Nenhum registro" });
+
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
+  // /bossrush info
+  if (subcommand === "info") {
+    await interaction.deferReply();
+    
+    const season = await BossRushService.getActiveSeason();
+    if (!season) {
+      await interaction.editReply("❌ Nenhuma temporada ativa no momento.");
+      return;
+    }
+
+    const bestRun = await BossRushService.getUserBestRun(discordId, season.id);
+
+    const embed = new EmbedBuilder()
+      .setTitle("🔥 Boss Rush - Informações")
+      .setDescription(
+        `**Boss Rush** é um desafio épico onde você enfrenta **5 bosses consecutivos** sem curar entre as batalhas!\n\n` +
+        `**Regras:**\n` +
+        `• 5 bosses com dificuldade escalável\n` +
+        `• HP do time NÃO é restaurado entre lutas\n` +
+        `• Quanto mais longe chegar, melhores as recompensas\n` +
+        `• Ranking semanal com os melhores desempenhos\n\n` +
+        `**Temporada Atual:** ${season.name}\n` +
+        `**Termina:** <t:${Math.floor(new Date(season.endDate).getTime() / 1000)}:R>`
+      )
+      .setColor(0xFF4500);
+
+    if (bestRun) {
+      const time = bestRun.completionTime > 0 ? `${Math.floor(bestRun.completionTime / 60)}m ${bestRun.completionTime % 60}s` : "N/A";
+      embed.addFields({
+        name: "📜 Sua Melhor Corrida",
+        value:
+          `**Bosses Derrotados:** ${bestRun.bossesDefeated}/5\n` +
+          `**Tempo:** ${time}\n` +
+          `**Dano Total:** ${bestRun.totalDamageDealt.toLocaleString()}\n` +
+          `**Recompensas:** 💰 ${bestRun.rewardGold.toLocaleString()} Gold | 💎 ${bestRun.rewardGems} Gems`,
+      });
+    } else {
+      embed.addFields({
+        name: "📜 Sua Melhor Corrida",
+        value: "Você ainda não participou desta temporada! Use `/bossrush iniciar` para começar!",
+      });
+    }
+
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
+  // /bossrush iniciar
+  if (subcommand === "iniciar") {
+    await interaction.deferReply();
+
+    const velocidade = interaction.options.getString("velocidade") ?? "slow";
+    const animationDelay = velocidade === "fast" ? 50 : velocidade === "instant" ? 0 : 100;
+
+    try {
+      // Iniciar Boss Rush
+      const { runId, bosses, playerTeam, seasonId } = await BossRushService.startBossRush(discordId);
+
+      const startTime = Date.now();
+      let currentPlayerTeam = playerTeam;
+      let bossesDefeated = 0;
+      let totalDamageDealt = 0;
+
+      // Embed inicial
+      const initialEmbed = new EmbedBuilder()
+        .setTitle("🔥 BOSS RUSH INICIADO!")
+        .setDescription(
+          `Prepare-se! Você enfrentará **5 bosses consecutivos**!\n\n` +
+          `**⚠️ SEU TIME NÃO SERÁ CURADO ENTRE AS BATALHAS!**\n\n` +
+          `**Time:**\n` +
+          currentPlayerTeam.map((c) => `• ${c.name} - ${c.hp}/${c.maxHp} HP`).join("\n")
+        )
+        .setColor(0xFF4500);
+
+      await interaction.editReply({ embeds: [initialEmbed] });
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Loop pelos 5 bosses
+      for (let i = 0; i < bosses.length; i++) {
+        const boss = bosses[i];
+
+        // Embed de início de boss
+        const bossIntroEmbed = new EmbedBuilder()
+          .setTitle(`⚔️ BOSS ${i + 1}/5: ${boss.name}`)
+          .setDescription(
+            `**Anime:** ${boss.anime}\n` +
+            `**HP:** ${boss.hp.toLocaleString()}\n` +
+            `**Ataque:** ${boss.attack}\n` +
+            `**Defesa:** ${boss.defense}\n` +
+            `**Velocidade:** ${boss.speed}\n` +
+            `**Multiplicador:** ${(boss.difficultyMultiplier * 100).toFixed(0)}%\n\n` +
+            `**Seu Time:**\n` +
+            currentPlayerTeam.map((c) => {
+              const hpPercent = Math.floor((c.hp / c.maxHp) * 100);
+              const hpBar = "█".repeat(Math.floor(hpPercent / 10)) + "░".repeat(10 - Math.floor(hpPercent / 10));
+              return `• ${c.name} ${hpBar} ${c.hp}/${c.maxHp} HP (${hpPercent}%)`;
+            }).join("\n")
+          )
+          .setColor(0xFF0000);
+
+        await interaction.editReply({ embeds: [bossIntroEmbed] });
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Lutar contra o boss
+        const battleResult = await BossRushService.fightBoss(
+          currentPlayerTeam,
+          boss,
+          async (snapshot) => {
+            if (animationDelay > 0) {
+              const embed = createBattleProgressEmbed(snapshot);
+              await interaction.editReply({ embeds: [embed] });
+              await new Promise((resolve) => setTimeout(resolve, animationDelay));
+            }
+          }
+        );
+
+        totalDamageDealt += battleResult.damageDealt;
+
+        if (!battleResult.victory) {
+          // DERROTA
+          const completionTime = Math.floor((Date.now() - startTime) / 1000);
+          await BossRushService.completeBossRush(runId, interaction.user.id, seasonId, bossesDefeated, totalDamageDealt, completionTime);
+
+          const defeatEmbed = new EmbedBuilder()
+            .setTitle("💀 BOSS RUSH - DERROTA")
+            .setDescription(
+              `Você foi derrotado pelo **${boss.name}** (Boss ${i + 1}/5)!\n\n` +
+              `**Bosses Derrotados:** ${bossesDefeated}/5\n` +
+              `**Dano Total:** ${totalDamageDealt.toLocaleString()}\n` +
+              `**Tempo:** ${Math.floor(completionTime / 60)}m ${completionTime % 60}s\n\n` +
+              `**Recompensas:** 💰 ${(500 * bossesDefeated * bossesDefeated).toLocaleString()} Gold | 💎 ${50 * bossesDefeated} Gems`
+            )
+            .setColor(0x8B0000);
+
+          await interaction.editReply({ embeds: [defeatEmbed] });
+          return;
+        }
+
+        // VITÓRIA neste boss
+        bossesDefeated++;
+        currentPlayerTeam = battleResult.playerTeamAfter;
+
+        const victoryEmbed = new EmbedBuilder()
+          .setTitle(`✅ BOSS ${i + 1}/5 DERROTADO!`)
+          .setDescription(
+            `Você derrotou **${boss.name}**!\n\n` +
+            `**Dano Causado:** ${battleResult.damageDealt.toLocaleString()}\n\n` +
+            `**Time Restante:**\n` +
+            currentPlayerTeam
+              .filter((c) => c.alive)
+              .map((c) => {
+                const hpPercent = Math.floor((c.hp / c.maxHp) * 100);
+                const hpBar = "█".repeat(Math.floor(hpPercent / 10)) + "░".repeat(10 - Math.floor(hpPercent / 10));
+                return `• ${c.name} ${hpBar} ${c.hp}/${c.maxHp} HP (${hpPercent}%)`;
+              })
+              .join("\n") || "❌ Nenhum sobrevivente"
+          )
+          .setColor(0x00FF00);
+
+        await interaction.editReply({ embeds: [victoryEmbed] });
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        // Verificar se ainda tem personagens vivos
+        if (!currentPlayerTeam.some((c) => c.alive)) {
+          const completionTime = Math.floor((Date.now() - startTime) / 1000);
+          const result = await BossRushService.completeBossRush(runId, interaction.user.id, seasonId, bossesDefeated, totalDamageDealt, completionTime);
+
+          const completeEmbed = new EmbedBuilder()
+            .setTitle("💀 BOSS RUSH - TIME ELIMINADO")
+            .setDescription(
+              `Todos os seus personagens foram derrotados!\n\n` +
+              `**Bosses Derrotados:** ${bossesDefeated}/5\n` +
+              `**Dano Total:** ${totalDamageDealt.toLocaleString()}\n` +
+              `**Tempo:** ${Math.floor(completionTime / 60)}m ${completionTime % 60}s\n` +
+              (result.rank ? `**Rank:** #${result.rank}\n` : "") +
+              `\n**Recompensas:** 💰 ${result.rewards.gold.toLocaleString()} Gold | 💎 ${result.rewards.gems} Gems`
+            )
+            .setColor(0x8B0000);
+
+          await interaction.editReply({ embeds: [completeEmbed] });
+          return;
+        }
+      }
+
+      // VITÓRIA TOTAL (5/5 bosses)
+      const completionTime = Math.floor((Date.now() - startTime) / 1000);
+      const result = await BossRushService.completeBossRush(runId, interaction.user.id, seasonId, bossesDefeated, totalDamageDealt, completionTime);
+
+      const completeEmbed = new EmbedBuilder()
+        .setTitle("👑 BOSS RUSH - VITÓRIA COMPLETA!")
+        .setDescription(
+          `🎉 **PARABÉNS!** Você derrotou todos os 5 bosses!\n\n` +
+          `**Dano Total:** ${totalDamageDealt.toLocaleString()}\n` +
+          `**Tempo:** ${Math.floor(completionTime / 60)}m ${completionTime % 60}s\n` +
+          (result.rank ? `**Rank:** #${result.rank}\n` : "") +
+          `\n**Recompensas:** 💰 ${result.rewards.gold.toLocaleString()} Gold | 💎 ${result.rewards.gems} Gems`
+        )
+        .setColor(0xFFD700);
+
+      await interaction.editReply({ embeds: [completeEmbed] });
+    } catch (error: any) {
+      console.error("[BOSS RUSH ERROR]", error);
+      await interaction.editReply(`❌ Erro: ${error.message}`);
+    }
+    return;
+  }
+}
+
 export async function handleInteraction(interaction: ChatInputCommandInteraction): Promise<void> {
   const { commandName, user } = interaction;
   const discordId = user.id;
@@ -299,7 +551,7 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
   try {
     // Defer IMEDIATAMENTE para evitar timeout de 3 segundos
     // Alguns comandos podem sobrescrever com seu próprio defer
-    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha", "meta", "arena", "equipamento", "loja", "lootbox", "raid"];
+    const shouldDeferEarly = ["personagem", "perfil", "invocar", "banner", "personagens", "equipe", "batalha", "meta", "arena", "equipamento", "loja", "lootbox", "raid", "bossrush"];
     
     if (shouldDeferEarly.includes(commandName)) {
       try {
@@ -2223,6 +2475,14 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
     // ========================================
     if (commandName === "raid") {
       await handleRaidCommand(interaction, discordId, getProfile);
+      return;
+    }
+
+    // ========================================
+    // BOSS RUSH COMMAND HANDLER
+    // ========================================
+    if (commandName === "bossrush") {
+      await handleBossRushCommand(interaction, discordId);
       return;
     }
 

@@ -566,4 +566,35 @@ export const commandDefinitions = [
         .setDescription("Limpar ou destravar batalhas pendentes do jogador")
         .addStringOption((o) => o.setName("usuario").setDescription("ID Discord do jogador").setRequired(true))
     ),
+
+  // 20. /bossrush
+  new SlashCommandBuilder()
+    .setName("bossrush")
+    .setDescription("🔥 Enfrente 5 bosses seguidos sem curar! Ranking semanal e recompensas escaláveis!")
+    .addSubcommand((sub) =>
+      sub
+        .setName("iniciar")
+        .setDescription("Inicia uma corrida de Boss Rush (5 bosses consecutivos)")
+        .addStringOption((opt) =>
+          opt
+            .setName("velocidade")
+            .setDescription("Velocidade da animação da batalha")
+            .setRequired(false)
+            .addChoices(
+              { name: "⚡ Rápido", value: "fast" },
+              { name: "🐢 Lento (padrão)", value: "slow" },
+              { name: "🚀 Instantâneo", value: "instant" }
+            )
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("ranking")
+        .setDescription("Veja o ranking semanal de Boss Rush")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("info")
+        .setDescription("Informações sobre o Boss Rush e sua última corrida")
+    ),
 ];

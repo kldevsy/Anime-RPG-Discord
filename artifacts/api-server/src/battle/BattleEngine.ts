@@ -338,6 +338,15 @@ export class BattleEngine {
         // Usar dano modificado por passivas
         const finalDamage = passiveContext.modifiedDamage ?? dmgResult.finalDamage;
         
+        // Log dos modificadores de formação
+        if (dmgResult.modifierDescription && dmgResult.modifierDescription.length > 0) {
+          this.logger.log(`🎯 Modificadores: ${dmgResult.modifierDescription.join(' | ')}`);
+          if (dmgResult.formationModifier && dmgResult.formationModifier !== 1.0) {
+            const { getModifierEmoji } = await import("../services/FormationService");
+            this.logger.log(`${getModifierEmoji(dmgResult.formationModifier)} Multiplicador Total: ${(dmgResult.formationModifier * 100).toFixed(0)}%`);
+          }
+        }
+        
         // Trigger passivas on_damaged e on_hit_taken do alvo antes de aplicar dano
         const targetContext: PassiveContext = {
           owner: tgt,

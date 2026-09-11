@@ -77,6 +77,8 @@ export async function runPlayerBattle(discordId: string, stageId?: string, onSna
         id: ownedId,
         name: character.name,
         role: character.role,
+        element: (character as any).element || "neutral", // ← NOVO
+        position: (character as any).defaultPosition || undefined, // ← NOVO (usa posição do DB ou auto)
         maxHp,
         hp: maxHp,
         attack: boostedStats.attack + level * 8,

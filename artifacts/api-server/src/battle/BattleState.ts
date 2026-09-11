@@ -128,6 +128,8 @@ export interface Combatant {
   id: string;
   name: string;
   role: CombatantRole;
+  element?: string; // ← NOVO: fire, water, electric, etc
+  position?: string; // ← NOVO: front, mid, back
   maxHp: number;
   hp: number;
   attack: number;
