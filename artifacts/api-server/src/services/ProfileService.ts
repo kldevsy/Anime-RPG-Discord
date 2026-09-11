@@ -126,9 +126,9 @@ export async function getEnhancedProfile(discordId: string): Promise<EnhancedPro
     .where(eq(teams.userId, user.id))
     .limit(1);
 
-  let teamMembers: any[] = [];
+  let teamMembersList: any[] = [];
   if (team) {
-    teamMembers = await db
+    teamMembersList = await db
       .select({
         name: characters.name,
         anime: characters.anime,
@@ -270,11 +270,11 @@ export async function getEnhancedProfile(discordId: string): Promise<EnhancedPro
       bannerCharacter: bannerChar,
       profileColor: profile.profileColor || "#7289DA",
       collectionSize: collection.length,
-      teamSize: teamMembers.length,
+      teamSize: teamMembersList.length,
       totalPower,
       rarityCounts,
       top3,
-      teamMembers,
+      teamMembers: teamMembersList,
     },
     stats: {
       totalBattles: battleStats.totalBattles,
