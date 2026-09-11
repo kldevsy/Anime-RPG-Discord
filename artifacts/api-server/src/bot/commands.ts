@@ -660,4 +660,53 @@ export const commandDefinitions = [
         .setName("info")
         .setDescription("Informações sobre o Boss Rush e sua última corrida")
     ),
+
+  // 21. /tutorial
+  new SlashCommandBuilder()
+    .setName("tutorial")
+    .setDescription("📚 Tutorial interativo do Anime RPG com recompensas!")
+    .addSubcommand((sub) =>
+      sub
+        .setName("iniciar")
+        .setDescription("Inicia o tutorial interativo para novos jogadores")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("continuar")
+        .setDescription("Continua o tutorial de onde você parou")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("status")
+        .setDescription("Veja seu progresso no tutorial e recompensas")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("pular")
+        .setDescription("Pula o tutorial (você pode retomar depois)")
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("ajuda")
+        .setDescription("Exibe ajuda sobre um sistema específico do jogo")
+        .addStringOption((opt) =>
+          opt
+            .setName("sistema")
+            .setDescription("Qual sistema você quer aprender?")
+            .setRequired(false)
+            .addChoices(
+              { name: "🎲 Gacha / Invocação", value: "gacha" },
+              { name: "⚔️ Sistema de Batalha", value: "battle" },
+              { name: "👥 Equipes", value: "team" },
+              { name: "🛡️ Equipamentos", value: "equipment" },
+              { name: "🔥 Formação (Elementos/Posições)", value: "formation" },
+              { name: "🏆 Arena PvP", value: "arena" },
+              { name: "🐉 Raids Cooperativas", value: "raid" },
+              { name: "🔥 Boss Rush", value: "bossrush" },
+              { name: "🎨 Perfil e Personalização", value: "profile" },
+              { name: "💰 Economia (Gold, Gems, Tickets)", value: "economy" }
+            )
+        )
+    ),
 ];
+

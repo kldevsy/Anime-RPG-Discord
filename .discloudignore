@@ -1,0 +1,41 @@
+# Dependências
+node_modules/
+.pnpm-store/
+
+# Arquivos de desenvolvimento
+*.test.ts
+*.test.js
+__tests__/
+.vscode/
+.idea/
+.kiro/
+
+# Git
+.git/
+.gitignore
+
+# Documentação
+*.md
+!README.md
+
+# Configurações locais
+.env.local
+.env.development
+.replit
+.replitignore
+
+# Build temporário
+*.log
+*.tsbuildinfo
+
+# Arquivos TypeScript (já compilados)
+artifacts/api-server/src/
+lib/db/src/
+
+# Manter apenas o essencial
+!artifacts/api-server/dist/
+!lib/db/drizzle/
+!lib/db/scripts/
+!discloud.config
+!package.json
+!pnpm-lock.yaml

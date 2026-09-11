@@ -47,8 +47,11 @@
 
 ### 2.4 Banner Customizado
 - [ ] `/perfil banner` → Ver autocomplete de personagens
-- [ ] Escolher um personagem
+- [ ] Escolher um personagem da lista (autocomplete)
+- [ ] **OU** digitar o nome (ex: "zoro") - agora funciona!
 - [ ] `/perfil ver` → Banner deve aparecer como imagem
+
+**💡 Dica:** Se digitar o nome, o bot vai buscar automaticamente na sua coleção!
 
 ## 🔥 Passo 3: Testar Boss Rush
 

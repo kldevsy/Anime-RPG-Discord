@@ -40,6 +40,7 @@ import { handleRaidCommand } from "./raid-handlers";
 import { raidService } from "../services/RaidService";
 import * as BossRushService from "../services/BossRushService";
 import * as ProfileService from "../services/ProfileService";
+import * as TutorialService from "../services/TutorialService";
 import { getRaidById } from "@workspace/db/data/raid-catalog";
 import { db } from "@workspace/db";
 import { raidInstances, users, raidInstanceParticipants } from "@workspace/db/schema";
@@ -192,14 +193,20 @@ export async function handleAutocompleteInteraction(interaction: AutocompleteInt
           return;
         }
 
-        // Autocomplete para banner (personagens do catálogo)
+        // Autocomplete para banner (personagens possuídos com imagem)
         if (focused.name === "personagem") {
-          const allCharacters = await listCharacters();
-          const choices = allCharacters
-            .filter((char) => char.imageUrl) // Só personagens com imagem
-            .map((char) => ({
-              name: `${char.name} (${char.anime})`,
-              value: char.id,
+          const profile = await getProfile(discordId);
+          if (!profile) {
+            console.log(`[PERFIL AUTOCOMPLETE] No profile found for ${discordId}`);
+            await respondToAutocomplete(interaction, []);
+            return;
+          }
+
+          const choices = profile.collection
+            .filter((item: any) => item.character.imageUrl) // Só personagens com imagem
+            .map((item: any) => ({
+              name: `${item.character.name} (${item.character.anime}) Nv.${item.level}`,
+              value: item.character.id, // Usar character.id (UUID do catálogo)
             }));
 
           console.log(`[PERFIL AUTOCOMPLETE] Returning ${choices.length} banner choices`);
@@ -636,6 +643,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         const bio = interaction.options.getString("texto", true);
         await ProfileService.updateProfileCustomization(discordId, { bio });
         await interaction.editReply("✅ Bio atualizada com sucesso!");
+        
+        // Verificar e avançar tutorial (step 8: profile)
+        await checkAndAdvanceTutorial(discordId, "/perfil", interaction);
         return;
       }
 
@@ -644,6 +654,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         const favoriteAnime = interaction.options.getString("nome", true);
         await ProfileService.updateProfileCustomization(discordId, { favoriteAnime });
         await interaction.editReply(`✅ Anime favorito definido: **${favoriteAnime}**`);
+        
+        // Verificar e avançar tutorial (step 8: profile)
+        await checkAndAdvanceTutorial(discordId, "/perfil", interaction);
         return;
       }
 
@@ -652,6 +665,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         const profileColor = interaction.options.getString("cor", true);
         await ProfileService.updateProfileCustomization(discordId, { profileColor });
         await interaction.editReply("✅ Cor do perfil atualizada!");
+        
+        // Verificar e avançar tutorial (step 8: profile)
+        await checkAndAdvanceTutorial(discordId, "/perfil", interaction);
         return;
       }
 
@@ -661,6 +677,13 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         const slot2 = interaction.options.getString("slot2");
         const slot3 = interaction.options.getString("slot3");
 
+        // Validar que são UUIDs (autocomplete sincronizado)
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!slot1.match(uuidPattern) || (slot2 && !slot2.match(uuidPattern)) || (slot3 && !slot3.match(uuidPattern))) {
+          await interaction.editReply("❌ Por favor, use o autocomplete para selecionar os personagens (não digite manualmente).");
+          return;
+        }
+
         await ProfileService.updateProfileCustomization(discordId, {
           showcaseSlot1: slot1,
           showcaseSlot2: slot2,
@@ -668,16 +691,45 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         });
 
         await interaction.editReply("✅ Showcase atualizado! Seus personagens favoritos agora aparecem no perfil.");
+        
+        // Verificar e avançar tutorial (step 8: profile)
+        await checkAndAdvanceTutorial(discordId, "/perfil", interaction);
         return;
       }
 
       // /perfil banner
       if (subcommand === "banner") {
-        const characterId = interaction.options.getString("personagem", true);
+        let characterIdOrName = interaction.options.getString("personagem", true);
+        
+        // Se o valor não for um UUID, buscar pelo nome
+        let characterId = characterIdOrName;
+        if (!characterIdOrName.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          // Buscar personagem pelo nome
+          const profile = await getProfile(discordId);
+          if (!profile) {
+            await interaction.editReply("❌ Perfil não encontrado.");
+            return;
+          }
+          
+          const foundChar = profile.collection.find((item: any) => 
+            item.character.name.toLowerCase().includes(characterIdOrName.toLowerCase())
+          );
+          
+          if (!foundChar) {
+            await interaction.editReply(`❌ Personagem "${characterIdOrName}" não encontrado na sua coleção. Use o autocomplete para selecionar.`);
+            return;
+          }
+          
+          characterId = foundChar.character.id;
+        }
+        
         await ProfileService.updateProfileCustomization(discordId, {
           bannerCharacterId: characterId,
         });
         await interaction.editReply("✅ Banner do perfil atualizado! A imagem do personagem agora aparece no seu perfil.");
+        
+        // Verificar e avançar tutorial (step 8: profile)
+        await checkAndAdvanceTutorial(discordId, "/perfil", interaction);
         return;
       }
 
@@ -723,6 +775,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         
         const embeds = createSummonResultEmbeds(username, result.results, result.currency, result.cost);
         await interaction.editReply({ embeds });
+        
+        // Verificar e avançar tutorial (step 2: first summon)
+        await checkAndAdvanceTutorial(discordId, "/invocar", interaction);
       } catch (error: any) {
         console.error("❌ [SUMMON ERROR]", error);
         await interaction.editReply(`❌ Erro ao invocar: ${error.message}`).catch(() => {});
@@ -1640,6 +1695,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           } catch (err) {
             console.error("[QUEST/STATS] Failed to update battle_win progress:", err);
           }
+          
+          // Verificar e avançar tutorial (step 6: arena)
+          await checkAndAdvanceTutorial(discordId, "/arena", interaction);
         }
         
         // TODO: Aplicar recompensas ao jogador (integrar com EconomyService)
@@ -1697,6 +1755,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           
           const embed = createEquipmentEquippedEmbed(userChar.character.name, userEquip.equipment);
           await interaction.editReply({ embeds: [embed] });
+          
+          // Verificar e avançar tutorial (step 5: equipment)
+          await checkAndAdvanceTutorial(discordId, "/equipamento equipar", interaction);
           return;
         }
         
@@ -2002,6 +2063,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         teamData = await replaceTeam(discordId, "Equipe Principal", newTeamIds);
         const embed = createTeamEmbed(username, teamData?.team, teamData?.members ?? []);
         await interaction.editReply({ content: "✅ Personagem adicionado com sucesso!", embeds: [embed] });
+        
+        // Verificar e avançar tutorial (step 3: create team)
+        await checkAndAdvanceTutorial(discordId, "/equipe definir", interaction);
         return;
       }
 
@@ -2062,6 +2126,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         teamData = await replaceTeam(discordId, "Equipe Principal", orderedIds);
         const embed = createTeamEmbed(username, teamData?.team, teamData?.members ?? []);
         await interaction.editReply({ content: "✅ Ordem da equipe atualizada com sucesso!", embeds: [embed] });
+        
+        // Verificar e avançar tutorial (step 3: create team)
+        await checkAndAdvanceTutorial(discordId, "/equipe definir", interaction);
         return;
       }
     }
@@ -2088,6 +2155,11 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
 
         const embed = createBattleResultEmbed(username, stageName, result, rewards, drops);
         await interaction.editReply({ embeds: [embed] });
+        
+        // Verificar e avançar tutorial (step 4: first battle)
+        if (result === "victory") {
+          await checkAndAdvanceTutorial(discordId, "/batalha", interaction);
+        }
       } catch (error: any) {
         const errorMsg = error.message || String(error);
         
@@ -2586,6 +2658,14 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
       return;
     }
 
+    // ========================================
+    // TUTORIAL COMMAND HANDLER
+    // ========================================
+    if (commandName === "tutorial") {
+      await handleTutorialCommand(interaction, discordId);
+      return;
+    }
+
     await interaction.reply({ content: "Comando não reconhecido.", ephemeral: true });
   } catch (err: any) {
     logger.error({ err, command: commandName }, "Discord command handler failed");
@@ -2610,8 +2690,8 @@ export async function handleButtonInteraction(interaction: any) {
 
   console.log(`[BUTTON] CustomId: "${customId}"`);
 
-  // Botões que não são de raid/chars_page/quests/ranking são tratados por outros mecanismos
-  if (!customId.startsWith("raid_") && !customId.startsWith("chars_page:") && !customId.startsWith("quests_") && !customId.startsWith("ranking:")) {
+  // Botões que não são de raid/chars_page/quests/ranking/tutorial são tratados por outros mecanismos
+  if (!customId.startsWith("raid_") && !customId.startsWith("chars_page:") && !customId.startsWith("quests_") && !customId.startsWith("ranking:") && !customId.startsWith("tutorial_")) {
     console.log("[BUTTON] Non-managed button - ignoring (handled by awaitMessageComponent)");
     return;
   }
@@ -2638,6 +2718,89 @@ export async function handleButtonInteraction(interaction: any) {
   };
 
   try {
+    // ========================================
+    // TUTORIAL HANDLERS
+    // ========================================
+    if (customId.startsWith("tutorial_")) {
+      const action = customId.split("_")[1]; // advance, show
+      const stepId = customId.split("_")[2];
+
+      if (action === "advance") {
+        // Avançar para o próximo step
+        const result = await TutorialService.advanceTutorialStep(discordId, stepId);
+        
+        if (!result.success) {
+          await respond({ content: result.message, ephemeral: true });
+          return;
+        }
+
+        // Criar embed de recompensa + próximo step
+        const step = TutorialService.TUTORIAL_STEPS.find(s => s.id === stepId)!;
+        const embed = new EmbedBuilder()
+          .setTitle(`${step.emoji} ${step.title} - Completo!`)
+          .setDescription(`✅ Parabéns! Você completou este step!`)
+          .setColor(0x00FF00);
+
+        if (result.reward) {
+          embed.addFields({
+            name: "🎁 Recompensas",
+            value: result.reward.messages.join("\n"),
+          });
+        }
+
+        if (result.nextStep) {
+          embed.addFields({
+            name: "📚 Próximo Step",
+            value: `${result.nextStep.emoji} **${result.nextStep.title}**\n${result.nextStep.objective}`,
+          });
+
+          if (result.nextStep.command) {
+            embed.addFields({
+              name: "💡 Comando",
+              value: `Use \`${result.nextStep.command}\` para continuar!`,
+            });
+          }
+
+          const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`tutorial_show_${result.nextStep.id}`)
+              .setLabel(`Ver: ${result.nextStep.title}`)
+              .setStyle(ButtonStyle.Primary)
+              .setEmoji(result.nextStep.emoji)
+          );
+
+          await respond({ embeds: [embed], components: [row] });
+        } else {
+          // Tutorial completo!
+          embed.setTitle("🎉 Tutorial Completo!");
+          embed.setDescription(
+            `**Parabéns!** Você completou todos os 10 steps do tutorial!\n\n` +
+            `Agora você está pronto para dominar o Anime RPG! 🚀`
+          );
+          
+          await respond({ embeds: [embed], components: [] });
+        }
+      } else if (action === "show") {
+        // Mostrar detalhes de um step
+        const step = TutorialService.TUTORIAL_STEPS.find(s => s.id === stepId);
+        if (!step) {
+          await respond({ content: "❌ Step não encontrado.", ephemeral: true });
+          return;
+        }
+
+        const progress = await TutorialService.getTutorialProgress(discordId);
+        if (!progress) {
+          await respond({ content: "❌ Erro ao carregar progresso.", ephemeral: true });
+          return;
+        }
+
+        const embed = createTutorialStepEmbed(step, progress.currentStep + 1, 10);
+        await respond({ embeds: [embed], ephemeral: false });
+      }
+
+      return;
+    }
+
     // ========================================
     // RANKING HANDLERS
     // ========================================
@@ -3563,4 +3726,539 @@ export async function handleSelectMenuInteraction(interaction: any) {
     // Release lock in case of unhandled error
     interactionLocks.delete(lockKey);
   }
+}
+
+
+/**
+ * ========================================
+ * TUTORIAL HELPERS
+ * ========================================
+ */
+
+/**
+ * Verifica se o jogador está no tutorial e mostra dica/avança step automaticamente
+ */
+async function checkAndAdvanceTutorial(
+  discordId: string,
+  command: string,
+  interaction: ChatInputCommandInteraction
+): Promise<boolean> {
+  // Buscar step relacionado ao comando
+  const step = TutorialService.getStepByCommand(command);
+  if (!step) return false;
+
+  // Verificar se está neste step
+  const isCurrentStep = await TutorialService.checkStepCompletion(discordId, step.id);
+  if (!isCurrentStep) return false;
+
+  // Avançar step automaticamente
+  const result = await TutorialService.advanceTutorialStep(discordId, step.id);
+  
+  if (result.success && result.reward) {
+    // Criar embed de recompensa
+    const embed = new EmbedBuilder()
+      .setTitle(`${step.emoji} Tutorial - Step ${step.step} Completo!`)
+      .setDescription(
+        `✅ **${step.title}**\n\n` +
+        `Parabéns! Você completou este step do tutorial!`
+      )
+      .setColor(0x00FF00)
+      .addFields({
+        name: "🎁 Recompensas",
+        value: result.reward.messages.join("\n"),
+      });
+
+    if (result.nextStep) {
+      embed.addFields({
+        name: "📚 Próximo Step",
+        value: `${result.nextStep.emoji} **${result.nextStep.title}**\n${result.nextStep.objective}`,
+      });
+
+      if (result.nextStep.command) {
+        embed.addFields({
+          name: "💡 Comando",
+          value: `Use \`${result.nextStep.command}\` para continuar!`,
+        });
+      }
+    }
+
+    // Enviar mensagem de acompanhamento
+    try {
+      await interaction.followUp({ embeds: [embed], ephemeral: false });
+    } catch (err) {
+      // Se não conseguir enviar followUp, não faz nada (silencioso)
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * ========================================
+ * TUTORIAL COMMAND HANDLER
+ * ========================================
+ */
+async function handleTutorialCommand(interaction: ChatInputCommandInteraction, discordId: string) {
+  const subcommand = interaction.options.getSubcommand();
+
+  // /tutorial iniciar
+  if (subcommand === "iniciar") {
+    await interaction.deferReply();
+
+    const result = await TutorialService.startTutorial(discordId);
+
+    if (!result.success) {
+      await interaction.editReply(result.message);
+      return;
+    }
+
+    // Criar embed do primeiro step
+    const step1 = TutorialService.TUTORIAL_STEPS[0];
+    const embed = createTutorialStepEmbed(step1, 1, 10);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`tutorial_advance_${step1.id}`)
+        .setLabel("Começar Tutorial!")
+        .setStyle(ButtonStyle.Success)
+        .setEmoji("🎮")
+    );
+
+    await interaction.editReply({
+      content: result.message,
+      embeds: [embed],
+      components: [row],
+    });
+    return;
+  }
+
+  // /tutorial continuar
+  if (subcommand === "continuar") {
+    await interaction.deferReply();
+
+    const progress = await TutorialService.getTutorialProgress(discordId);
+    if (!progress) {
+      await interaction.editReply("❌ Erro ao carregar seu progresso.");
+      return;
+    }
+
+    if (progress.isCompleted) {
+      await interaction.editReply("✅ Você já completou o tutorial! Use `/tutorial ajuda` para revisar sistemas.");
+      return;
+    }
+
+    if (progress.skipped) {
+      await interaction.editReply("⏭️ Você pulou o tutorial. Use `/tutorial iniciar` para começar do zero.");
+      return;
+    }
+
+    if (!progress.nextStep) {
+      await interaction.editReply("✅ Tutorial completo! Parabéns!");
+      return;
+    }
+
+    const embed = createTutorialStepEmbed(progress.nextStep, progress.currentStep + 1, 10);
+    
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`tutorial_show_${progress.nextStep.id}`)
+        .setLabel(`Continuar: ${progress.nextStep.title}`)
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji(progress.nextStep.emoji)
+    );
+
+    await interaction.editReply({
+      content: `📚 **Tutorial - Step ${progress.currentStep + 1}/10**\n\nVocê está no: **${progress.nextStep.title}**`,
+      embeds: [embed],
+      components: [row],
+    });
+    return;
+  }
+
+  // /tutorial status
+  if (subcommand === "status") {
+    await interaction.deferReply();
+
+    const progress = await TutorialService.getTutorialProgress(discordId);
+    if (!progress) {
+      await interaction.editReply("❌ Erro ao carregar seu progresso.");
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle("📊 Seu Progresso no Tutorial")
+      .setColor(progress.isCompleted ? 0x00FF00 : 0x3498DB);
+
+    if (progress.isCompleted) {
+      embed.setDescription(
+        `🎉 **Tutorial Completo!**\n\n` +
+        `Você completou todos os 10 steps do tutorial!\n` +
+        `**Completado em:** <t:${Math.floor(new Date(progress.completedAt!).getTime() / 1000)}:R>`
+      );
+    } else if (progress.skipped) {
+      embed.setDescription(
+        `⏭️ **Tutorial Pulado**\n\n` +
+        `Você pulou o tutorial. Use \`/tutorial iniciar\` para retomar.`
+      );
+    } else {
+      const progressBar = createProgressBar(progress.currentStep, 10);
+      embed.setDescription(
+        `**Progresso:** ${progress.currentStep}/10 steps\n${progressBar}\n\n` +
+        `**Próximo Step:** ${progress.nextStep ? progress.nextStep.title : "Nenhum"}\n` +
+        `**Iniciado em:** <t:${Math.floor(new Date(progress.startedAt).getTime() / 1000)}:R>`
+      );
+    }
+
+    // Recompensas recebidas
+    embed.addFields({
+      name: "🎁 Recompensas Recebidas",
+      value:
+        `💰 **${progress.totalRewards.gold.toLocaleString()}** Gold\n` +
+        `💎 **${progress.totalRewards.gems}** Gems\n` +
+        `🎟️ **${progress.totalRewards.tickets}** Tickets`,
+      inline: true,
+    });
+
+    // Steps completados
+    if (progress.completedSteps.length > 0) {
+      const completedList = progress.completedSteps
+        .map((stepId) => {
+          const step = TutorialService.TUTORIAL_STEPS.find((s) => s.id === stepId);
+          return step ? `${step.emoji} ${step.title}` : stepId;
+        })
+        .join("\n");
+
+      embed.addFields({
+        name: `✅ Steps Completados (${progress.completedSteps.length}/10)`,
+        value: completedList,
+      });
+    }
+
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
+  // /tutorial pular
+  if (subcommand === "pular") {
+    await interaction.deferReply();
+
+    const result = await TutorialService.skipTutorial(discordId);
+    
+    if (!result.success) {
+      await interaction.editReply(result.message);
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle("⏭️ Tutorial Pulado")
+      .setDescription(
+        `Você pulou o tutorial. Não se preocupe, você pode retomar depois com \`/tutorial continuar\` ou aprender sobre sistemas específicos com \`/tutorial ajuda\`.\n\n` +
+        `**Dica:** O tutorial oferece recompensas generosas, incluindo um **personagem SSR garantido** no final!`
+      )
+      .setColor(0xFFA500);
+
+    await interaction.editReply({ content: result.message, embeds: [embed] });
+    return;
+  }
+
+  // /tutorial ajuda
+  if (subcommand === "ajuda") {
+    await interaction.deferReply();
+
+    const sistema = interaction.options.getString("sistema");
+
+    if (!sistema) {
+      // Mostrar lista de sistemas
+      const embed = new EmbedBuilder()
+        .setTitle("📚 Ajuda - Sistemas do Anime RPG")
+        .setDescription(
+          `Selecione um sistema para aprender mais sobre ele! Use \`/tutorial ajuda sistema:<nome>\`\n\n` +
+          `**Sistemas Disponíveis:**`
+        )
+        .setColor(0x3498DB)
+        .addFields(
+          { name: "🎲 Gacha / Invocação", value: "Sistema de invocação de personagens com banners e raridades", inline: true },
+          { name: "⚔️ Sistema de Batalha", value: "Mecânicas de combate, turnos, skills e ultimates", inline: true },
+          { name: "👥 Equipes", value: "Como montar e gerenciar sua equipe de até 5 personagens", inline: true },
+          { name: "🛡️ Equipamentos", value: "Equipar itens nos personagens para boost de stats", inline: true },
+          { name: "🔥 Formação", value: "Elementos, posições e counters que afetam o dano", inline: true },
+          { name: "🏆 Arena PvP", value: "Batalhas contra outros jogadores com ranking", inline: true },
+          { name: "🐉 Raids", value: "Batalhas cooperativas contra bosses épicos", inline: true },
+          { name: "🔥 Boss Rush", value: "Desafio de 5 bosses consecutivos sem curar", inline: true },
+          { name: "🎨 Perfil", value: "Personalização de perfil, showcase e banner", inline: true },
+          { name: "💰 Economia", value: "Gold, Gems, Tickets e como conseguir recursos", inline: true }
+        );
+
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    // Mostrar ajuda específica do sistema
+    const helpEmbed = createSystemHelpEmbed(sistema);
+    await interaction.editReply({ embeds: [helpEmbed] });
+    return;
+  }
+}
+
+/**
+ * Cria embed de um step do tutorial
+ */
+function createTutorialStepEmbed(step: TutorialService.TutorialStep, currentStep: number, totalSteps: number): EmbedBuilder {
+  const progressBar = createProgressBar(currentStep - 1, totalSteps);
+  
+  const embed = new EmbedBuilder()
+    .setTitle(`${step.emoji} ${step.title}`)
+    .setDescription(step.description)
+    .setColor(
+      step.category === "básico" ? 0x3498DB :
+      step.category === "batalha" ? 0xFF4500 :
+      step.category === "avançado" ? 0x9B59B6 :
+      step.category === "personalização" ? 0xFF69B4 :
+      0xFFD700 // final
+    )
+    .addFields(
+      { name: "🎯 Objetivo", value: step.objective },
+      { name: "📊 Progresso", value: `Step ${currentStep}/${totalSteps}\n${progressBar}` }
+    );
+
+  if (step.command) {
+    embed.addFields({ name: "💡 Comando", value: `\`${step.command}\``, inline: true });
+  }
+
+  // Recompensas
+  const rewards: string[] = [];
+  if (step.reward.gold) rewards.push(`💰 ${step.reward.gold.toLocaleString()} Gold`);
+  if (step.reward.gems) rewards.push(`💎 ${step.reward.gems} Gems`);
+  if (step.reward.tickets) rewards.push(`🎟️ ${step.reward.tickets} Tickets`);
+  if (step.reward.guaranteedCharacter) rewards.push(`✨ ${step.reward.guaranteedCharacter.description}`);
+
+  if (rewards.length > 0) {
+    embed.addFields({ name: "🎁 Recompensas", value: rewards.join("\n"), inline: true });
+  }
+
+  return embed;
+}
+
+/**
+ * Cria barra de progresso visual
+ */
+function createProgressBar(current: number, total: number): string {
+  const filled = Math.floor((current / total) * 10);
+  const empty = 10 - filled;
+  return `[${"█".repeat(filled)}${"░".repeat(empty)}] ${current}/${total}`;
+}
+
+/**
+ * Cria embed de ajuda para um sistema específico
+ */
+function createSystemHelpEmbed(system: string): EmbedBuilder {
+  const embed = new EmbedBuilder().setColor(0x3498DB);
+
+  switch (system) {
+    case "gacha":
+      embed
+        .setTitle("🎲 Gacha / Invocação")
+        .setDescription(
+          `Sistema de invocação de personagens aleatórios!\n\n` +
+          `**Como Funciona:**\n` +
+          `• Use \`/invocar\` para invocar personagens\n` +
+          `• Cada invocação custa **Tickets** ou **Gems**\n` +
+          `• Há diferentes **banners** com personagens featured\n` +
+          `• Raridades: Comum, Incomum, Raro, Épico, Lendário, Mítico\n\n` +
+          `**Dicas:**\n` +
+          `• Invocações x10 garantem pelo menos 1 Raro+\n` +
+          `• Featured characters têm taxas aumentadas\n` +
+          `• Use \`/banner\` para ver banners ativos`
+        );
+      break;
+
+    case "battle":
+      embed
+        .setTitle("⚔️ Sistema de Batalha")
+        .setDescription(
+          `Batalhas automáticas por turnos!\n\n` +
+          `**Mecânicas:**\n` +
+          `• Turnos baseados em **Velocidade (SPD)**\n` +
+          `• Skills normais e **Ultimates** (após acumular energia)\n` +
+          `• Formação afeta dano (elementos, posições, counters)\n` +
+          `• Status effects: Stun, Burn, Poison, Shield, etc\n\n` +
+          `**Tipos de Batalha:**\n` +
+          `• **PvE** (\`/batalha\`) - Contra IA\n` +
+          `• **Arena** (\`/arena\`) - PvP adaptativo\n` +
+          `• **Raids** (\`/raid\`) - Cooperativo\n` +
+          `• **Boss Rush** (\`/bossrush\`) - 5 bosses consecutivos`
+        );
+      break;
+
+    case "team":
+      embed
+        .setTitle("👥 Equipes")
+        .setDescription(
+          `Monte sua equipe de até 5 personagens!\n\n` +
+          `**Comandos:**\n` +
+          `• \`/equipe ver\` - Ver equipe atual\n` +
+          `• \`/equipe adicionar\` - Adicionar personagem\n` +
+          `• \`/equipe remover\` - Remover personagem\n` +
+          `• \`/equipe ordenar\` - Mudar ordem\n\n` +
+          `**Dicas:**\n` +
+          `• Balance roles: DPS, Tank, Support, Healer\n` +
+          `• Considere elementos e counters\n` +
+          `• Posições afetam dano recebido/causado`
+        );
+      break;
+
+    case "equipment":
+      embed
+        .setTitle("🛡️ Equipamentos")
+        .setDescription(
+          `Equipe itens para aumentar stats!\n\n` +
+          `**5 Slots por Personagem:**\n` +
+          `• Arma (+ATK)\n` +
+          `• Armadura (+DEF)\n` +
+          `• Acessório (+HP)\n` +
+          `• Botas (+SPD)\n` +
+          `• Anel (+Mixed)\n\n` +
+          `**Comandos:**\n` +
+          `• \`/equipamento equipar\` - Equipar item\n` +
+          `• \`/equipamento desequipar\` - Remover item\n` +
+          `• \`/equipamento inventario\` - Ver itens\n` +
+          `• \`/equipamento catalogo\` - Ver todos disponíveis\n\n` +
+          `**Passivas:** Cada item tem passiva especial (crit, lifesteal, etc)`
+        );
+      break;
+
+    case "formation":
+      embed
+        .setTitle("🔥 Formação (Elementos/Posições)")
+        .setDescription(
+          `Sistema de formação afeta o dano!\n\n` +
+          `**Elementos:**\n` +
+          `• 7 elementos: Fogo, Água, Elétrico, Terra, Vento, Luz, Trevas\n` +
+          `• Vantagem: **+50% dano**\n` +
+          `• Desvantagem: **-25% dano**\n\n` +
+          `**Posições:**\n` +
+          `• **Front** (Frente): +10% dano, +20% dano recebido\n` +
+          `• **Mid** (Meio): Neutro\n` +
+          `• **Back** (Trás): +15% dano, -10% dano recebido\n\n` +
+          `**Counters de Role:**\n` +
+          `• DPS > Support: +25% / -15%\n` +
+          `• Support > Tank: +25% / -15%\n` +
+          `• Tank > DPS: +25% / -15%`
+        );
+      break;
+
+    case "arena":
+      embed
+        .setTitle("🏆 Arena PvP")
+        .setDescription(
+          `Batalhe contra times de outros jogadores!\n\n` +
+          `**Sistema Adaptativo:**\n` +
+          `• Adversários escalam com seu progresso\n` +
+          `• Quanto mais vence, mais fortes os oponentes\n` +
+          `• Recompensas baseadas em vitórias\n\n` +
+          `**Ranking:**\n` +
+          `• Ranking global de vitórias\n` +
+          `• Recompensas semanais\n` +
+          `• Use \`/ranking\` para ver leaderboard\n\n` +
+          `**Comando:** \`/arena\``
+        );
+      break;
+
+    case "raid":
+      embed
+        .setTitle("🐉 Raids Cooperativas")
+        .setDescription(
+          `Batalhe em grupo contra bosses épicos!\n\n` +
+          `**Como Funciona:**\n` +
+          `• Até 5 jogadores por raid\n` +
+          `• Bosses com fases e mecânicas especiais\n` +
+          `• Recompensas compartilhadas\n\n` +
+          `**Comandos:**\n` +
+          `• \`/raid criar\` - Criar nova raid\n` +
+          `• \`/raid participar\` - Entrar em raid existente\n` +
+          `• \`/raid listar\` - Ver raids ativas\n\n` +
+          `**Dificuldades:** Normal, Hard, Nightmare`
+        );
+      break;
+
+    case "bossrush":
+      embed
+        .setTitle("🔥 Boss Rush")
+        .setDescription(
+          `Desafio definitivo: 5 bosses consecutivos!\n\n` +
+          `**Regras:**\n` +
+          `• 5 bosses com dificuldade escalável (100% → 220%)\n` +
+          `• **HP NÃO é restaurado** entre lutas\n` +
+          `• 1 tentativa por temporada (semanal)\n` +
+          `• Ranking com melhores desempenhos\n\n` +
+          `**Recompensas Progressivas:**\n` +
+          `• Boss 1: 500 gold\n` +
+          `• Boss 2: 2,000 gold\n` +
+          `• Boss 3: 4,500 gold\n` +
+          `• Boss 4: 8,000 gold\n` +
+          `• Boss 5: 12,500 gold\n` +
+          `• **Total: 27,500 gold!**\n\n` +
+          `**Comandos:**\n` +
+          `• \`/bossrush iniciar\` - Começar desafio\n` +
+          `• \`/bossrush ranking\` - Ver leaderboard\n` +
+          `• \`/bossrush info\` - Ver regras e sua melhor corrida`
+        );
+      break;
+
+    case "profile":
+      embed
+        .setTitle("🎨 Perfil e Personalização")
+        .setDescription(
+          `Customize seu perfil!\n\n` +
+          `**Personalizações:**\n` +
+          `• **Bio** - Texto de apresentação\n` +
+          `• **Anime Favorito** - Mostre seu anime preferido\n` +
+          `• **Cor** - Cor do embed do perfil\n` +
+          `• **Showcase** - 3 personagens favoritos\n` +
+          `• **Banner** - Imagem de fundo (personagem)\n\n` +
+          `**Stats Automáticas:**\n` +
+          `• Win rate por modo (Arena, PvE, Raid, Boss Rush)\n` +
+          `• Personagens mais usados\n` +
+          `• Histórico de batalhas\n` +
+          `• Total de dano causado\n\n` +
+          `**Comandos:**\n` +
+          `• \`/perfil ver\` - Ver perfil completo\n` +
+          `• \`/perfil bio\` - Definir bio\n` +
+          `• \`/perfil showcase\` - Definir favoritos\n` +
+          `• \`/perfil banner\` - Definir banner`
+        );
+      break;
+
+    case "economy":
+      embed
+        .setTitle("💰 Economia")
+        .setDescription(
+          `Sistema econômico do jogo!\n\n` +
+          `**Moedas:**\n` +
+          `• **💰 Gold** - Moeda principal (batalhas, missões)\n` +
+          `• **💎 Gems** - Moeda premium (eventos, tutorial, compras)\n` +
+          `• **🎟️ Tickets** - Para invocações (diário, tutorial)\n\n` +
+          `**Como Conseguir:**\n` +
+          `• **Diário** (\`/diario\`) - Recompensa diária\n` +
+          `• **Batalhas** - Gold por vitórias\n` +
+          `• **Missões** (\`/missoes\`) - Quests com recompensas\n` +
+          `• **Boss Rush** - Até 27,500 gold\n` +
+          `• **Tutorial** - Até 10k gold + 100 gems + 5 tickets\n` +
+          `• **Ranking** - Recompensas semanais\n\n` +
+          `**Gastos:**\n` +
+          `• Invocações (tickets ou gems)\n` +
+          `• Loot Boxes (gems)\n` +
+          `• Upgrades (gold)`
+        );
+      break;
+
+    default:
+      embed
+        .setTitle("❓ Sistema não encontrado")
+        .setDescription(`Use \`/tutorial ajuda\` sem parâmetros para ver todos os sistemas disponíveis.`);
+  }
+
+  return embed;
 }

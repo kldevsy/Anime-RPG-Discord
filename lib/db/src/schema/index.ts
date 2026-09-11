@@ -642,3 +642,21 @@ export const characterUsageStats = pgTable("character_usage_stats", {
 }, (table) => [
   uniqueIndex("character_usage_user_char_unique").on(table.userId, table.userCharacterId),
 ]);
+
+// =============================================
+// TUTORIAL SYSTEM
+// =============================================
+
+export const userTutorial = pgTable("user_tutorial", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  currentStep: integer("current_step").notNull().default(0),
+  completedSteps: text("completed_steps").array().notNull().default(sql`'{}'::text[]`),
+  isCompleted: boolean("is_completed").notNull().default(false),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  skipped: boolean("skipped").notNull().default(false),
+  rewardsClaimed: jsonb("rewards_claimed").$type<Record<string, boolean>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
