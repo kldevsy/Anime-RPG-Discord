@@ -9,7 +9,83 @@ args = ["pnpm", "store", "prune"]
 env = { "CI" = "true" }
 
 [workflows]
-runButton = "Project"
+runButton = "Start Bot"
+
+[[workflows.workflow]]
+name = "Start Bot"
+description = "🚀 Build e inicia o bot Discord (com migrations automáticas)"
+mode = "sequential"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo '🔄 Aplicando migrations...' && node lib/db/scripts/apply-all-migrations.mjs || echo '⚠️ Migrations já aplicadas'"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo '🔨 Building...' && cd artifacts/api-server && node build.mjs"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo '🤖 Iniciando bot...' && cd artifacts/api-server && node --enable-source-maps ./dist/bot/index.mjs"
+
+[[workflows.workflow]]
+name = "Apply Migrations"
+description = "📊 Aplica todas as migrations do banco de dados"
+mode = "sequential"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node lib/db/scripts/apply-all-migrations.mjs"
+
+[[workflows.workflow]]
+name = "Build Only"
+description = "🔨 Faz build do código sem iniciar o bot"
+mode = "sequential"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/api-server && node build.mjs"
+
+[[workflows.workflow]]
+name = "Quick Restart"
+description = "⚡ Reinicia o bot (sem rebuild)"
+mode = "sequential"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/api-server && node --enable-source-maps ./dist/bot/index.mjs"
+
+[[workflows.workflow]]
+name = "Full Restart"
+description = "🔄 Migrations + Build + Start (tudo do zero)"
+mode = "sequential"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node lib/db/scripts/apply-all-migrations.mjs"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/api-server && node build.mjs"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/api-server && node --enable-source-maps ./dist/bot/index.mjs"
+
+[[workflows.workflow]]
+name = "Seed Characters"
+description = "🎲 Atualiza catálogo de personagens"
+mode = "sequential"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd lib/db && pnpm run seed"
 
 [agent]
 stack = "PNPM_WORKSPACE"
@@ -26,12 +102,3 @@ packages = ["undollar"]
 [userenv]
 
 [userenv.shared]
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pnpm --filter @workspace/db run migrate && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/api-server run bot"

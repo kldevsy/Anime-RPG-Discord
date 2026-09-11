@@ -8,7 +8,11 @@
     "build:api-server": "pnpm --filter @workspace/api-server build",
     "bot:api-server": "pnpm --filter @workspace/api-server bot",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "start": "node lib/db/scripts/apply-all-migrations.mjs && cd artifacts/api-server && node build.mjs && node --enable-source-maps ./dist/bot/index.mjs",
+    "start:quick": "cd artifacts/api-server && node --enable-source-maps ./dist/bot/index.mjs",
+    "migrate": "node lib/db/scripts/apply-all-migrations.mjs",
+    "seed": "cd lib/db && pnpm run seed"
   },
   "private": true,
   "dependencies": {
