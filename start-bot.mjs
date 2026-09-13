@@ -29,7 +29,20 @@ if (!existsSync(apiServerPath)) {
 
 console.log('✅ Pasta artifacts/api-server encontrada');
 
-// 2. Compilar o código
+// 2. Instalar dependências do api-server (esbuild, etc)
+console.log('📦 Instalando dependências do api-server...');
+try {
+  execSync('npm install --prefix artifacts/api-server', {
+    cwd: __dirname,
+    stdio: 'inherit'
+  });
+  console.log('✅ Dependências instaladas!');
+} catch (error) {
+  console.error('❌ Erro ao instalar dependências:', error.message);
+  process.exit(1);
+}
+
+// 3. Compilar o código
 console.log('🔨 Compilando código TypeScript...');
 try {
   execSync('node artifacts/api-server/build.mjs', {
@@ -42,7 +55,7 @@ try {
   process.exit(1);
 }
 
-// 3. Verificar se o build foi criado
+// 4. Verificar se o build foi criado
 const distPath = join(apiServerPath, 'dist', 'bot', 'index.mjs');
 if (!existsSync(distPath)) {
   console.error('❌ Arquivo compilado não encontrado:', distPath);
@@ -51,7 +64,7 @@ if (!existsSync(distPath)) {
 
 console.log('✅ Arquivo compilado encontrado');
 
-// 4. Aplicar migrations (opcional, pode falhar se já aplicadas)
+// 5. Aplicar migrations (opcional, pode falhar se já aplicadas)
 console.log('📊 Aplicando migrations do banco de dados...');
 try {
   execSync('node lib/db/scripts/apply-all-migrations.mjs', {
@@ -63,7 +76,7 @@ try {
   console.warn('⚠️  Aviso ao aplicar migrations (pode ser normal):', error.message);
 }
 
-// 5. Iniciar o bot
+// 6. Iniciar o bot
 console.log('🤖 Iniciando bot...');
 console.log('');
 
