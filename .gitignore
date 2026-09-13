@@ -1,7 +1,6 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# compiled output
-dist
+# compiled output (exceto artifacts/api-server/dist para Discloud)
 tmp
 out-tsc
 *.tsbuildinfo
