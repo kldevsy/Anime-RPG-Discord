@@ -71,6 +71,7 @@ export const characters = pgTable("characters", {
   baseDefense: integer("base_defense").notNull(),
   baseSpeed: integer("base_speed").notNull(),
   imageUrl: text("image_url"),
+  bannerUrl: text("banner_url"), // Novo: banner do personagem
   passive: text("passive"),
   // Seeded catalog rows are synchronized by `src/seed.ts`; administrative rows opt out.
   catalogManaged: boolean("catalog_managed").notNull().default(false),

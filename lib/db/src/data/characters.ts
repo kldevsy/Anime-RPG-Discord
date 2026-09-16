@@ -198,6 +198,7 @@ export const characterCatalogEntrySchema = z.object({
   passive: z.string(), // Mantém string para compatibilidade com descrição visual
   passiveAbility: passiveAbilitySchema.optional(), // Nova: passiva funcional
   imageUrl: optionalImageUrlSchema,
+  bannerUrl: optionalImageUrlSchema.optional(), // Novo: banner do personagem
   ultimate: characterUltimateSchema,
 });
 

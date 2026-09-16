@@ -432,7 +432,18 @@ export function createSummonResultEmbeds(username: string, results: SummonedChar
         value: truncateDiscordText(formatUltimateSummary(result.ultimate, 700) + teamIdText, DISCORD_FIELD_VALUE_LIMIT),
       })
       .setFooter({ text: `Resultado ${index + 1} de ${results.length} • Anime RPG` });
-    applyEmbedImage(embed, result.imageUrl);
+    
+    // Se tiver banner, usa banner como imagem e avatar como thumbnail
+    if ((result as any).bannerUrl) {
+      embed.setImage((result as any).bannerUrl);
+      if (result.imageUrl) {
+        embed.setThumbnail(result.imageUrl);
+      }
+    } else {
+      // Sem banner: comportamento padrão (imagem normal)
+      applyEmbedImage(embed, result.imageUrl);
+    }
+    
     return embed;
   });
 }
@@ -1716,9 +1727,19 @@ export function createEnhancedProfileEmbed(profile: any) {
     .setColor(parseInt(profileData.profileColor.replace("#", ""), 16))
     .setTimestamp();
 
-  // Banner/Background (usar imagem do personagem favorito)
-  if (profileData.bannerCharacter?.imageUrl) {
-    embed.setImage(profileData.bannerCharacter.imageUrl);
+  // Banner/Background (usar banner do personagem favorito se disponível, senão imagem)
+  if (profileData.bannerCharacter) {
+    const bannerUrl = (profileData.bannerCharacter as any).bannerUrl;
+    const imageUrl = profileData.bannerCharacter.imageUrl;
+    
+    if (bannerUrl) {
+      embed.setImage(bannerUrl);
+      if (imageUrl) {
+        embed.setThumbnail(imageUrl);
+      }
+    } else if (imageUrl) {
+      embed.setImage(imageUrl);
+    }
   }
 
   // Bio

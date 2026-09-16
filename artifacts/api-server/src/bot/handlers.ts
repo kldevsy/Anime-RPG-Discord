@@ -1133,6 +1133,14 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         );
 
         applyEmbedImage(embed, found.imageUrl);
+        
+        // Se tiver banner, usa banner como imagem e avatar como thumbnail
+        if ((found as any).bannerUrl) {
+          embed.setImage((found as any).bannerUrl);
+          if (found.imageUrl) {
+            embed.setThumbnail(found.imageUrl);
+          }
+        }
 
         await interaction.editReply({ embeds: [embed] });
       } catch (error) {
