@@ -139884,12 +139884,16 @@ function createSummonResultEmbeds(username, results, currency, cost) {
       name: "\u2728 Ultimate",
       value: truncateDiscordText(formatUltimateSummary(result.ultimate, 700) + teamIdText, DISCORD_FIELD_VALUE_LIMIT)
     }).setFooter({ text: `Resultado ${index + 1} de ${results.length} \u2022 Anime RPG` });
-    if (result.bannerUrl) {
-      embed.setImage(result.bannerUrl);
+    const bannerUrl = result.bannerUrl;
+    console.log(`[BANNER DEBUG] Character: ${result.name}, bannerUrl: ${bannerUrl}, imageUrl: ${result.imageUrl}`);
+    if (bannerUrl) {
+      console.log(`[BANNER] Using banner for ${result.name}: ${bannerUrl}`);
+      embed.setImage(bannerUrl);
       if (result.imageUrl) {
         embed.setThumbnail(result.imageUrl);
       }
     } else {
+      console.log(`[BANNER] No banner for ${result.name}, using default image`);
       applyEmbedImage(embed, result.imageUrl);
     }
     return embed;
@@ -140807,6 +140811,7 @@ function createEnhancedProfileEmbed(profile) {
   if (profileData.bannerCharacter) {
     const bannerUrl = profileData.bannerCharacter.bannerUrl;
     const imageUrl = profileData.bannerCharacter.imageUrl;
+    console.log(`[PERFIL BANNER] User: ${user.username}, bannerUrl: ${bannerUrl}, imageUrl: ${imageUrl}`);
     if (bannerUrl) {
       embed.setImage(bannerUrl);
       if (imageUrl) {
@@ -141521,6 +141526,7 @@ async function summon(discordId2, bannerId, quantity, idempotencyKey) {
         isDuplicate,
         masteryGained
       });
+      console.log(`[SUMMON DEBUG] ${character.name}: bannerUrl = ${character.bannerUrl ?? "null"}`);
       if (rarity === "mythic" || rarity === "legendary") pity = 0;
       else pity += 1;
     }
@@ -141619,6 +141625,7 @@ async function summon(discordId2, bannerId, quantity, idempotencyKey) {
         isDuplicate,
         masteryGained
       });
+      console.log(`[SUMMON DEBUG] ${character.name}: bannerUrl = ${character.bannerUrl ?? "null"}`);
       if (rarity === "mythic" || rarity === "legendary") pity = 0;
       else pity += 1;
     }
@@ -147746,6 +147753,7 @@ async function getEnhancedProfile(discordId2) {
       bannerUrl: characters.bannerUrl
     }).from(characters).where(eq(characters.id, profile.bannerCharacterId)).limit(1);
     bannerChar = banner || null;
+    console.log(`[PROFILE SERVICE] Banner character: ${banner?.name}, bannerUrl: ${banner?.bannerUrl}`);
   }
   const mostUsed = await db.select({
     name: characters.name,
@@ -148795,6 +148803,7 @@ async function handleInteraction(interaction) {
           await interaction.editReply("\u274C Personagem n\xE3o encontrado no cat\xE1logo.");
           return;
         }
+        console.log(`[PERSONAGEM DEBUG] ${found.name}: bannerUrl = ${found.bannerUrl ?? "null"}, imageUrl = ${found.imageUrl}`);
         const profile = await getProfile(discordId2);
         const ownedChar = profile?.collection.find((c) => c.character.id === found.id);
         const { applyMasteryBoost: applyMasteryBoost2, formatMasteryInfo: formatMasteryInfo2, calculateMasteryBoost: calculateMasteryBoost2 } = await Promise.resolve().then(() => (init_MasteryService(), MasteryService_exports));
@@ -148958,8 +148967,10 @@ ${pa.description}
           { name: "\u{1F52E} Passiva", value: passiveDetails.slice(0, 1024), inline: false },
           { name: "\u2728 Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
         );
-        if (found.bannerUrl) {
-          embed.setImage(found.bannerUrl);
+        const bannerUrl = found.bannerUrl;
+        console.log(`[PERSONAGEM EMBED] ${found.name}: Setting banner=${bannerUrl}, thumbnail=${found.imageUrl}`);
+        if (bannerUrl) {
+          embed.setImage(bannerUrl);
           if (found.imageUrl) {
             embed.setThumbnail(found.imageUrl);
           }
