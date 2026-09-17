@@ -69,6 +69,7 @@ export async function syncCharacterCatalog(options?: { force?: boolean }) {
         baseSpeed: sql`excluded.base_speed`,
         passive: sql`excluded.passive`,
         imageUrl: sql`excluded.image_url`,
+        bannerUrl: sql`excluded.banner_url`,
         ultimate: sql`excluded.ultimate`,
         catalogManaged: sql`true`,
       },
