@@ -587,6 +587,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 125,
       imageUrl:
         "https://cdn.discordapp.com/attachments/1542421455969718342/1542421629832011776/file_00000000edec820e93ac0ef97e71cc81.png?ex=6a91d455&is=6a9082d5&hm=cd4a5b0a413fa8896c753f6dfb62a89927582fd623c64e500bd61983825051dc&",
+      bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939915196858448/file_000000008dcc820e808bc5971255e9af.png?ex=6aac8588&is=6aab3408&hm=e599a896b105debadea1481f757d8a2191a511c3a691e49bd0a0776824eda7c5&",
       passive: "Transfiguração Ociosa: reduz HP máximo do inimigo permanentemente",
       passiveAbility: IDLE_TRANSFIGURATION,
       ultimate: {
@@ -696,6 +697,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 130,
       imageUrl:
         "https://cdn.discordapp.com/attachments/1482939713664057506/1541613929178861648/file_00000000aaf0820eafffd6c359a9ebbf.png?ex=6a91871a&is=6a90359a&hm=d0b9a98434d343705f164adaa1cfa21f669ed03978060209a03d99105fbe21c7&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939913145712771/file_0000000061ec820ead55f8c94ccec8d6.png?ex=6aac8587&is=6aab3407&hm=a9f426ab5b5648f76539471b78503afd88feda1e94824a32fa67328abe6d4148&",
       passive: "Respiração da Lua: sangramento e reduz velocidade ao acertar",
       passiveAbility: MOON_BREATHING,
       ultimate: {
@@ -733,6 +735,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 118,
       imageUrl:
         "https://cdn.discordapp.com/attachments/979267903989899264/1542727699917705287/content.png?ex=6a9248a2&is=6a90f722&hm=a58d40f3b8b087862a8b11ae3804f80027a1ba22571fb26443f32320c86c63be",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939913988898857/file_0000000040f4820e84ae5578d8c69817.png?ex=6aac8587&is=6aab3407&hm=4eb10c6330f611517de322f27257ef47029bb1f33632cfa55d7ff99051909e78&",
       passive: "Criotécnica de Sangue: congela atacantes ao sofrer dano",
       passiveAbility: ICE_MANIPULATION,
       ultimate: {
@@ -770,6 +773,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 135,
       imageUrl:
         "https://cdn.discordapp.com/attachments/1482939713664057506/1541613928734531685/file_000000007cac820e839513ec2f6c5576.webp?ex=6a922fda&is=6a90de5a&hm=2cc3bfb18e7308993483b780862f0eda80285bc87b83c35dfd689a8346e52d84&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939914412654683/file_000000001cf0820eb95bff718696a525.png?ex=6aac8588&is=6aab3408&hm=11845ec746bb44e1eba4feaa222b0dd09d24497fedb4b1dc38772f9540f77a34&",
       passive: "Espírito de Luta: ganha 2% ATK por cada 10% de HP perdido",
       passiveAbility: FIGHTING_SPIRIT,
       ultimate: {
@@ -807,6 +811,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 122,
       imageUrl:
         "https://cdn.discordapp.com/attachments/979267903989899264/1542728769603772547/content.png?ex=6a9249a1&is=6a90f821&hm=4c3a135bcc4723c097f56f5a4bfd4c8dca92fa73f307098fc36b72bdc42e2270",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939913506431128/file_00000000c8dc820ea61f186d898e8d1f.png?ex=6aac8587&is=6aab3407&hm=d3583f34043041ea283478064b2752da6bef446dbf9eccd9f5e1f2c2ead414e1&",
       passive: "Mestre do Veneno: envenena frequentemente, veneno causa mais dano",
       passiveAbility: POISON_MASTERY,
       ultimate: {
@@ -957,6 +962,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 135,
       imageUrl:
         "https://cdn.discordapp.com/attachments/1482939713664057506/1541512299628470372/file_00000000b9ec820e831e8b393ba14dbd.png?ex=6a9322b4&is=6a91d134&hm=ea5194b943f78240a86f5ece541e1736cb02fe3ffeb6a46d9bb99217159bb6d8&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939911719653476/file_000000007138820ea49794f9f6f23247.png?ex=6aac8587&is=6aab3407&hm=0dd25cb9056765e42cae3bc014c31aec247ebb9d870335553add3db097f010a1&",
       passive: "Mangekyō Sharingan Eterno: 30% de chance de ativar Susanoo com escudo e bônus de dano",
       passiveAbility: ETERNAL_MANGEKYO,
       ultimate: {
@@ -1218,6 +1224,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 135,
       imageUrl:
         "https://cdn.discordapp.com/attachments/1482939713664057506/1541512300219859055/file_00000000e864820e89a46306ba4f2cc7.png?ex=6a9322b4&is=6a91d134&hm=0dfc099b5c796b1d2b89c39d1c35bd86740347b533df8dc01cb456e932f168f9&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939914823442442/file_000000003c54820e9da3567ddc72f4c0.png?ex=6aac8588&is=6aab3408&hm=bd4f833991a1953d5965636d31f90cac3abd5f4bc02142f568522ade71587245&",
       passive: "Cópia de Técnicas: 40% de chance de copiar debuffs recebidos e aplicar no atacante",
       passiveAbility: COPY_TECHNIQUE,
       ultimate: {
@@ -1255,6 +1262,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 140,
       imageUrl:
         "https://cdn.discordapp.com/attachments/1482939713664057506/1541512300811395202/file_00000000eb34820eb837ea2991821b66.png?ex=6a9322b4&is=6a91d134&hm=1d5d1c7dfe1d550cfd04113ba129d3f9cd14ce66fe3850c65e1d3701699f3346&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939914823442442/file_000000003c54820e9da3567ddc72f4c0.png?ex=6aac8588&is=6aab3408&hm=bd4f833991a1953d5965636d31f90cac3abd5f4bc02142f568522ade71587245&",
       passive: "Manifestação de Rika: abaixo de 50% HP ganha escudo 400, +30% ATK, +25% DEF, +20% SPD",
       passiveAbility: RIKA_MANIFESTATION,
       ultimate: {
@@ -1517,6 +1525,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 105,
       imageUrl:
         "https://cdn.discordapp.com/attachments/979267903989899264/1543818159272759327/file_000000004400820eb2c8f79f3bfb01da.png?ex=6a983a73&is=6a96e8f3&hm=6df39f85d6de83378e69f45387e230078223ac1bbcef47c4a69b5f2f16545ba6&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939915624685668/file_0000000086dc820e9f5fef760529e81b.png?ex=6aac8588&is=6aab3408&hm=9467c915f60d21034613c536cd3698a7063e5bffb082ac69682c0602239daeff&",
       passive: "Ritual de Jashin: ao causar crítico, aplica maldição. Enquanto amaldiçoado, reflete 40% do dano recebido de volta ao alvo.",
       passiveAbility: JASHIN_RITUAL,
       ultimate: {
@@ -1646,6 +1655,7 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseSpeed: 140,
       imageUrl:
         "https://cdn.discordapp.com/attachments/979267903989899264/1544397853147922546/file_00000000efcc820eaf7a358bcc40bed9.png?ex=6a985c15&is=6a970a95&hm=bbec91cb30f32e4c6cf4117e881fe272c9051a231ae80afc0ea774d4b0ba8aa2&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939913145712771/file_0000000061ec820ead55f8c94ccec8d6.png?ex=6aac8587&is=6aab3407&hm=a9f426ab5b5648f76539471b78503afd88feda1e94824a32fa67328abe6d4148&",
       passive: "Lâmina da Lua Crescente: Cada ataque tem 40% de chance de aplicar múltiplos cortes lunares, causando sangramento intenso e reduzindo defesa do alvo em até 45%.",
       passiveAbility: MOON_CRESCENT_BLADE,
       ultimate: {
@@ -1691,7 +1701,8 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseDefense: 145,
       baseSpeed: 118,
       imageUrl:
-        "https://cdn.discordapp.com/attachments/979267903989899264/1544397852527169617/file_00000000b6dc820e9d36b6d3c1b1bf1e.png?ex=6a985c15&is=6a970a95&hm=cfee2ef2ec9802ba2654567f9224c435183b310fe4eac40bb85d731a0a391e5b&",
+        "https://cdn.discordapp.com/attachments/979267903989899264/1544397852527169617/file_00000000b6dc820e9d36b6d3c1b1bf1e.png?ex=6aac2295&is=6aaad115&hm=fbbfb89ecf8f1c3901241fb3fdf0638eb318b02af42c816fe36b5d2f98290b68&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939912621686844/file_00000000b100820ea6b7581630785a16.png?ex=6aac8587&is=6aab3407&hm=8eb147b3f670f62f5b02449c5337265ce46622a53c98381cfb58331c84a9925a&",
       passive: "Renascimento da Serpente: Ao cair abaixo de 40% HP, regenera completamente (1x por batalha). Tem 30% de chance de transferir 50% do dano recebido para um inimigo aleatório.",
       passiveAbility: SERPENT_REBIRTH,
       ultimate: {
@@ -1790,6 +1801,9 @@ export const characterCatalog: CharacterCatalogEntry[] =
       baseAttack: 265,
       baseDefense: 130,
       baseSpeed: 115,
+      imageUrl:
+        "https://cdn.discordapp.com/attachments/979267903989899264/1549944109240942702/file_000000009530820eac36c524b5e555a2.png?ex=6aac8970&is=6aab37f0&hm=586c8d3788f068fd2f15462130e5b675163016c8200eb05cc922e62005a9f20c&",
+       bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939912227430480/file_00000000eee0820e9b95504c02cde198.png?ex=6aac8587&is=6aab3407&hm=97c1e6e016a5c8374fe3133dcdbf8fb1a9d368204ea631e031dbd8703573c898&",
       passive: "Seis Caminhos da Dor: 50% de chance de invocar ataque adicional; ao matar ganha escudo e +20% ATK",
       passiveAbility: SIX_PATHS_OF_PAIN,
       ultimate: {
