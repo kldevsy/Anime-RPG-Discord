@@ -117303,6 +117303,7 @@ async function summon(discordId, bannerId, quantity, idempotencyKey) {
         anime: character.anime,
         rarity: character.rarity,
         imageUrl: character.imageUrl,
+        bannerUrl: character.bannerUrl ?? null,
         ultimate: character.ultimate,
         isDuplicate,
         masteryGained
@@ -117400,6 +117401,7 @@ async function summon(discordId, bannerId, quantity, idempotencyKey) {
         anime: character.anime,
         rarity: character.rarity,
         imageUrl: character.imageUrl,
+        bannerUrl: character.bannerUrl ?? null,
         ultimate: character.ultimate,
         isDuplicate,
         masteryGained
@@ -121540,7 +121542,8 @@ async function getEnhancedProfile(discordId) {
     const [banner] = await db.select({
       name: characters.name,
       anime: characters.anime,
-      imageUrl: characters.imageUrl
+      imageUrl: characters.imageUrl,
+      bannerUrl: characters.bannerUrl
     }).from(characters).where(eq(characters.id, profile.bannerCharacterId)).limit(1);
     bannerChar = banner || null;
   }
@@ -122755,12 +122758,13 @@ ${pa.description}
           { name: "\u{1F52E} Passiva", value: passiveDetails.slice(0, 1024), inline: false },
           { name: "\u2728 Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
         );
-        applyEmbedImage(embed, found.imageUrl);
         if (found.bannerUrl) {
           embed.setImage(found.bannerUrl);
           if (found.imageUrl) {
             embed.setThumbnail(found.imageUrl);
           }
+        } else {
+          applyEmbedImage(embed, found.imageUrl);
         }
         await interaction.editReply({ embeds: [embed] });
       } catch (error40) {
