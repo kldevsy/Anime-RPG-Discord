@@ -45093,10 +45093,10 @@ var init_subquery = __esm({
     init_entity();
     Subquery = class {
       static [entityKind] = "Subquery";
-      constructor(sql3, fields, alias, isWith = false, usedTables = []) {
+      constructor(sql2, fields, alias, isWith = false, usedTables = []) {
         this._ = {
           brand: "Subquery",
-          sql: sql3,
+          sql: sql2,
           selectedFields: fields,
           alias,
           isWith,
@@ -45262,7 +45262,7 @@ function mergeQueries(queries) {
 function isDriverValueEncoder(value) {
   return typeof value === "object" && value !== null && "mapToDriverValue" in value && typeof value.mapToDriverValue === "function";
 }
-function sql2(strings, ...params) {
+function sql(strings, ...params) {
   const queryChunks = [];
   if (params.length > 0 || strings.length > 0 && strings[0] !== "") {
     queryChunks.push(new StringChunk(strings[0]));
@@ -45551,19 +45551,19 @@ var init_sql = __esm({
         return new SQL([this]);
       }
     };
-    ((sql22) => {
+    ((sql2) => {
       function empty() {
         return new SQL([]);
       }
-      sql22.empty = empty;
+      sql2.empty = empty;
       function fromList(list) {
         return new SQL(list);
       }
-      sql22.fromList = fromList;
+      sql2.fromList = fromList;
       function raw(str) {
         return new SQL([new StringChunk(str)]);
       }
-      sql22.raw = raw;
+      sql2.raw = raw;
       function join(chunks, separator) {
         const result = [];
         for (const [i, chunk] of chunks.entries()) {
@@ -45574,24 +45574,24 @@ var init_sql = __esm({
         }
         return new SQL(result);
       }
-      sql22.join = join;
+      sql2.join = join;
       function identifier(value) {
         return new Name(value);
       }
-      sql22.identifier = identifier;
+      sql2.identifier = identifier;
       function placeholder2(name2) {
         return new Placeholder(name2);
       }
-      sql22.placeholder = placeholder2;
+      sql2.placeholder = placeholder2;
       function param2(value, encoder) {
         return new Param(value, encoder);
       }
-      sql22.param = param2;
-    })(sql2 || (sql2 = {}));
+      sql2.param = param2;
+    })(sql || (sql = {}));
     ((SQL22) => {
       class Aliased {
-        constructor(sql22, fieldAlias) {
-          this.sql = sql22;
+        constructor(sql2, fieldAlias) {
+          this.sql = sql2;
           this.fieldAlias = fieldAlias;
         }
         static [entityKind] = "SQL.Aliased";
@@ -45664,7 +45664,7 @@ function mapColumnsInAliasedSQLToAlias(query, alias) {
   return new SQL.Aliased(mapColumnsInSQLToAlias(query.sql, alias), query.fieldAlias);
 }
 function mapColumnsInSQLToAlias(query, alias) {
-  return sql2.join(query.queryChunks.map((c) => {
+  return sql.join(query.queryChunks.map((c) => {
     if (is(c, Column)) {
       return aliasedTableColumn(c, alias);
     }
@@ -46359,7 +46359,7 @@ var init_date_common = __esm({
     PgDateColumnBaseBuilder = class extends PgColumnBuilder {
       static [entityKind] = "PgDateColumnBaseBuilder";
       defaultNow() {
-        return this.default(sql2`now()`);
+        return this.default(sql`now()`);
       }
     };
   }
@@ -47409,7 +47409,7 @@ var init_uuid = __esm({
        * Adds `default gen_random_uuid()` to the column definition.
        */
       defaultRandom() {
-        return this.default(sql2`gen_random_uuid()`);
+        return this.default(sql`gen_random_uuid()`);
       }
       /** @internal */
       build(table) {
@@ -47814,7 +47814,7 @@ function and(...unfilteredConditions) {
   }
   return new SQL([
     new StringChunk("("),
-    sql2.join(conditions, new StringChunk(" and ")),
+    sql.join(conditions, new StringChunk(" and ")),
     new StringChunk(")")
   ]);
 }
@@ -47830,66 +47830,66 @@ function or(...unfilteredConditions) {
   }
   return new SQL([
     new StringChunk("("),
-    sql2.join(conditions, new StringChunk(" or ")),
+    sql.join(conditions, new StringChunk(" or ")),
     new StringChunk(")")
   ]);
 }
 function not(condition) {
-  return sql2`not ${condition}`;
+  return sql`not ${condition}`;
 }
 function inArray(column, values) {
   if (Array.isArray(values)) {
     if (values.length === 0) {
-      return sql2`false`;
+      return sql`false`;
     }
-    return sql2`${column} in ${values.map((v) => bindIfParam(v, column))}`;
+    return sql`${column} in ${values.map((v) => bindIfParam(v, column))}`;
   }
-  return sql2`${column} in ${bindIfParam(values, column)}`;
+  return sql`${column} in ${bindIfParam(values, column)}`;
 }
 function notInArray(column, values) {
   if (Array.isArray(values)) {
     if (values.length === 0) {
-      return sql2`true`;
+      return sql`true`;
     }
-    return sql2`${column} not in ${values.map((v) => bindIfParam(v, column))}`;
+    return sql`${column} not in ${values.map((v) => bindIfParam(v, column))}`;
   }
-  return sql2`${column} not in ${bindIfParam(values, column)}`;
+  return sql`${column} not in ${bindIfParam(values, column)}`;
 }
 function isNull(value) {
-  return sql2`${value} is null`;
+  return sql`${value} is null`;
 }
 function isNotNull(value) {
-  return sql2`${value} is not null`;
+  return sql`${value} is not null`;
 }
 function exists(subquery) {
-  return sql2`exists ${subquery}`;
+  return sql`exists ${subquery}`;
 }
 function notExists(subquery) {
-  return sql2`not exists ${subquery}`;
+  return sql`not exists ${subquery}`;
 }
 function between(column, min, max) {
-  return sql2`${column} between ${bindIfParam(min, column)} and ${bindIfParam(
+  return sql`${column} between ${bindIfParam(min, column)} and ${bindIfParam(
     max,
     column
   )}`;
 }
 function notBetween(column, min, max) {
-  return sql2`${column} not between ${bindIfParam(
+  return sql`${column} not between ${bindIfParam(
     min,
     column
   )} and ${bindIfParam(max, column)}`;
 }
 function like(column, value) {
-  return sql2`${column} like ${value}`;
+  return sql`${column} like ${value}`;
 }
 function notLike(column, value) {
-  return sql2`${column} not like ${value}`;
+  return sql`${column} not like ${value}`;
 }
 function ilike(column, value) {
-  return sql2`${column} ilike ${value}`;
+  return sql`${column} ilike ${value}`;
 }
 function notIlike(column, value) {
-  return sql2`${column} not ilike ${value}`;
+  return sql`${column} not ilike ${value}`;
 }
 var eq, ne, gt, gte, lt, lte;
 var init_conditions = __esm({
@@ -47899,32 +47899,32 @@ var init_conditions = __esm({
     init_table();
     init_sql();
     eq = (left, right) => {
-      return sql2`${left} = ${bindIfParam(right, left)}`;
+      return sql`${left} = ${bindIfParam(right, left)}`;
     };
     ne = (left, right) => {
-      return sql2`${left} <> ${bindIfParam(right, left)}`;
+      return sql`${left} <> ${bindIfParam(right, left)}`;
     };
     gt = (left, right) => {
-      return sql2`${left} > ${bindIfParam(right, left)}`;
+      return sql`${left} > ${bindIfParam(right, left)}`;
     };
     gte = (left, right) => {
-      return sql2`${left} >= ${bindIfParam(right, left)}`;
+      return sql`${left} >= ${bindIfParam(right, left)}`;
     };
     lt = (left, right) => {
-      return sql2`${left} < ${bindIfParam(right, left)}`;
+      return sql`${left} < ${bindIfParam(right, left)}`;
     };
     lte = (left, right) => {
-      return sql2`${left} <= ${bindIfParam(right, left)}`;
+      return sql`${left} <= ${bindIfParam(right, left)}`;
     };
   }
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/drizzle-orm/sql/expressions/select.js
 function asc(column) {
-  return sql2`${column} asc`;
+  return sql`${column} asc`;
 }
 function desc(column) {
-  return sql2`${column} desc`;
+  return sql`${column} desc`;
 }
 var init_select = __esm({
   "../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/drizzle-orm/sql/expressions/select.js"() {
@@ -47964,12 +47964,12 @@ function getOperators() {
     notIlike,
     notInArray,
     or,
-    sql: sql2
+    sql
   };
 }
 function getOrderByOperators() {
   return {
-    sql: sql2,
+    sql,
     asc,
     desc
   };
@@ -48214,7 +48214,7 @@ var init_relations = __esm({
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/drizzle-orm/sql/functions/aggregate.js
 function count(expression) {
-  return sql2`count(${expression || sql2.raw("*")})`.mapWith(Number);
+  return sql`count(${expression || sql.raw("*")})`.mapWith(Number);
 }
 var init_aggregate = __esm({
   "../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/drizzle-orm/sql/functions/aggregate.js"() {
@@ -53842,27 +53842,27 @@ var init_dialect = __esm({
       async migrate(migrations, session, config2) {
         const migrationsTable = typeof config2 === "string" ? "__drizzle_migrations" : config2.migrationsTable ?? "__drizzle_migrations";
         const migrationsSchema = typeof config2 === "string" ? "drizzle" : config2.migrationsSchema ?? "drizzle";
-        const migrationTableCreate = sql2`
-			CREATE TABLE IF NOT EXISTS ${sql2.identifier(migrationsSchema)}.${sql2.identifier(migrationsTable)} (
+        const migrationTableCreate = sql`
+			CREATE TABLE IF NOT EXISTS ${sql.identifier(migrationsSchema)}.${sql.identifier(migrationsTable)} (
 				id SERIAL PRIMARY KEY,
 				hash text NOT NULL,
 				created_at bigint
 			)
 		`;
-        await session.execute(sql2`CREATE SCHEMA IF NOT EXISTS ${sql2.identifier(migrationsSchema)}`);
+        await session.execute(sql`CREATE SCHEMA IF NOT EXISTS ${sql.identifier(migrationsSchema)}`);
         await session.execute(migrationTableCreate);
         const dbMigrations = await session.all(
-          sql2`select id, hash, created_at from ${sql2.identifier(migrationsSchema)}.${sql2.identifier(migrationsTable)} order by created_at desc limit 1`
+          sql`select id, hash, created_at from ${sql.identifier(migrationsSchema)}.${sql.identifier(migrationsTable)} order by created_at desc limit 1`
         );
         const lastDbMigration = dbMigrations[0];
         await session.transaction(async (tx) => {
           for await (const migration of migrations) {
             if (!lastDbMigration || Number(lastDbMigration.created_at) < migration.folderMillis) {
               for (const stmt of migration.sql) {
-                await tx.execute(sql2.raw(stmt));
+                await tx.execute(sql.raw(stmt));
               }
               await tx.execute(
-                sql2`insert into ${sql2.identifier(migrationsSchema)}.${sql2.identifier(migrationsTable)} ("hash", "created_at") values(${migration.hash}, ${migration.folderMillis})`
+                sql`insert into ${sql.identifier(migrationsSchema)}.${sql.identifier(migrationsTable)} ("hash", "created_at") values(${migration.hash}, ${migration.folderMillis})`
               );
             }
           }
@@ -53879,21 +53879,21 @@ var init_dialect = __esm({
       }
       buildWithCTE(queries) {
         if (!queries?.length) return void 0;
-        const withSqlChunks = [sql2`with `];
+        const withSqlChunks = [sql`with `];
         for (const [i, w] of queries.entries()) {
-          withSqlChunks.push(sql2`${sql2.identifier(w._.alias)} as (${w._.sql})`);
+          withSqlChunks.push(sql`${sql.identifier(w._.alias)} as (${w._.sql})`);
           if (i < queries.length - 1) {
-            withSqlChunks.push(sql2`, `);
+            withSqlChunks.push(sql`, `);
           }
         }
-        withSqlChunks.push(sql2` `);
-        return sql2.join(withSqlChunks);
+        withSqlChunks.push(sql` `);
+        return sql.join(withSqlChunks);
       }
       buildDeleteQuery({ table, where, returning, withList }) {
         const withSql = this.buildWithCTE(withList);
-        const returningSql = returning ? sql2` returning ${this.buildSelection(returning, { isSingleTable: true })}` : void 0;
-        const whereSql = where ? sql2` where ${where}` : void 0;
-        return sql2`${withSql}delete from ${table}${whereSql}${returningSql}`;
+        const returningSql = returning ? sql` returning ${this.buildSelection(returning, { isSingleTable: true })}` : void 0;
+        const whereSql = where ? sql` where ${where}` : void 0;
+        return sql`${withSql}delete from ${table}${whereSql}${returningSql}`;
       }
       buildUpdateSet(table, set2) {
         const tableColumns = table[Table.Symbol.Columns];
@@ -53901,13 +53901,13 @@ var init_dialect = __esm({
           (colName) => set2[colName] !== void 0 || tableColumns[colName]?.onUpdateFn !== void 0
         );
         const setSize = columnNames.length;
-        return sql2.join(columnNames.flatMap((colName, i) => {
+        return sql.join(columnNames.flatMap((colName, i) => {
           const col = tableColumns[colName];
           const onUpdateFnResult = col.onUpdateFn?.();
-          const value = set2[colName] ?? (is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql2.param(onUpdateFnResult, col));
-          const res = sql2`${sql2.identifier(this.casing.getColumnCasing(col))} = ${value}`;
+          const value = set2[colName] ?? (is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql.param(onUpdateFnResult, col));
+          const res = sql`${sql.identifier(this.casing.getColumnCasing(col))} = ${value}`;
           if (i < setSize - 1) {
-            return [res, sql2.raw(", ")];
+            return [res, sql.raw(", ")];
           }
           return [res];
         }));
@@ -53918,13 +53918,13 @@ var init_dialect = __esm({
         const tableSchema = table[PgTable.Symbol.Schema];
         const origTableName = table[PgTable.Symbol.OriginalName];
         const alias = tableName === origTableName ? void 0 : tableName;
-        const tableSql = sql2`${tableSchema ? sql2`${sql2.identifier(tableSchema)}.` : void 0}${sql2.identifier(origTableName)}${alias && sql2` ${sql2.identifier(alias)}`}`;
+        const tableSql = sql`${tableSchema ? sql`${sql.identifier(tableSchema)}.` : void 0}${sql.identifier(origTableName)}${alias && sql` ${sql.identifier(alias)}`}`;
         const setSql = this.buildUpdateSet(table, set2);
-        const fromSql = from && sql2.join([sql2.raw(" from "), this.buildFromTable(from)]);
+        const fromSql = from && sql.join([sql.raw(" from "), this.buildFromTable(from)]);
         const joinsSql = this.buildJoins(joins);
-        const returningSql = returning ? sql2` returning ${this.buildSelection(returning, { isSingleTable: !from })}` : void 0;
-        const whereSql = where ? sql2` where ${where}` : void 0;
-        return sql2`${withSql}update ${tableSql} set ${setSql}${fromSql}${joinsSql}${whereSql}${returningSql}`;
+        const returningSql = returning ? sql` returning ${this.buildSelection(returning, { isSingleTable: !from })}` : void 0;
+        const whereSql = where ? sql` where ${where}` : void 0;
+        return sql`${withSql}update ${tableSql} set ${setSql}${fromSql}${joinsSql}${whereSql}${returningSql}`;
       }
       /**
        * Builds selection SQL with provided fields/expressions
@@ -53942,7 +53942,7 @@ var init_dialect = __esm({
         const chunks = fields.flatMap(({ field }, i) => {
           const chunk = [];
           if (is(field, SQL.Aliased) && field.isSelectionField) {
-            chunk.push(sql2.identifier(field.fieldAlias));
+            chunk.push(sql.identifier(field.fieldAlias));
           } else if (is(field, SQL.Aliased) || is(field, SQL)) {
             const query = is(field, SQL.Aliased) ? field.sql : field;
             if (isSingleTable) {
@@ -53950,7 +53950,7 @@ var init_dialect = __esm({
                 new SQL(
                   query.queryChunks.map((c) => {
                     if (is(c, PgColumn)) {
-                      return sql2.identifier(this.casing.getColumnCasing(c));
+                      return sql.identifier(this.casing.getColumnCasing(c));
                     }
                     return c;
                   })
@@ -53960,11 +53960,11 @@ var init_dialect = __esm({
               chunk.push(query);
             }
             if (is(field, SQL.Aliased)) {
-              chunk.push(sql2` as ${sql2.identifier(field.fieldAlias)}`);
+              chunk.push(sql` as ${sql.identifier(field.fieldAlias)}`);
             }
           } else if (is(field, Column)) {
             if (isSingleTable) {
-              chunk.push(sql2.identifier(this.casing.getColumnCasing(field)));
+              chunk.push(sql.identifier(this.casing.getColumnCasing(field)));
             } else {
               chunk.push(field);
             }
@@ -53980,11 +53980,11 @@ var init_dialect = __esm({
             chunk.push(field);
           }
           if (i < columnsLen - 1) {
-            chunk.push(sql2`, `);
+            chunk.push(sql`, `);
           }
           return chunk;
         });
-        return sql2.join(chunks);
+        return sql.join(chunks);
       }
       buildJoins(joins) {
         if (!joins || joins.length === 0) {
@@ -53993,18 +53993,18 @@ var init_dialect = __esm({
         const joinsArray = [];
         for (const [index, joinMeta] of joins.entries()) {
           if (index === 0) {
-            joinsArray.push(sql2` `);
+            joinsArray.push(sql` `);
           }
           const table = joinMeta.table;
-          const lateralSql = joinMeta.lateral ? sql2` lateral` : void 0;
-          const onSql = joinMeta.on ? sql2` on ${joinMeta.on}` : void 0;
+          const lateralSql = joinMeta.lateral ? sql` lateral` : void 0;
+          const onSql = joinMeta.on ? sql` on ${joinMeta.on}` : void 0;
           if (is(table, PgTable)) {
             const tableName = table[PgTable.Symbol.Name];
             const tableSchema = table[PgTable.Symbol.Schema];
             const origTableName = table[PgTable.Symbol.OriginalName];
             const alias = tableName === origTableName ? void 0 : joinMeta.alias;
             joinsArray.push(
-              sql2`${sql2.raw(joinMeta.joinType)} join${lateralSql} ${tableSchema ? sql2`${sql2.identifier(tableSchema)}.` : void 0}${sql2.identifier(origTableName)}${alias && sql2` ${sql2.identifier(alias)}`}${onSql}`
+              sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${tableSchema ? sql`${sql.identifier(tableSchema)}.` : void 0}${sql.identifier(origTableName)}${alias && sql` ${sql.identifier(alias)}`}${onSql}`
             );
           } else if (is(table, View)) {
             const viewName = table[ViewBaseConfig].name;
@@ -54012,26 +54012,26 @@ var init_dialect = __esm({
             const origViewName = table[ViewBaseConfig].originalName;
             const alias = viewName === origViewName ? void 0 : joinMeta.alias;
             joinsArray.push(
-              sql2`${sql2.raw(joinMeta.joinType)} join${lateralSql} ${viewSchema ? sql2`${sql2.identifier(viewSchema)}.` : void 0}${sql2.identifier(origViewName)}${alias && sql2` ${sql2.identifier(alias)}`}${onSql}`
+              sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${viewSchema ? sql`${sql.identifier(viewSchema)}.` : void 0}${sql.identifier(origViewName)}${alias && sql` ${sql.identifier(alias)}`}${onSql}`
             );
           } else {
             joinsArray.push(
-              sql2`${sql2.raw(joinMeta.joinType)} join${lateralSql} ${table}${onSql}`
+              sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${table}${onSql}`
             );
           }
           if (index < joins.length - 1) {
-            joinsArray.push(sql2` `);
+            joinsArray.push(sql` `);
           }
         }
-        return sql2.join(joinsArray);
+        return sql.join(joinsArray);
       }
       buildFromTable(table) {
         if (is(table, Table) && table[Table.Symbol.IsAlias]) {
-          let fullName = sql2`${sql2.identifier(table[Table.Symbol.OriginalName])}`;
+          let fullName = sql`${sql.identifier(table[Table.Symbol.OriginalName])}`;
           if (table[Table.Symbol.Schema]) {
-            fullName = sql2`${sql2.identifier(table[Table.Symbol.Schema])}.${fullName}`;
+            fullName = sql`${sql.identifier(table[Table.Symbol.Schema])}.${fullName}`;
           }
-          return sql2`${fullName} ${sql2.identifier(table[Table.Symbol.Name])}`;
+          return sql`${fullName} ${sql.identifier(table[Table.Symbol.Name])}`;
         }
         return table;
       }
@@ -54066,42 +54066,42 @@ var init_dialect = __esm({
         const withSql = this.buildWithCTE(withList);
         let distinctSql;
         if (distinct) {
-          distinctSql = distinct === true ? sql2` distinct` : sql2` distinct on (${sql2.join(distinct.on, sql2`, `)})`;
+          distinctSql = distinct === true ? sql` distinct` : sql` distinct on (${sql.join(distinct.on, sql`, `)})`;
         }
         const selection = this.buildSelection(fieldsList, { isSingleTable });
         const tableSql = this.buildFromTable(table);
         const joinsSql = this.buildJoins(joins);
-        const whereSql = where ? sql2` where ${where}` : void 0;
-        const havingSql = having ? sql2` having ${having}` : void 0;
+        const whereSql = where ? sql` where ${where}` : void 0;
+        const havingSql = having ? sql` having ${having}` : void 0;
         let orderBySql;
         if (orderBy && orderBy.length > 0) {
-          orderBySql = sql2` order by ${sql2.join(orderBy, sql2`, `)}`;
+          orderBySql = sql` order by ${sql.join(orderBy, sql`, `)}`;
         }
         let groupBySql;
         if (groupBy && groupBy.length > 0) {
-          groupBySql = sql2` group by ${sql2.join(groupBy, sql2`, `)}`;
+          groupBySql = sql` group by ${sql.join(groupBy, sql`, `)}`;
         }
-        const limitSql = typeof limit === "object" || typeof limit === "number" && limit >= 0 ? sql2` limit ${limit}` : void 0;
-        const offsetSql = offset ? sql2` offset ${offset}` : void 0;
-        const lockingClauseSql = sql2.empty();
+        const limitSql = typeof limit === "object" || typeof limit === "number" && limit >= 0 ? sql` limit ${limit}` : void 0;
+        const offsetSql = offset ? sql` offset ${offset}` : void 0;
+        const lockingClauseSql = sql.empty();
         if (lockingClause) {
-          const clauseSql = sql2` for ${sql2.raw(lockingClause.strength)}`;
+          const clauseSql = sql` for ${sql.raw(lockingClause.strength)}`;
           if (lockingClause.config.of) {
             clauseSql.append(
-              sql2` of ${sql2.join(
+              sql` of ${sql.join(
                 Array.isArray(lockingClause.config.of) ? lockingClause.config.of : [lockingClause.config.of],
-                sql2`, `
+                sql`, `
               )}`
             );
           }
           if (lockingClause.config.noWait) {
-            clauseSql.append(sql2` nowait`);
+            clauseSql.append(sql` nowait`);
           } else if (lockingClause.config.skipLocked) {
-            clauseSql.append(sql2` skip locked`);
+            clauseSql.append(sql` skip locked`);
           }
           lockingClauseSql.append(clauseSql);
         }
-        const finalQuery = sql2`${withSql}select${distinctSql} ${selection} from ${tableSql}${joinsSql}${whereSql}${groupBySql}${havingSql}${orderBySql}${limitSql}${offsetSql}${lockingClauseSql}`;
+        const finalQuery = sql`${withSql}select${distinctSql} ${selection} from ${tableSql}${joinsSql}${whereSql}${groupBySql}${havingSql}${orderBySql}${limitSql}${offsetSql}${lockingClauseSql}`;
         if (setOperators.length > 0) {
           return this.buildSetOperations(finalQuery, setOperators);
         }
@@ -54124,39 +54124,39 @@ var init_dialect = __esm({
         leftSelect,
         setOperator: { type, isAll, rightSelect, limit, orderBy, offset }
       }) {
-        const leftChunk = sql2`(${leftSelect.getSQL()}) `;
-        const rightChunk = sql2`(${rightSelect.getSQL()})`;
+        const leftChunk = sql`(${leftSelect.getSQL()}) `;
+        const rightChunk = sql`(${rightSelect.getSQL()})`;
         let orderBySql;
         if (orderBy && orderBy.length > 0) {
           const orderByValues = [];
           for (const singleOrderBy of orderBy) {
             if (is(singleOrderBy, PgColumn)) {
-              orderByValues.push(sql2.identifier(singleOrderBy.name));
+              orderByValues.push(sql.identifier(singleOrderBy.name));
             } else if (is(singleOrderBy, SQL)) {
               for (let i = 0; i < singleOrderBy.queryChunks.length; i++) {
                 const chunk = singleOrderBy.queryChunks[i];
                 if (is(chunk, PgColumn)) {
-                  singleOrderBy.queryChunks[i] = sql2.identifier(chunk.name);
+                  singleOrderBy.queryChunks[i] = sql.identifier(chunk.name);
                 }
               }
-              orderByValues.push(sql2`${singleOrderBy}`);
+              orderByValues.push(sql`${singleOrderBy}`);
             } else {
-              orderByValues.push(sql2`${singleOrderBy}`);
+              orderByValues.push(sql`${singleOrderBy}`);
             }
           }
-          orderBySql = sql2` order by ${sql2.join(orderByValues, sql2`, `)} `;
+          orderBySql = sql` order by ${sql.join(orderByValues, sql`, `)} `;
         }
-        const limitSql = typeof limit === "object" || typeof limit === "number" && limit >= 0 ? sql2` limit ${limit}` : void 0;
-        const operatorChunk = sql2.raw(`${type} ${isAll ? "all " : ""}`);
-        const offsetSql = offset ? sql2` offset ${offset}` : void 0;
-        return sql2`${leftChunk}${operatorChunk}${rightChunk}${orderBySql}${limitSql}${offsetSql}`;
+        const limitSql = typeof limit === "object" || typeof limit === "number" && limit >= 0 ? sql` limit ${limit}` : void 0;
+        const operatorChunk = sql.raw(`${type} ${isAll ? "all " : ""}`);
+        const offsetSql = offset ? sql` offset ${offset}` : void 0;
+        return sql`${leftChunk}${operatorChunk}${rightChunk}${orderBySql}${limitSql}${offsetSql}`;
       }
       buildInsertQuery({ table, values: valuesOrSelect, onConflict, returning, withList, select, overridingSystemValue_ }) {
         const valuesSqlList = [];
         const columns = table[Table.Symbol.Columns];
         const colEntries = Object.entries(columns).filter(([_, col]) => !col.shouldDisableInsert());
         const insertOrder = colEntries.map(
-          ([, column]) => sql2.identifier(this.casing.getColumnCasing(column))
+          ([, column]) => sql.identifier(this.casing.getColumnCasing(column))
         );
         if (select) {
           const select2 = valuesOrSelect;
@@ -54167,7 +54167,7 @@ var init_dialect = __esm({
           }
         } else {
           const values = valuesOrSelect;
-          valuesSqlList.push(sql2.raw("values "));
+          valuesSqlList.push(sql.raw("values "));
           for (const [valueIndex, value] of values.entries()) {
             const valueList = [];
             for (const [fieldName, col] of colEntries) {
@@ -54175,14 +54175,14 @@ var init_dialect = __esm({
               if (colValue === void 0 || is(colValue, Param) && colValue.value === void 0) {
                 if (col.defaultFn !== void 0) {
                   const defaultFnResult = col.defaultFn();
-                  const defaultValue = is(defaultFnResult, SQL) ? defaultFnResult : sql2.param(defaultFnResult, col);
+                  const defaultValue = is(defaultFnResult, SQL) ? defaultFnResult : sql.param(defaultFnResult, col);
                   valueList.push(defaultValue);
                 } else if (!col.default && col.onUpdateFn !== void 0) {
                   const onUpdateFnResult = col.onUpdateFn();
-                  const newValue = is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql2.param(onUpdateFnResult, col);
+                  const newValue = is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql.param(onUpdateFnResult, col);
                   valueList.push(newValue);
                 } else {
-                  valueList.push(sql2`default`);
+                  valueList.push(sql`default`);
                 }
               } else {
                 valueList.push(colValue);
@@ -54190,21 +54190,21 @@ var init_dialect = __esm({
             }
             valuesSqlList.push(valueList);
             if (valueIndex < values.length - 1) {
-              valuesSqlList.push(sql2`, `);
+              valuesSqlList.push(sql`, `);
             }
           }
         }
         const withSql = this.buildWithCTE(withList);
-        const valuesSql = sql2.join(valuesSqlList);
-        const returningSql = returning ? sql2` returning ${this.buildSelection(returning, { isSingleTable: true })}` : void 0;
-        const onConflictSql = onConflict ? sql2` on conflict ${onConflict}` : void 0;
-        const overridingSql = overridingSystemValue_ === true ? sql2`overriding system value ` : void 0;
-        return sql2`${withSql}insert into ${table} ${insertOrder} ${overridingSql}${valuesSql}${onConflictSql}${returningSql}`;
+        const valuesSql = sql.join(valuesSqlList);
+        const returningSql = returning ? sql` returning ${this.buildSelection(returning, { isSingleTable: true })}` : void 0;
+        const onConflictSql = onConflict ? sql` on conflict ${onConflict}` : void 0;
+        const overridingSql = overridingSystemValue_ === true ? sql`overriding system value ` : void 0;
+        return sql`${withSql}insert into ${table} ${insertOrder} ${overridingSql}${valuesSql}${onConflictSql}${returningSql}`;
       }
       buildRefreshMaterializedViewQuery({ view, concurrently, withNoData }) {
-        const concurrentlySql = concurrently ? sql2` concurrently` : void 0;
-        const withNoDataSql = withNoData ? sql2` with no data` : void 0;
-        return sql2`refresh materialized view${concurrentlySql} ${view}${withNoDataSql}`;
+        const concurrentlySql = concurrently ? sql` concurrently` : void 0;
+        const withNoDataSql = withNoData ? sql` with no data` : void 0;
+        return sql`refresh materialized view${concurrentlySql} ${view}${withNoDataSql}`;
       }
       prepareTyping(encoder) {
         if (is(encoder, PgJsonb) || is(encoder, PgJson)) {
@@ -54223,8 +54223,8 @@ var init_dialect = __esm({
           return "none";
         }
       }
-      sqlToQuery(sql22, invokeSource) {
-        return sql22.toQuery({
+      sqlToQuery(sql2, invokeSource) {
+        return sql2.toQuery({
           casing: this.casing,
           escapeName: this.escapeName,
           escapeParam: this.escapeParam,
@@ -54777,7 +54777,7 @@ var init_dialect = __esm({
           }
           let extras;
           if (config2.extras) {
-            extras = typeof config2.extras === "function" ? config2.extras(aliasedColumns, { sql: sql2 }) : config2.extras;
+            extras = typeof config2.extras === "function" ? config2.extras(aliasedColumns, { sql }) : config2.extras;
             for (const [tsKey, value] of Object.entries(extras)) {
               fieldsSelection.push({
                 tsKey,
@@ -54835,9 +54835,9 @@ var init_dialect = __esm({
               joinOn: joinOn2,
               nestedQueryRelation: relation
             });
-            const field = sql2`${sql2.identifier(relationTableAlias)}.${sql2.identifier("data")}`.as(selectedRelationTsKey);
+            const field = sql`${sql.identifier(relationTableAlias)}.${sql.identifier("data")}`.as(selectedRelationTsKey);
             joins.push({
-              on: sql2`true`,
+              on: sql`true`,
               table: new Subquery(builtRelation.sql, {}, relationTableAlias),
               alias: relationTableAlias,
               joinType: "left",
@@ -54859,14 +54859,14 @@ var init_dialect = __esm({
         let result;
         where = and(joinOn, where);
         if (nestedQueryRelation) {
-          let field = sql2`json_build_array(${sql2.join(
+          let field = sql`json_build_array(${sql.join(
             selection.map(
-              ({ field: field2, tsKey, isJson }) => isJson ? sql2`${sql2.identifier(`${tableAlias}_${tsKey}`)}.${sql2.identifier("data")}` : is(field2, SQL.Aliased) ? field2.sql : field2
+              ({ field: field2, tsKey, isJson }) => isJson ? sql`${sql.identifier(`${tableAlias}_${tsKey}`)}.${sql.identifier("data")}` : is(field2, SQL.Aliased) ? field2.sql : field2
             ),
-            sql2`, `
+            sql`, `
           )})`;
           if (is(nestedQueryRelation, Many)) {
-            field = sql2`coalesce(json_agg(${field}${orderBy.length > 0 ? sql2` order by ${sql2.join(orderBy, sql2`, `)}` : void 0}), '[]'::json)`;
+            field = sql`coalesce(json_agg(${field}${orderBy.length > 0 ? sql` order by ${sql.join(orderBy, sql`, `)}` : void 0}), '[]'::json)`;
           }
           const nestedSelection = [{
             dbKey: "data",
@@ -54883,7 +54883,7 @@ var init_dialect = __esm({
               fields: {},
               fieldsFlat: [{
                 path: [],
-                field: sql2.raw("*")
+                field: sql.raw("*")
               }],
               where,
               limit,
@@ -56369,12 +56369,12 @@ var init_insert = __esm({
        */
       onConflictDoNothing(config2 = {}) {
         if (config2.target === void 0) {
-          this.config.onConflict = sql2`do nothing`;
+          this.config.onConflict = sql`do nothing`;
         } else {
           let targetColumn = "";
           targetColumn = Array.isArray(config2.target) ? config2.target.map((it) => this.dialect.escapeName(this.dialect.casing.getColumnCasing(it))).join(",") : this.dialect.escapeName(this.dialect.casing.getColumnCasing(config2.target));
-          const whereSql = config2.where ? sql2` where ${config2.where}` : void 0;
-          this.config.onConflict = sql2`(${sql2.raw(targetColumn)})${whereSql} do nothing`;
+          const whereSql = config2.where ? sql` where ${config2.where}` : void 0;
+          this.config.onConflict = sql`(${sql.raw(targetColumn)})${whereSql} do nothing`;
         }
         return this;
       }
@@ -56413,13 +56413,13 @@ var init_insert = __esm({
             'You cannot use both "where" and "targetWhere"/"setWhere" at the same time - "where" is deprecated, use "targetWhere" or "setWhere" instead.'
           );
         }
-        const whereSql = config2.where ? sql2` where ${config2.where}` : void 0;
-        const targetWhereSql = config2.targetWhere ? sql2` where ${config2.targetWhere}` : void 0;
-        const setWhereSql = config2.setWhere ? sql2` where ${config2.setWhere}` : void 0;
+        const whereSql = config2.where ? sql` where ${config2.where}` : void 0;
+        const targetWhereSql = config2.targetWhere ? sql` where ${config2.targetWhere}` : void 0;
+        const setWhereSql = config2.setWhere ? sql` where ${config2.setWhere}` : void 0;
         const setSql = this.dialect.buildUpdateSet(this.config.table, mapUpdateSet(this.config.table, config2.set));
         let targetColumn = "";
         targetColumn = Array.isArray(config2.target) ? config2.target.map((it) => this.dialect.escapeName(this.dialect.casing.getColumnCasing(it))).join(",") : this.dialect.escapeName(this.dialect.casing.getColumnCasing(config2.target));
-        this.config.onConflict = sql2`(${sql2.raw(targetColumn)})${targetWhereSql} do update set ${setSql}${whereSql}${setWhereSql}`;
+        this.config.onConflict = sql`(${sql.raw(targetColumn)})${targetWhereSql} do update set ${setSql}${whereSql}${setWhereSql}`;
         return this;
       }
       /** @internal */
@@ -56802,10 +56802,10 @@ var init_count = __esm({
       [Symbol.toStringTag] = "PgCountBuilder";
       session;
       static buildEmbeddedCount(source, filters) {
-        return sql2`(select count(*) from ${source}${sql2.raw(" where ").if(filters)}${filters})`;
+        return sql`(select count(*) from ${source}${sql.raw(" where ").if(filters)}${filters})`;
       }
       static buildCount(source, filters) {
-        return sql2`select count(*) as count from ${source}${sql2.raw(" where ").if(filters)}${filters};`;
+        return sql`select count(*) as count from ${source}${sql.raw(" where ").if(filters)}${filters};`;
       }
       /** @intrnal */
       setToken(token) {
@@ -56966,10 +56966,10 @@ var init_raw = __esm({
     init_entity();
     init_query_promise();
     PgRaw = class extends QueryPromise {
-      constructor(execute, sql3, query, mapBatchResult) {
+      constructor(execute, sql2, query, mapBatchResult) {
         super();
         this.execute = execute;
-        this.sql = sql3;
+        this.sql = sql2;
         this.query = query;
         this.mapBatchResult = mapBatchResult;
       }
@@ -57266,7 +57266,7 @@ var init_db = __esm({
       }
       authToken;
       execute(query) {
-        const sequel = typeof query === "string" ? sql2.raw(query) : query.getSQL();
+        const sequel = typeof query === "string" ? sql.raw(query) : query.getSQL();
         const builtQuery = this.dialect.sqlToQuery(sequel);
         const prepared = this.session.prepareQuery(
           builtQuery,
@@ -57289,8 +57289,8 @@ var init_db = __esm({
 });
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/drizzle-orm/cache/core/cache.js
-async function hashQuery(sql3, params) {
-  const dataToHash = `${sql3}-${JSON.stringify(params)}`;
+async function hashQuery(sql2, params) {
+  const dataToHash = `${sql2}-${JSON.stringify(params)}`;
   const encoder = new TextEncoder();
   const data = encoder.encode(dataToHash);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -57419,7 +57419,7 @@ var init_schema = __esm({
         return pgSequenceWithSchema(name, options, this.schemaName);
       };
       getSQL() {
-        return new SQL([sql2.identifier(this.schemaName)]);
+        return new SQL([sql.identifier(this.schemaName)]);
       }
       shouldOmitSQLParens() {
         return true;
@@ -57561,8 +57561,8 @@ var init_session = __esm({
         ).all();
       }
       /** @internal */
-      async count(sql22, token) {
-        const res = await this.execute(sql22, token);
+      async count(sql2, token) {
+        const res = await this.execute(sql2, token);
         return Number(
           res[0]["count"]
         );
@@ -57590,10 +57590,10 @@ var init_session = __esm({
         if (typeof config2.deferrable === "boolean") {
           chunks.push(config2.deferrable ? "deferrable" : "not deferrable");
         }
-        return sql2.raw(chunks.join(" "));
+        return sql.raw(chunks.join(" "));
       }
       setTransaction(config2) {
-        return this.session.execute(sql2`set transaction ${this.getTransactionConfigSQL(config2)}`);
+        return this.session.execute(sql`set transaction ${this.getTransactionConfigSQL(config2)}`);
       }
     };
   }
@@ -57826,20 +57826,20 @@ var init_session2 = __esm({
         const isPool = this.client instanceof Pool2 || Object.getPrototypeOf(this.client).constructor.name.includes("Pool");
         const session = isPool ? new _NodePgSession(await this.client.connect(), this.dialect, this.schema, this.options) : this;
         const tx = new NodePgTransaction(this.dialect, session, this.schema);
-        await tx.execute(sql2`begin${config2 ? sql2` ${tx.getTransactionConfigSQL(config2)}` : void 0}`);
+        await tx.execute(sql`begin${config2 ? sql` ${tx.getTransactionConfigSQL(config2)}` : void 0}`);
         try {
           const result = await transaction(tx);
-          await tx.execute(sql2`commit`);
+          await tx.execute(sql`commit`);
           return result;
         } catch (error41) {
-          await tx.execute(sql2`rollback`);
+          await tx.execute(sql`rollback`);
           throw error41;
         } finally {
           if (isPool) session.client.release();
         }
       }
-      async count(sql22) {
-        const res = await this.execute(sql22);
+      async count(sql2) {
+        const res = await this.execute(sql2);
         return Number(
           res["rows"][0]["count"]
         );
@@ -57855,13 +57855,13 @@ var init_session2 = __esm({
           this.schema,
           this.nestedIndex + 1
         );
-        await tx.execute(sql2.raw(`savepoint ${savepointName}`));
+        await tx.execute(sql.raw(`savepoint ${savepointName}`));
         try {
           const result = await transaction(tx);
-          await tx.execute(sql2.raw(`release savepoint ${savepointName}`));
+          await tx.execute(sql.raw(`release savepoint ${savepointName}`));
           return result;
         } catch (err) {
-          await tx.execute(sql2.raw(`rollback to savepoint ${savepointName}`));
+          await tx.execute(sql.raw(`rollback to savepoint ${savepointName}`));
           throw err;
         }
       }
@@ -58290,6 +58290,7 @@ var init_schema2 = __esm({
     "use strict";
     init_drizzle_zod();
     init_pg_core();
+    init_drizzle_orm();
     characterRarities = [
       "common",
       "uncommon",
@@ -58344,6 +58345,8 @@ var init_schema2 = __esm({
       baseDefense: integer2("base_defense").notNull(),
       baseSpeed: integer2("base_speed").notNull(),
       imageUrl: text("image_url"),
+      bannerUrl: text("banner_url"),
+      // Novo: banner do personagem
       passive: text("passive"),
       // Seeded catalog rows are synchronized by `src/seed.ts`; administrative rows opt out.
       catalogManaged: boolean4("catalog_managed").notNull().default(false),
@@ -59461,6 +59464,8 @@ var init_characters = __esm({
       passiveAbility: passiveAbilitySchema.optional(),
       // Nova: passiva funcional
       imageUrl: optionalImageUrlSchema,
+      bannerUrl: optionalImageUrlSchema.optional(),
+      // Novo: banner do personagem
       ultimate: characterUltimateSchema
     });
     characterCatalogSchema = external_exports.array(characterCatalogEntrySchema).superRefine((entries, context) => {
@@ -59820,6 +59825,7 @@ var init_characters = __esm({
         baseDefense: 110,
         baseSpeed: 125,
         imageUrl: "https://cdn.discordapp.com/attachments/1542421455969718342/1542421629832011776/file_00000000edec820e93ac0ef97e71cc81.png?ex=6a91d455&is=6a9082d5&hm=cd4a5b0a413fa8896c753f6dfb62a89927582fd623c64e500bd61983825051dc&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939915196858448/file_000000008dcc820e808bc5971255e9af.png?ex=6aac8588&is=6aab3408&hm=e599a896b105debadea1481f757d8a2191a511c3a691e49bd0a0776824eda7c5&",
         passive: "Transfigura\xE7\xE3o Ociosa: reduz HP m\xE1ximo do inimigo permanentemente",
         passiveAbility: IDLE_TRANSFIGURATION,
         ultimate: {
@@ -59923,6 +59929,7 @@ var init_characters = __esm({
         baseDefense: 125,
         baseSpeed: 130,
         imageUrl: "https://cdn.discordapp.com/attachments/1482939713664057506/1541613929178861648/file_00000000aaf0820eafffd6c359a9ebbf.png?ex=6a91871a&is=6a90359a&hm=d0b9a98434d343705f164adaa1cfa21f669ed03978060209a03d99105fbe21c7&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939913145712771/file_0000000061ec820ead55f8c94ccec8d6.png?ex=6aac8587&is=6aab3407&hm=a9f426ab5b5648f76539471b78503afd88feda1e94824a32fa67328abe6d4148&",
         passive: "Respira\xE7\xE3o da Lua: sangramento e reduz velocidade ao acertar",
         passiveAbility: MOON_BREATHING,
         ultimate: {
@@ -59958,6 +59965,7 @@ var init_characters = __esm({
         baseDefense: 150,
         baseSpeed: 118,
         imageUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1542727699917705287/content.png?ex=6a9248a2&is=6a90f722&hm=a58d40f3b8b087862a8b11ae3804f80027a1ba22571fb26443f32320c86c63be",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939913988898857/file_0000000040f4820e84ae5578d8c69817.png?ex=6aac8587&is=6aab3407&hm=4eb10c6330f611517de322f27257ef47029bb1f33632cfa55d7ff99051909e78&",
         passive: "Criot\xE9cnica de Sangue: congela atacantes ao sofrer dano",
         passiveAbility: ICE_MANIPULATION,
         ultimate: {
@@ -59993,6 +60001,7 @@ var init_characters = __esm({
         baseDefense: 115,
         baseSpeed: 135,
         imageUrl: "https://cdn.discordapp.com/attachments/1482939713664057506/1541613928734531685/file_000000007cac820e839513ec2f6c5576.webp?ex=6a922fda&is=6a90de5a&hm=2cc3bfb18e7308993483b780862f0eda80285bc87b83c35dfd689a8346e52d84&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939914412654683/file_000000001cf0820eb95bff718696a525.png?ex=6aac8588&is=6aab3408&hm=11845ec746bb44e1eba4feaa222b0dd09d24497fedb4b1dc38772f9540f77a34&",
         passive: "Esp\xEDrito de Luta: ganha 2% ATK por cada 10% de HP perdido",
         passiveAbility: FIGHTING_SPIRIT,
         ultimate: {
@@ -60028,6 +60037,7 @@ var init_characters = __esm({
         baseDefense: 105,
         baseSpeed: 122,
         imageUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1542728769603772547/content.png?ex=6a9249a1&is=6a90f821&hm=4c3a135bcc4723c097f56f5a4bfd4c8dca92fa73f307098fc36b72bdc42e2270",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939913506431128/file_00000000c8dc820ea61f186d898e8d1f.png?ex=6aac8587&is=6aab3407&hm=d3583f34043041ea283478064b2752da6bef446dbf9eccd9f5e1f2c2ead414e1&",
         passive: "Mestre do Veneno: envenena frequentemente, veneno causa mais dano",
         passiveAbility: POISON_MASTERY,
         ultimate: {
@@ -60170,6 +60180,7 @@ var init_characters = __esm({
         baseDefense: 115,
         baseSpeed: 135,
         imageUrl: "https://cdn.discordapp.com/attachments/1482939713664057506/1541512299628470372/file_00000000b9ec820e831e8b393ba14dbd.png?ex=6a9322b4&is=6a91d134&hm=ea5194b943f78240a86f5ece541e1736cb02fe3ffeb6a46d9bb99217159bb6d8&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939911719653476/file_000000007138820ea49794f9f6f23247.png?ex=6aac8587&is=6aab3407&hm=0dd25cb9056765e42cae3bc014c31aec247ebb9d870335553add3db097f010a1&",
         passive: "Mangeky\u014D Sharingan Eterno: 30% de chance de ativar Susanoo com escudo e b\xF4nus de dano",
         passiveAbility: ETERNAL_MANGEKYO,
         ultimate: {
@@ -60417,6 +60428,7 @@ var init_characters = __esm({
         baseDefense: 115,
         baseSpeed: 135,
         imageUrl: "https://cdn.discordapp.com/attachments/1482939713664057506/1541512300219859055/file_00000000e864820e89a46306ba4f2cc7.png?ex=6a9322b4&is=6a91d134&hm=0dfc099b5c796b1d2b89c39d1c35bd86740347b533df8dc01cb456e932f168f9&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939914823442442/file_000000003c54820e9da3567ddc72f4c0.png?ex=6aac8588&is=6aab3408&hm=bd4f833991a1953d5965636d31f90cac3abd5f4bc02142f568522ade71587245&",
         passive: "C\xF3pia de T\xE9cnicas: 40% de chance de copiar debuffs recebidos e aplicar no atacante",
         passiveAbility: COPY_TECHNIQUE,
         ultimate: {
@@ -60452,6 +60464,7 @@ var init_characters = __esm({
         baseDefense: 140,
         baseSpeed: 140,
         imageUrl: "https://cdn.discordapp.com/attachments/1482939713664057506/1541512300811395202/file_00000000eb34820eb837ea2991821b66.png?ex=6a9322b4&is=6a91d134&hm=1d5d1c7dfe1d550cfd04113ba129d3f9cd14ce66fe3850c65e1d3701699f3346&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939914823442442/file_000000003c54820e9da3567ddc72f4c0.png?ex=6aac8588&is=6aab3408&hm=bd4f833991a1953d5965636d31f90cac3abd5f4bc02142f568522ade71587245&",
         passive: "Manifesta\xE7\xE3o de Rika: abaixo de 50% HP ganha escudo 400, +30% ATK, +25% DEF, +20% SPD",
         passiveAbility: RIKA_MANIFESTATION,
         ultimate: {
@@ -60700,6 +60713,7 @@ var init_characters = __esm({
         baseDefense: 165,
         baseSpeed: 105,
         imageUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1543818159272759327/file_000000004400820eb2c8f79f3bfb01da.png?ex=6a983a73&is=6a96e8f3&hm=6df39f85d6de83378e69f45387e230078223ac1bbcef47c4a69b5f2f16545ba6&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939915624685668/file_0000000086dc820e9f5fef760529e81b.png?ex=6aac8588&is=6aab3408&hm=9467c915f60d21034613c536cd3698a7063e5bffb082ac69682c0602239daeff&",
         passive: "Ritual de Jashin: ao causar cr\xEDtico, aplica maldi\xE7\xE3o. Enquanto amaldi\xE7oado, reflete 40% do dano recebido de volta ao alvo.",
         passiveAbility: JASHIN_RITUAL,
         ultimate: {
@@ -60823,6 +60837,7 @@ var init_characters = __esm({
         baseDefense: 130,
         baseSpeed: 140,
         imageUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1544397853147922546/file_00000000efcc820eaf7a358bcc40bed9.png?ex=6a985c15&is=6a970a95&hm=bbec91cb30f32e4c6cf4117e881fe272c9051a231ae80afc0ea774d4b0ba8aa2&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939913145712771/file_0000000061ec820ead55f8c94ccec8d6.png?ex=6aac8587&is=6aab3407&hm=a9f426ab5b5648f76539471b78503afd88feda1e94824a32fa67328abe6d4148&",
         passive: "L\xE2mina da Lua Crescente: Cada ataque tem 40% de chance de aplicar m\xFAltiplos cortes lunares, causando sangramento intenso e reduzindo defesa do alvo em at\xE9 45%.",
         passiveAbility: MOON_CRESCENT_BLADE,
         ultimate: {
@@ -60866,7 +60881,8 @@ var init_characters = __esm({
         baseAttack: 190,
         baseDefense: 145,
         baseSpeed: 118,
-        imageUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1544397852527169617/file_00000000b6dc820e9d36b6d3c1b1bf1e.png?ex=6a985c15&is=6a970a95&hm=cfee2ef2ec9802ba2654567f9224c435183b310fe4eac40bb85d731a0a391e5b&",
+        imageUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1544397852527169617/file_00000000b6dc820e9d36b6d3c1b1bf1e.png?ex=6aac2295&is=6aaad115&hm=fbbfb89ecf8f1c3901241fb3fdf0638eb318b02af42c816fe36b5d2f98290b68&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939912621686844/file_00000000b100820ea6b7581630785a16.png?ex=6aac8587&is=6aab3407&hm=8eb147b3f670f62f5b02449c5337265ce46622a53c98381cfb58331c84a9925a&",
         passive: "Renascimento da Serpente: Ao cair abaixo de 40% HP, regenera completamente (1x por batalha). Tem 30% de chance de transferir 50% do dano recebido para um inimigo aleat\xF3rio.",
         passiveAbility: SERPENT_REBIRTH,
         ultimate: {
@@ -60962,6 +60978,8 @@ var init_characters = __esm({
         baseAttack: 265,
         baseDefense: 130,
         baseSpeed: 115,
+        imageUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549944109240942702/file_000000009530820eac36c524b5e555a2.png?ex=6aac8970&is=6aab37f0&hm=586c8d3788f068fd2f15462130e5b675163016c8200eb05cc922e62005a9f20c&",
+        bannerUrl: "https://cdn.discordapp.com/attachments/979267903989899264/1549939912227430480/file_00000000eee0820e9b95504c02cde198.png?ex=6aac8587&is=6aab3407&hm=97c1e6e016a5c8374fe3133dcdbf8fb1a9d368204ea631e031dbd8703573c898&",
         passive: "Seis Caminhos da Dor: 50% de chance de invocar ataque adicional; ao matar ganha escudo e +20% ATK",
         passiveAbility: SIX_PATHS_OF_PAIN,
         ultimate: {
@@ -61232,16 +61250,16 @@ async function syncCharacterCatalog(options) {
   await db.insert(characters).values(values).onConflictDoUpdate({
     target: [characters.anime, characters.name],
     set: {
-      rarity: sql2`excluded.rarity`,
-      role: sql2`excluded.role`,
-      baseHp: sql2`excluded.base_hp`,
-      baseAttack: sql2`excluded.base_attack`,
-      baseDefense: sql2`excluded.base_defense`,
-      baseSpeed: sql2`excluded.base_speed`,
-      passive: sql2`excluded.passive`,
-      imageUrl: sql2`excluded.image_url`,
-      ultimate: sql2`excluded.ultimate`,
-      catalogManaged: sql2`true`
+      rarity: sql`excluded.rarity`,
+      role: sql`excluded.role`,
+      baseHp: sql`excluded.base_hp`,
+      baseAttack: sql`excluded.base_attack`,
+      baseDefense: sql`excluded.base_defense`,
+      baseSpeed: sql`excluded.base_speed`,
+      passive: sql`excluded.passive`,
+      imageUrl: sql`excluded.image_url`,
+      ultimate: sql`excluded.ultimate`,
+      catalogManaged: sql`true`
     }
   });
   lastKnownHash = currentHash;
@@ -63936,8 +63954,8 @@ async function getWealthLeaderboard(limit = 10) {
     username: users.username,
     gold: users.gold,
     gems: users.gems,
-    score: sql2`${users.gold} + (${users.gems} * 10)`
-  }).from(users).orderBy(desc(sql2`${users.gold} + (${users.gems} * 10)`)).limit(limit);
+    score: sql`${users.gold} + (${users.gems} * 10)`
+  }).from(users).orderBy(desc(sql`${users.gold} + (${users.gems} * 10)`)).limit(limit);
   return topUsers.map((u, index) => ({
     rank: index + 1,
     discordId: u.discordId,
@@ -63996,8 +64014,8 @@ async function getTeamPowerLeaderboard(limit = 10) {
   const teamPowerQuery = await database.select({
     discordId: users.discordId,
     username: users.username,
-    totalPower: sql2`SUM(${characters.baseHp} + ${characters.baseAttack} + ${characters.baseDefense} + ${characters.baseSpeed})`
-  }).from(users).innerJoin(teams, eq(users.id, teams.userId)).innerJoin(teamMembers, eq(teams.id, teamMembers.teamId)).innerJoin(userCharacters, eq(teamMembers.userCharacterId, userCharacters.id)).innerJoin(characters, eq(userCharacters.characterId, characters.id)).groupBy(users.id, users.discordId, users.username).orderBy(desc(sql2`SUM(${characters.baseHp} + ${characters.baseAttack} + ${characters.baseDefense} + ${characters.baseSpeed})`)).limit(limit);
+    totalPower: sql`SUM(${characters.baseHp} + ${characters.baseAttack} + ${characters.baseDefense} + ${characters.baseSpeed})`
+  }).from(users).innerJoin(teams, eq(users.id, teams.userId)).innerJoin(teamMembers, eq(teams.id, teamMembers.teamId)).innerJoin(userCharacters, eq(teamMembers.userCharacterId, userCharacters.id)).innerJoin(characters, eq(userCharacters.characterId, characters.id)).groupBy(users.id, users.discordId, users.username).orderBy(desc(sql`SUM(${characters.baseHp} + ${characters.baseAttack} + ${characters.baseDefense} + ${characters.baseSpeed})`)).limit(limit);
   return teamPowerQuery.map((u, index) => ({
     rank: index + 1,
     discordId: u.discordId,
@@ -64090,7 +64108,7 @@ async function incrementBattlesWon(discordId2, amount = 1) {
   if (!db) return;
   const database = db;
   await database.update(users).set({
-    totalBattlesWon: sql2`${users.totalBattlesWon} + ${amount}`,
+    totalBattlesWon: sql`${users.totalBattlesWon} + ${amount}`,
     updatedAt: /* @__PURE__ */ new Date()
   }).where(eq(users.discordId, discordId2));
 }
@@ -64098,7 +64116,7 @@ async function incrementSummons(discordId2, amount = 1) {
   if (!db) return;
   const database = db;
   await database.update(users).set({
-    totalSummons: sql2`${users.totalSummons} + ${amount}`,
+    totalSummons: sql`${users.totalSummons} + ${amount}`,
     updatedAt: /* @__PURE__ */ new Date()
   }).where(eq(users.discordId, discordId2));
 }
@@ -64106,7 +64124,7 @@ async function incrementPveCleared(discordId2, amount = 1) {
   if (!db) return;
   const database = db;
   await database.update(users).set({
-    totalPveCleared: sql2`${users.totalPveCleared} + ${amount}`,
+    totalPveCleared: sql`${users.totalPveCleared} + ${amount}`,
     updatedAt: /* @__PURE__ */ new Date()
   }).where(eq(users.discordId, discordId2));
 }
@@ -139866,7 +139884,14 @@ function createSummonResultEmbeds(username, results, currency, cost) {
       name: "\u2728 Ultimate",
       value: truncateDiscordText(formatUltimateSummary(result.ultimate, 700) + teamIdText, DISCORD_FIELD_VALUE_LIMIT)
     }).setFooter({ text: `Resultado ${index + 1} de ${results.length} \u2022 Anime RPG` });
-    applyEmbedImage(embed, result.imageUrl);
+    if (result.bannerUrl) {
+      embed.setImage(result.bannerUrl);
+      if (result.imageUrl) {
+        embed.setThumbnail(result.imageUrl);
+      }
+    } else {
+      applyEmbedImage(embed, result.imageUrl);
+    }
     return embed;
   });
 }
@@ -140779,8 +140804,17 @@ function createRaidLeaderboardEmbed(raidMap, difficulty, entries) {
 function createEnhancedProfileEmbed(profile) {
   const { user, profile: profileData, stats, mostUsedCharacters, recentBattles } = profile;
   const embed = new import_discord2.EmbedBuilder().setTitle(`\u{1F4CB} ${user.username}`).setColor(parseInt(profileData.profileColor.replace("#", ""), 16)).setTimestamp();
-  if (profileData.bannerCharacter?.imageUrl) {
-    embed.setImage(profileData.bannerCharacter.imageUrl);
+  if (profileData.bannerCharacter) {
+    const bannerUrl = profileData.bannerCharacter.bannerUrl;
+    const imageUrl = profileData.bannerCharacter.imageUrl;
+    if (bannerUrl) {
+      embed.setImage(bannerUrl);
+      if (imageUrl) {
+        embed.setThumbnail(imageUrl);
+      }
+    } else if (imageUrl) {
+      embed.setImage(imageUrl);
+    }
   }
   let description = "";
   if (profileData.bio) {
@@ -146674,7 +146708,7 @@ var RaidService = class {
     ).where(
       and(
         eq(raidInstanceParticipants.userId, user.id),
-        sql2`${raidInstances.status} IN ('waiting', 'in_progress')`
+        sql`${raidInstances.status} IN ('waiting', 'in_progress')`
       )
     ).limit(1);
     if (existingRaid) {
@@ -146835,7 +146869,7 @@ var RaidService = class {
         currentHp,
         damageDone: 0
       });
-      await tx.update(raidInstanceParticipants).set({ contribution: sql2`${raidInstanceParticipants.contribution} + 1` }).where(eq(raidInstanceParticipants.id, participant.id));
+      await tx.update(raidInstanceParticipants).set({ contribution: sql`${raidInstanceParticipants.contribution} + 1` }).where(eq(raidInstanceParticipants.id, participant.id));
       logger2.info(`[RAID] Added character ${userChar.char.name} to raid ${raidInstance.roomCode}`);
       return {
         character: userChar.char,
@@ -146973,9 +147007,9 @@ var RaidService = class {
       );
       rewardsByUser[user.id] = rewards;
       await db.update(users).set({
-        gold: sql2`${users.gold} + ${rewards.gold}`,
-        gems: sql2`${users.gems} + ${rewards.gems}`,
-        tickets: sql2`${users.tickets} + ${rewards.tickets}`
+        gold: sql`${users.gold} + ${rewards.gold}`,
+        gems: sql`${users.gems} + ${rewards.gems}`,
+        tickets: sql`${users.tickets} + ${rewards.tickets}`
       }).where(eq(users.id, user.id));
       if (isFirstClear) {
         await db.insert(raidFirstClears).values({
@@ -146995,13 +147029,13 @@ var RaidService = class {
         if (clearTimeSeconds < leaderboardEntry.bestTime) {
           await db.update(raidLeaderboard).set({
             bestTime: clearTimeSeconds,
-            totalClears: sql2`${raidLeaderboard.totalClears} + 1`,
+            totalClears: sql`${raidLeaderboard.totalClears} + 1`,
             fastestClearDate: /* @__PURE__ */ new Date(),
             updatedAt: /* @__PURE__ */ new Date()
           }).where(eq(raidLeaderboard.id, leaderboardEntry.id));
         } else {
           await db.update(raidLeaderboard).set({
-            totalClears: sql2`${raidLeaderboard.totalClears} + 1`,
+            totalClears: sql`${raidLeaderboard.totalClears} + 1`,
             updatedAt: /* @__PURE__ */ new Date()
           }).where(eq(raidLeaderboard.id, leaderboardEntry.id));
         }
@@ -147099,8 +147133,8 @@ var RaidService = class {
     const now = /* @__PURE__ */ new Date();
     const result = await db.update(raidInstances).set({ status: "expired" }).where(
       and(
-        sql2`${raidInstances.expiresAt} < ${now}`,
-        sql2`${raidInstances.status} = 'waiting'`
+        sql`${raidInstances.expiresAt} < ${now}`,
+        sql`${raidInstances.status} = 'waiting'`
       )
     ).returning();
     if (result.length > 0) {
@@ -147438,8 +147472,8 @@ async function getActiveSeason() {
   const [season] = await db.select().from(bossRushSeasons).where(
     and(
       eq(bossRushSeasons.active, 1),
-      sql2`${bossRushSeasons.startDate} <= ${now}`,
-      sql2`${bossRushSeasons.endDate} >= ${now}`
+      sql`${bossRushSeasons.startDate} <= ${now}`,
+      sql`${bossRushSeasons.endDate} >= ${now}`
     )
   ).limit(1);
   return season || null;
@@ -148049,15 +148083,15 @@ async function advanceTutorialStep(discordId2, stepId) {
   }).where(eq(userTutorial.userId, user.id));
   const rewardMessages = [];
   if (step.reward.gold) {
-    await db.update(users).set({ gold: sql2`${users.gold} + ${step.reward.gold}` }).where(eq(users.id, user.id));
+    await db.update(users).set({ gold: sql`${users.gold} + ${step.reward.gold}` }).where(eq(users.id, user.id));
     rewardMessages.push(`\u{1F4B0} **${step.reward.gold.toLocaleString()} Gold**`);
   }
   if (step.reward.gems) {
-    await db.update(users).set({ gems: sql2`${users.gems} + ${step.reward.gems}` }).where(eq(users.id, user.id));
+    await db.update(users).set({ gems: sql`${users.gems} + ${step.reward.gems}` }).where(eq(users.id, user.id));
     rewardMessages.push(`\u{1F48E} **${step.reward.gems} Gems**`);
   }
   if (step.reward.tickets) {
-    await db.update(users).set({ tickets: sql2`${users.tickets} + ${step.reward.tickets}` }).where(eq(users.id, user.id));
+    await db.update(users).set({ tickets: sql`${users.tickets} + ${step.reward.tickets}` }).where(eq(users.id, user.id));
     rewardMessages.push(`\u{1F39F}\uFE0F **${step.reward.tickets} Tickets**`);
   }
   if (step.reward.guaranteedCharacter) {
@@ -148922,6 +148956,12 @@ ${pa.description}
           { name: "\u2728 Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
         );
         applyEmbedImage(embed, found.imageUrl);
+        if (found.bannerUrl) {
+          embed.setImage(found.bannerUrl);
+          if (found.imageUrl) {
+            embed.setThumbnail(found.imageUrl);
+          }
+        }
         await interaction.editReply({ embeds: [embed] });
       } catch (error41) {
         console.error("Error in /personagem command:", error41);
