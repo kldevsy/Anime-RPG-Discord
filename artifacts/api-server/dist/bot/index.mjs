@@ -122199,7 +122199,6 @@ async function handleAutocompleteInteraction(interaction) {
 async function handleBossRushCommand(interaction, discordId) {
   const subcommand = interaction.options.getSubcommand();
   if (subcommand === "ranking") {
-    await interaction.deferReply();
     const season = await getActiveSeason();
     if (!season) {
       await interaction.editReply("\u274C Nenhuma temporada ativa no momento.");
@@ -122224,7 +122223,6 @@ async function handleBossRushCommand(interaction, discordId) {
     return;
   }
   if (subcommand === "info") {
-    await interaction.deferReply();
     const season = await getActiveSeason();
     if (!season) {
       await interaction.editReply("\u274C Nenhuma temporada ativa no momento.");
@@ -122262,7 +122260,6 @@ async function handleBossRushCommand(interaction, discordId) {
     return;
   }
   if (subcommand === "iniciar") {
-    await interaction.deferReply();
     const velocidade = interaction.options.getString("velocidade") ?? "slow";
     const animationDelay = velocidade === "fast" ? 50 : velocidade === "instant" ? 0 : 100;
     try {
