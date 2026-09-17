@@ -367,8 +367,6 @@ async function handleBossRushCommand(interaction: ChatInputCommandInteraction, d
 
   // /bossrush ranking
   if (subcommand === "ranking") {
-    await interaction.deferReply();
-    
     const season = await BossRushService.getActiveSeason();
     if (!season) {
       await interaction.editReply("❌ Nenhuma temporada ativa no momento.");
@@ -402,8 +400,6 @@ async function handleBossRushCommand(interaction: ChatInputCommandInteraction, d
 
   // /bossrush info
   if (subcommand === "info") {
-    await interaction.deferReply();
-    
     const season = await BossRushService.getActiveSeason();
     if (!season) {
       await interaction.editReply("❌ Nenhuma temporada ativa no momento.");
@@ -449,8 +445,6 @@ async function handleBossRushCommand(interaction: ChatInputCommandInteraction, d
 
   // /bossrush iniciar
   if (subcommand === "iniciar") {
-    await interaction.deferReply();
-
     const velocidade = interaction.options.getString("velocidade") ?? "slow";
     const animationDelay = velocidade === "fast" ? 50 : velocidade === "instant" ? 0 : 100;
 
