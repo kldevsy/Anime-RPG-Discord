@@ -930,6 +930,8 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           return;
         }
 
+        console.log(`[PERSONAGEM DEBUG] ${found.name}: bannerUrl = ${(found as any).bannerUrl ?? 'null'}, imageUrl = ${found.imageUrl}`);
+
         // Buscar se o usuário possui este personagem
         const profile = await getProfile(discordId);
         const ownedChar = profile?.collection.find((c: any) => c.character.id === found.id);
@@ -1133,8 +1135,11 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
         );
         
         // Se tiver banner, usa banner como imagem e avatar como thumbnail
-        if ((found as any).bannerUrl) {
-          embed.setImage((found as any).bannerUrl);
+        const bannerUrl = (found as any).bannerUrl;
+        console.log(`[PERSONAGEM EMBED] ${found.name}: Setting banner=${bannerUrl}, thumbnail=${found.imageUrl}`);
+        
+        if (bannerUrl) {
+          embed.setImage(bannerUrl);
           if (found.imageUrl) {
             embed.setThumbnail(found.imageUrl);
           }

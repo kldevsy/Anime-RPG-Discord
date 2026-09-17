@@ -201,6 +201,8 @@ export async function getEnhancedProfile(discordId: string): Promise<EnhancedPro
       .where(eq(characters.id, profile.bannerCharacterId))
       .limit(1);
     bannerChar = banner || null;
+    
+    console.log(`[PROFILE SERVICE] Banner character: ${banner?.name}, bannerUrl: ${banner?.bannerUrl}`);
   }
 
   // 6. Buscar most used characters (top 5)

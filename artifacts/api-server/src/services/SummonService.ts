@@ -191,6 +191,9 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         isDuplicate,
         masteryGained,
       });
+      
+      // Log para debug
+      console.log(`[SUMMON DEBUG] ${character.name}: bannerUrl = ${(character as any).bannerUrl ?? 'null'}`);
       if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }
 
@@ -309,6 +312,9 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         isDuplicate,
         masteryGained,
       });
+      
+      // Log para debug
+      console.log(`[SUMMON DEBUG] ${character.name}: bannerUrl = ${(character as any).bannerUrl ?? 'null'}`);
       if (rarity === "mythic" || rarity === "legendary") pity = 0; else pity += 1;
     }
     await tx.insert(bannerPity).values({ userId: user.id, bannerId: banner.id, count: pity })

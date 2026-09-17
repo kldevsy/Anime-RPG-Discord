@@ -434,12 +434,17 @@ export function createSummonResultEmbeds(username: string, results: SummonedChar
       .setFooter({ text: `Resultado ${index + 1} de ${results.length} • Anime RPG` });
     
     // Se tiver banner, usa banner como imagem e avatar como thumbnail
-    if ((result as any).bannerUrl) {
-      embed.setImage((result as any).bannerUrl);
+    const bannerUrl = (result as any).bannerUrl;
+    console.log(`[BANNER DEBUG] Character: ${result.name}, bannerUrl: ${bannerUrl}, imageUrl: ${result.imageUrl}`);
+    
+    if (bannerUrl) {
+      console.log(`[BANNER] Using banner for ${result.name}: ${bannerUrl}`);
+      embed.setImage(bannerUrl);
       if (result.imageUrl) {
         embed.setThumbnail(result.imageUrl);
       }
     } else {
+      console.log(`[BANNER] No banner for ${result.name}, using default image`);
       // Sem banner: comportamento padrão (imagem normal)
       applyEmbedImage(embed, result.imageUrl);
     }
@@ -1731,6 +1736,8 @@ export function createEnhancedProfileEmbed(profile: any) {
   if (profileData.bannerCharacter) {
     const bannerUrl = (profileData.bannerCharacter as any).bannerUrl;
     const imageUrl = profileData.bannerCharacter.imageUrl;
+    
+    console.log(`[PERFIL BANNER] User: ${user.username}, bannerUrl: ${bannerUrl}, imageUrl: ${imageUrl}`);
     
     if (bannerUrl) {
       embed.setImage(bannerUrl);
