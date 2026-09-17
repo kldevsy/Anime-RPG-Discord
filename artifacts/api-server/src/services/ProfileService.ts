@@ -195,6 +195,7 @@ export async function getEnhancedProfile(discordId: string): Promise<EnhancedPro
         name: characters.name,
         anime: characters.anime,
         imageUrl: characters.imageUrl,
+        bannerUrl: characters.bannerUrl,
       })
       .from(characters)
       .where(eq(characters.id, profile.bannerCharacterId))

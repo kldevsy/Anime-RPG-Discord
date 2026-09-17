@@ -1131,8 +1131,6 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           { name: "🔮 Passiva", value: passiveDetails.slice(0, 1024), inline: false },
           { name: "✨ Ultimate", value: formatUltimateSummary(found.ultimate), inline: false }
         );
-
-        applyEmbedImage(embed, found.imageUrl);
         
         // Se tiver banner, usa banner como imagem e avatar como thumbnail
         if ((found as any).bannerUrl) {
@@ -1140,6 +1138,9 @@ export async function handleInteraction(interaction: ChatInputCommandInteraction
           if (found.imageUrl) {
             embed.setThumbnail(found.imageUrl);
           }
+        } else {
+          // Sem banner: comportamento padrão
+          applyEmbedImage(embed, found.imageUrl);
         }
 
         await interaction.editReply({ embeds: [embed] });

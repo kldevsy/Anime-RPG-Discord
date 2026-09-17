@@ -21,6 +21,7 @@ export interface SummonResult {
   anime: string;
   rarity: string;
   imageUrl: string | null;
+  bannerUrl?: string | null;
   ultimate: CharacterUltimate | null;
   isDuplicate?: boolean;
   masteryGained?: {
@@ -185,6 +186,7 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         anime: character.anime,
         rarity: character.rarity,
         imageUrl: character.imageUrl,
+        bannerUrl: (character as any).bannerUrl ?? null,
         ultimate: character.ultimate,
         isDuplicate,
         masteryGained,
@@ -302,6 +304,7 @@ export async function summon(discordId: string, bannerId: string, quantity: 1 | 
         anime: character.anime,
         rarity: character.rarity,
         imageUrl: character.imageUrl,
+        bannerUrl: (character as any).bannerUrl ?? null,
         ultimate: character.ultimate,
         isDuplicate,
         masteryGained,
