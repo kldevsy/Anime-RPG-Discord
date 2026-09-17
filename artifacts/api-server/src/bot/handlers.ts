@@ -503,7 +503,7 @@ async function handleBossRushCommand(interaction: ChatInputCommandInteraction, d
           boss,
           async (snapshot) => {
             if (animationDelay > 0) {
-              const embed = createBattleProgressEmbed(snapshot);
+              const embed = createBattleProgressEmbed(username, `Boss ${i + 1}/5: ${boss.name}`, snapshot);
               await interaction.editReply({ embeds: [embed] });
               await new Promise((resolve) => setTimeout(resolve, animationDelay));
             }
